@@ -50,6 +50,17 @@
     --info: 189 94% 43%;
     --education-blue: 217 91% 60%;
     --education-green: 142 69% 58%;
+
+    /* Warm → cool spectrum: hot deals live at the warm end, tech/brand content at the cool end */
+    --ember: 16 100% 58%;
+    --hot-pink: 340 88% 58%;
+    --violet: 265 80% 62%;
+    --electric: 217 91% 60%;
+    --gradient-spectrum: linear-gradient(115deg, hsl(var(--ember)), hsl(var(--hot-pink)) 38%, hsl(var(--violet)) 68%, hsl(var(--electric)) 100%);
+    --gradient-hot: linear-gradient(135deg, hsl(var(--ember)), hsl(var(--hot-pink)));
+    --gradient-cool: linear-gradient(135deg, hsl(var(--violet)), hsl(var(--electric)));
+    --glass-bg: hsla(220, 45%, 16%, 0.55);
+    --glass-border: hsla(213, 70%, 80%, 0.14);
   }
 }
 
@@ -96,5 +107,93 @@
   }
   .product-card {
     @apply bg-card border border-border rounded-lg overflow-hidden card-glow cursor-pointer;
+  }
+
+  /* Glassmorphism — tinted with the card hue rather than plain white, so it stays part of the same world */
+  .glass {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+  }
+  .glass-strong {
+    background: hsla(220, 45%, 12%, 0.72);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(28px) saturate(160%);
+    -webkit-backdrop-filter: blur(28px) saturate(160%);
+  }
+
+  /* Text/border/bg spectrum gradients */
+  .text-spectrum {
+    background: var(--gradient-spectrum);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .bg-spectrum { background: var(--gradient-spectrum); }
+  .bg-hot { background: var(--gradient-hot); }
+  .bg-cool { background: var(--gradient-cool); }
+  .border-spectrum {
+    border: 1px solid transparent;
+    background-image: linear-gradient(hsl(var(--card)), hsl(var(--card))), var(--gradient-spectrum);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+  }
+
+  /* Horizontal scroll rail: snap-scroll with a soft edge fade instead of arrow chrome */
+  .rail {
+    display: flex;
+    gap: 0.75rem;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+    padding-block: 2px;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
+  }
+  .rail::-webkit-scrollbar { display: none; }
+  .rail-item { scroll-snap-align: start; flex-shrink: 0; }
+
+  /* Hot-deal pulse — a slow ember glow so sale badges/cards actually feel "hot" */
+  .glow-hot {
+    animation: pulse-hot 2.2s ease-out infinite;
+  }
+  @keyframes pulse-hot {
+    0%, 100% { box-shadow: 0 0 0 0 hsla(var(--ember), 0.55), 0 0 0 0 hsla(var(--hot-pink), 0); }
+    60% { box-shadow: 0 0 0 7px hsla(var(--ember), 0), 0 0 14px 2px hsla(var(--hot-pink), 0.35); }
+  }
+
+  /* Micro-interaction feedback for wishlist / add-to-cart clicks */
+  @keyframes heart-pop {
+    0% { transform: scale(1); }
+    35% { transform: scale(1.45) rotate(-6deg); }
+    65% { transform: scale(0.9); }
+    100% { transform: scale(1); }
+  }
+  .animate-heart-pop { animation: heart-pop 0.45s cubic-bezier(.34,1.56,.64,1); }
+
+  @keyframes cart-pop {
+    0% { transform: scale(1); }
+    40% { transform: scale(0.86); }
+    70% { transform: scale(1.08); }
+    100% { transform: scale(1); }
+  }
+  .animate-cart-pop { animation: cart-pop 0.4s cubic-bezier(.34,1.56,.64,1); }
+
+  @keyframes hero-in {
+    0% { opacity: 0; transform: scale(1.04); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  .animate-hero-in { animation: hero-in 0.9s ease-out; }
+
+  @keyframes shine {
+    0% { background-position: -160% 0; }
+    100% { background-position: 160% 0; }
+  }
+  .animate-shine {
+    background-image: linear-gradient(110deg, transparent 30%, hsla(0,0%,100%,0.16) 50%, transparent 70%);
+    background-size: 200% 100%;
+    animation: shine 2.6s linear infinite;
   }
 }
