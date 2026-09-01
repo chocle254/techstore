@@ -161,7 +161,7 @@ export function Header({ showSidebar = true, sidebarOpen, onSidebarToggle }: Hea
               <div className="p-4 border-b border-border flex items-center justify-between">
                 <Link to="/" className="flex items-center gap-2" onClick={() => setMobileOpen(false)}>
                   <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                    <ShoppingCart className="w-4 h-4 text-primary-foreground" />
+                    <Zap className="w-4 h-4 text-primary-foreground" />
                   </div>
                   <span className="text-lg font-bold">TechStore</span>
                 </Link>
