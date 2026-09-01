@@ -10,7 +10,7 @@ Sentry.init({
 });
 
 createRoot(document.getElementById("root")!).render(
-  <Sentry.ErrorBoundary fallback={<p>应用发生错误，请刷新页面重试</p>}>
+  <Sentry.ErrorBoundary fallback={<p>Something went wrong. Please refresh the page</p>}>
     <AppWrapper>
       <App />
     </AppWrapper>
