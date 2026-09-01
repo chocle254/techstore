@@ -69,7 +69,7 @@ export function Header({ showSidebar = true, sidebarOpen, onSidebarToggle }: Hea
               <Menu className="w-5 h-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="bg-card border-border w-72 p-0">
+          <SheetContent side="left" className="bg-card border-border w-72 p-0 overflow-y-auto">
             <div className="p-4 border-b border-border flex items-center justify-between">
               <Link to="/" className="flex items-center gap-2" onClick={() => setMobileOpen(false)}>
                 <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
