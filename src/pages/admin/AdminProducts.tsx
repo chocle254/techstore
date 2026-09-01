@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 
 const EMPTY_FORM = {
   name: '', slug: '', description: '', price: '', original_price: '',
-  brand: '', stock: '', category_id: '', image_url: '',
+  brand: '', stock: '', category_id: '', image_url: '', images: [] as string[],
   is_new: false, is_featured: false, is_deal: false,
 };
 
@@ -53,7 +53,7 @@ export default function AdminProducts() {
       name: p.name, slug: p.slug, description: p.description || '',
       price: String(p.price), original_price: String(p.original_price || ''),
       brand: p.brand || '', stock: String(p.stock),
-      category_id: p.category_id || '', image_url: p.image_url || '',
+      category_id: p.category_id || '', image_url: p.image_url || '', images: p.images?.length ? p.images : [],
       is_new: p.is_new, is_featured: p.is_featured, is_deal: p.is_deal,
     });
     setDialogOpen(true);
@@ -73,6 +73,7 @@ export default function AdminProducts() {
         stock: parseInt(form.stock),
         category_id: form.category_id || null,
         image_url: form.image_url,
+        images: form.images.map(url => url.trim()).filter(Boolean),
         is_new: form.is_new,
         is_featured: form.is_featured,
         is_deal: form.is_deal,
@@ -258,6 +259,39 @@ export default function AdminProducts() {
               <div>
                 <Label className="text-sm text-muted-foreground mb-1 block">Image URL</Label>
                 <Input value={form.image_url} onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))} className="bg-muted border-border" placeholder="https://..." />
+              </div>
+              <div className="md:col-span-2">
+                <Label className="text-sm text-muted-foreground mb-1 block">Additional Photos (other angles)</Label>
+                <div className="space-y-2">
+                  {form.images.map((url, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <Input
+                        value={url}
+                        onChange={e => setForm(f => ({ ...f, images: f.images.map((u, idx) => idx === i ? e.target.value : u) }))}
+                        className="bg-muted border-border"
+                        placeholder="https://..."
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 shrink-0 text-destructive hover:bg-destructive/10"
+                        onClick={() => setForm(f => ({ ...f, images: f.images.filter((_, idx) => idx !== i) }))}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="gap-2 border border-border"
+                    onClick={() => setForm(f => ({ ...f, images: [...f.images, ''] }))}
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add another photo
+                  </Button>
+                </div>
               </div>
               <div className="md:col-span-2">
                 <Label className="text-sm text-muted-foreground mb-1 block">Description</Label>
