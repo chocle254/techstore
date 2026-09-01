@@ -84,7 +84,7 @@ export function AdminLayout() {
     <div className="flex min-h-screen w-full bg-background">
       {/* Desktop Sidebar */}
       <aside className={cn(
-        'hidden md:flex flex-col shrink-0 bg-card border-r border-border transition-all duration-300',
+        'hidden md:flex flex-col shrink-0 bg-card border-r border-border transition-all duration-300 sticky top-0 h-screen overflow-hidden',
         collapsed ? 'w-16' : 'w-56'
       )}>
         <NavContent />
