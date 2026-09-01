@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ShoppingCart, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,8 @@ import { toast } from 'sonner';
 export default function LoginPage() {
   const { signIn } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state as { from?: string } | null)?.from || '/';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
@@ -21,7 +23,7 @@ export default function LoginPage() {
     try {
       await signIn(email, password);
       toast.success('Welcome back!');
-      navigate('/');
+      navigate(from, { replace: true });
     } catch (err: any) {
       toast.error(err.message || 'Invalid email or password');
     } finally {
