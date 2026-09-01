@@ -1,5 +1,5 @@
 import { supabase } from '@/db/supabase';
-import type { Product, Category, Order, WishlistItem, Review, BlogPost, Profile, OrderItem } from '@/types/types';
+import type { Product, Category, Order, WishlistItem, Review, BlogPost, Profile, OrderItem, StoreSettings } from '@/types/types';
 
 // ─── Categories ───────────────────────────────────────────────────────────────
 export async function getCategories(): Promise<Category[]> {
@@ -177,11 +177,16 @@ export async function createOrder(orderData: {
 }
 
 export async function getUserOrders(): Promise<Order[]> {
-  const { data } = await supabase
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data, error } = await supabase
     .from('orders')
     .select('*, order_items(*)')
+    .eq('user_id', user.id)
     .order('created_at', { ascending: false })
     .limit(50);
+  if (error) throw error;
   return Array.isArray(data) ? data : [];
 }
 
@@ -362,5 +367,24 @@ export async function updateProfile(updates: Partial<Profile>): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
   const { error } = await supabase.from('profiles').update(updates).eq('id', user.id);
+  if (error) throw error;
+}
+
+// ─── Store Settings ───────────────────────────────────────────────────────────
+export async function getStoreSettings(): Promise<StoreSettings | null> {
+  const { data, error } = await supabase
+    .from('store_settings')
+    .select('*')
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateStoreSettings(id: string, updates: Partial<StoreSettings>): Promise<void> {
+  const { error } = await supabase
+    .from('store_settings')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', id);
   if (error) throw error;
 }
