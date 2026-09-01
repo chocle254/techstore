@@ -88,21 +88,21 @@ export function ProductCard({ product, className }: ProductCardProps) {
         </div>
 
         {/* Price */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-baseline gap-2">
-            <span className="text-base font-bold text-foreground">${product.price.toFixed(2)}</span>
+       <div className="flex items-center justify-between gap-2">
+          <div className="flex items-baseline gap-1 min-w-0">
+            <span className="text-sm sm:text-base font-bold text-foreground truncate">${product.price.toFixed(2)}</span>
             {product.original_price && product.original_price > product.price && (
-              <span className="text-xs text-muted-foreground line-through">${product.original_price.toFixed(2)}</span>
+              <span className="text-[10px] sm:text-xs text-muted-foreground line-through truncate">${product.original_price.toFixed(2)}</span>
             )}
           </div>
           <Button
             size="sm"
-            className="h-8 px-3 text-xs shrink-0"
+            className="h-8 px-2 sm:px-3 text-xs shrink-0"
             onClick={handleAddToCart}
             disabled={product.stock === 0}
           >
-            <ShoppingCart className="w-3 h-3 mr-1" />
-            Add
+            <ShoppingCart className="w-3 h-3 sm:mr-1" />
+            <span className="hidden sm:inline">Add</span>
           </Button>
         </div>
       </div>
