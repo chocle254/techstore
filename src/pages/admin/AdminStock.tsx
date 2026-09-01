@@ -120,7 +120,7 @@ export default function AdminStock() {
                       product.stock <= LOW_STOCK ? 'bg-yellow-400/10 text-yellow-400' :
                       'bg-green-400/10 text-green-400'
                     )}>
-                      {product.stock === 0 ? 'Out of Stock' : product.stock <= LOW_STOCK ? 'Low Stock' : 'In Stock'}
+                      {product.stock === 0 ? 'Out of Stock' : `${product.stock} units remaining`}
                     </span>
                   </td>
                   <td className="p-3 text-right whitespace-nowrap">
