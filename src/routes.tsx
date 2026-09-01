@@ -1,31 +1,32 @@
-import React, { lazy, Suspense } from 'react';
+import React, { Suspense } from 'react';
 import type { ReactNode } from 'react';
+import { lazyImport } from '@/lib/lazyImport';
 
 // Storefront pages
-const HomePage = lazy(() => import('./pages/HomePage'));
-const ShopPage = lazy(() => import('./pages/ShopPage'));
-const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'));
-const CartPage = lazy(() => import('./pages/CartPage'));
-const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
-const WishlistPage = lazy(() => import('./pages/WishlistPage'));
-const DealsPage = lazy(() => import('./pages/DealsPage'));
-const NewArrivalsPage = lazy(() => import('./pages/NewArrivalsPage'));
-const BrandsPage = lazy(() => import('./pages/BrandsPage'));
-const BlogPage = lazy(() => import('./pages/BlogPage'));
-const ContactPage = lazy(() => import('./pages/ContactPage'));
-const AccountPage = lazy(() => import('./pages/AccountPage'));
-const LoginPage = lazy(() => import('./pages/LoginPage'));
-const RegisterPage = lazy(() => import('./pages/RegisterPage'));
+const HomePage = lazyImport(() => import('./pages/HomePage'), 'HomePage');
+const ShopPage = lazyImport(() => import('./pages/ShopPage'), 'ShopPage');
+const ProductDetailPage = lazyImport(() => import('./pages/ProductDetailPage'), 'ProductDetailPage');
+const CartPage = lazyImport(() => import('./pages/CartPage'), 'CartPage');
+const CheckoutPage = lazyImport(() => import('./pages/CheckoutPage'), 'CheckoutPage');
+const WishlistPage = lazyImport(() => import('./pages/WishlistPage'), 'WishlistPage');
+const DealsPage = lazyImport(() => import('./pages/DealsPage'), 'DealsPage');
+const NewArrivalsPage = lazyImport(() => import('./pages/NewArrivalsPage'), 'NewArrivalsPage');
+const BrandsPage = lazyImport(() => import('./pages/BrandsPage'), 'BrandsPage');
+const BlogPage = lazyImport(() => import('./pages/BlogPage'), 'BlogPage');
+const ContactPage = lazyImport(() => import('./pages/ContactPage'), 'ContactPage');
+const AccountPage = lazyImport(() => import('./pages/AccountPage'), 'AccountPage');
+const LoginPage = lazyImport(() => import('./pages/LoginPage'), 'LoginPage');
+const RegisterPage = lazyImport(() => import('./pages/RegisterPage'), 'RegisterPage');
 
 // Admin pages
-const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
-const AdminAnalytics = lazy(() => import('./pages/admin/AdminAnalytics'));
-const AdminProducts = lazy(() => import('./pages/admin/AdminProducts'));
-const AdminCategories = lazy(() => import('./pages/admin/AdminCategories'));
-const AdminOrders = lazy(() => import('./pages/admin/AdminOrders'));
-const AdminStock = lazy(() => import('./pages/admin/AdminStock'));
-const AdminCustomers = lazy(() => import('./pages/admin/AdminCustomers'));
-const AdminSettings = lazy(() => import('./pages/admin/AdminSettings'));
+const AdminDashboard = lazyImport(() => import('./pages/admin/AdminDashboard'), 'AdminDashboard');
+const AdminAnalytics = lazyImport(() => import('./pages/admin/AdminAnalytics'), 'AdminAnalytics');
+const AdminProducts = lazyImport(() => import('./pages/admin/AdminProducts'), 'AdminProducts');
+const AdminCategories = lazyImport(() => import('./pages/admin/AdminCategories'), 'AdminCategories');
+const AdminOrders = lazyImport(() => import('./pages/admin/AdminOrders'), 'AdminOrders');
+const AdminStock = lazyImport(() => import('./pages/admin/AdminStock'), 'AdminStock');
+const AdminCustomers = lazyImport(() => import('./pages/admin/AdminCustomers'), 'AdminCustomers');
+const AdminSettings = lazyImport(() => import('./pages/admin/AdminSettings'), 'AdminSettings');
 
 const Spinner = () => (
   <div className="flex items-center justify-center h-64">
