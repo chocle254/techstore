@@ -99,17 +99,28 @@ export function Header({ showSidebar = true, sidebarOpen, onSidebarToggle }: Hea
             </Link>
           </Button>
 
-          <Button variant="ghost" className="relative hidden sm:flex items-center gap-1" asChild>
-            <Link to="/cart">
-              <ShoppingCart className="w-5 h-5" />
-              <span className="text-sm">Cart</span>
-              {totalItems > 0 && (
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-primary">
-                  {totalItems}
-                </Badge>
-              )}
-            </Link>
-          </Button>
+          <Button variant="ghost" size="icon" className="relative flex sm:hidden" asChild>
+  <Link to="/cart">
+    <ShoppingCart className="w-5 h-5" />
+    {totalItems > 0 && (
+      <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-primary">
+        {totalItems}
+      </Badge>
+    )}
+  </Link>
+</Button>
+
+<Button variant="ghost" className="relative hidden sm:flex items-center gap-1" asChild>
+  <Link to="/cart">
+    <ShoppingCart className="w-5 h-5" />
+    <span className="text-sm">Cart</span>
+    {totalItems > 0 && (
+      <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-primary">
+        {totalItems}
+      </Badge>
+    )}
+  </Link>
+</Button>
 
           {user ? (
             <DropdownMenu>
