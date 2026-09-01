@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ShoppingCart, Heart, User, Search, Menu, X, ChevronDown, Laptop, Smartphone, Tablet, Headphones, Volume2, Watch, Gamepad2, Camera, Monitor, HardDrive, Flame, Grid3x3 } from 'lucide-react';
+import { ShoppingCart, Heart, User, Search, Menu, X, ChevronDown, Cpu, Laptop, Smartphone, Tablet, Headphones, Volume2, Watch, Gamepad2, Camera, Monitor, HardDrive, Flame, Grid3x3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -62,10 +62,81 @@ export function Header({ showSidebar = true, sidebarOpen, onSidebarToggle }: Hea
   return (
     <header className="sticky top-0 z-50 bg-background border-b border-border">
       <div className="flex items-center gap-3 px-4 py-3">
+        {/* Mobile menu */}
+        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+          <SheetTrigger asChild>
+            <Button variant="ghost" size="icon" className="md:hidden shrink-0">
+              <Menu className="w-5 h-5" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="bg-card border-border w-72 p-0">
+            <div className="p-4 border-b border-border flex items-center justify-between">
+              <Link to="/" className="flex items-center gap-2" onClick={() => setMobileOpen(false)}>
+                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                  <Cpu className="w-4 h-4 text-primary-foreground" />
+                </div>
+                <span className="text-lg font-bold">TechStore</span>
+              </Link>
+            </div>
+            <nav className="p-4 flex flex-col gap-1">
+              {navLinks.map(link => (
+                <Link
+                  key={link.path}
+                  to={link.path}
+                  onClick={() => setMobileOpen(false)}
+                  className={cn(
+                    'px-3 py-2 rounded-md text-sm font-medium transition-colors',
+                    location.pathname === link.path
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  )}
+                >
+                  {link.name}
+                </Link>
+              ))}
+            </nav>
+            <div className="px-4 border-t border-border pt-4">
+              <p className="text-xs text-muted-foreground font-semibold uppercase mb-2">Categories</p>
+              {sidebarCategories.map(cat => {
+                const Icon = categoryIcons[cat.icon] ?? Laptop;
+                return (
+                  <Link
+                    key={cat.slug}
+                    to={`/shop?category=${cat.slug}`}
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  >
+                    <Icon className="w-4 h-4" />
+                    {cat.name}
+                  </Link>
+                );
+              })}
+            </div>
+            <div className="p-4 border-t border-border">
+              {user ? (
+                <div className="flex flex-col gap-2">
+                  <Link to="/account" onClick={() => setMobileOpen(false)}>
+                    <Button variant="ghost" className="w-full justify-start gap-2">
+                      <User className="w-4 h-4" /> My Account
+                    </Button>
+                  </Link>
+                  <Button variant="ghost" className="w-full justify-start gap-2 text-destructive" onClick={() => { signOut(); setMobileOpen(false); }}>
+                    Sign Out
+                  </Button>
+                </div>
+              ) : (
+                <Link to="/login" onClick={() => setMobileOpen(false)}>
+                  <Button className="w-full">Sign In</Button>
+                </Link>
+              )}
+            </div>
+          </SheetContent>
+        </Sheet>
+
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 shrink-0">
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <ShoppingCart className="w-4 h-4 text-primary-foreground" />
+            <Cpu className="w-4 h-4 text-primary-foreground" />
           </div>
           <span className="text-lg font-bold text-foreground hidden sm:block">TechStore</span>
         </Link>
@@ -100,27 +171,27 @@ export function Header({ showSidebar = true, sidebarOpen, onSidebarToggle }: Hea
           </Button>
 
           <Button variant="ghost" size="icon" className="relative flex sm:hidden" asChild>
-  <Link to="/cart">
-    <ShoppingCart className="w-5 h-5" />
-    {totalItems > 0 && (
-      <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-primary">
-        {totalItems}
-      </Badge>
-    )}
-  </Link>
-</Button>
+            <Link to="/cart">
+              <ShoppingCart className="w-5 h-5" />
+              {totalItems > 0 && (
+                <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-primary">
+                  {totalItems}
+                </Badge>
+              )}
+            </Link>
+          </Button>
 
-<Button variant="ghost" className="relative hidden sm:flex items-center gap-1" asChild>
-  <Link to="/cart">
-    <ShoppingCart className="w-5 h-5" />
-    <span className="text-sm">Cart</span>
-    {totalItems > 0 && (
-      <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-primary">
-        {totalItems}
-      </Badge>
-    )}
-  </Link>
-</Button>
+          <Button variant="ghost" className="relative hidden sm:flex items-center gap-1" asChild>
+            <Link to="/cart">
+              <ShoppingCart className="w-5 h-5" />
+              <span className="text-sm">Cart</span>
+              {totalItems > 0 && (
+                <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-primary">
+                  {totalItems}
+                </Badge>
+              )}
+            </Link>
+          </Button>
 
           {user ? (
             <DropdownMenu>
@@ -160,77 +231,6 @@ export function Header({ showSidebar = true, sidebarOpen, onSidebarToggle }: Hea
               </Link>
             </Button>
           )}
-
-          {/* Mobile menu */}
-          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden">
-                <Menu className="w-5 h-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="bg-card border-border w-72 p-0">
-              <div className="p-4 border-b border-border flex items-center justify-between">
-                <Link to="/" className="flex items-center gap-2" onClick={() => setMobileOpen(false)}>
-                  <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                    <Zap className="w-4 h-4 text-primary-foreground" />
-                  </div>
-                  <span className="text-lg font-bold">TechStore</span>
-                </Link>
-              </div>
-              <nav className="p-4 flex flex-col gap-1">
-                {navLinks.map(link => (
-                  <Link
-                    key={link.path}
-                    to={link.path}
-                    onClick={() => setMobileOpen(false)}
-                    className={cn(
-                      'px-3 py-2 rounded-md text-sm font-medium transition-colors',
-                      location.pathname === link.path
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                    )}
-                  >
-                    {link.name}
-                  </Link>
-                ))}
-              </nav>
-              <div className="px-4 border-t border-border pt-4">
-                <p className="text-xs text-muted-foreground font-semibold uppercase mb-2">Categories</p>
-                {sidebarCategories.map(cat => {
-                  const Icon = categoryIcons[cat.icon] ?? Laptop;
-                  return (
-                    <Link
-                      key={cat.slug}
-                      to={`/shop?category=${cat.slug}`}
-                      onClick={() => setMobileOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                    >
-                      <Icon className="w-4 h-4" />
-                      {cat.name}
-                    </Link>
-                  );
-                })}
-              </div>
-              <div className="p-4 border-t border-border">
-                {user ? (
-                  <div className="flex flex-col gap-2">
-                    <Link to="/account" onClick={() => setMobileOpen(false)}>
-                      <Button variant="ghost" className="w-full justify-start gap-2">
-                        <User className="w-4 h-4" /> My Account
-                      </Button>
-                    </Link>
-                    <Button variant="ghost" className="w-full justify-start gap-2 text-destructive" onClick={() => { signOut(); setMobileOpen(false); }}>
-                      Sign Out
-                    </Button>
-                  </div>
-                ) : (
-                  <Link to="/login" onClick={() => setMobileOpen(false)}>
-                    <Button className="w-full">Sign In</Button>
-                  </Link>
-                )}
-              </div>
-            </SheetContent>
-          </Sheet>
         </div>
       </div>
 
