@@ -9,8 +9,25 @@ Sentry.init({
   environment: import.meta.env.MODE,
 });
 
+function ErrorFallback() {
+  return (
+    <div style={{
+      minHeight: '100vh', display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24, textAlign: 'center',
+    }}>
+      <p>Something went wrong.</p>
+      <button
+        onClick={() => window.location.reload()}
+        style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid currentColor', cursor: 'pointer' }}
+      >
+        Refresh the page
+      </button>
+    </div>
+  );
+}
+
 createRoot(document.getElementById("root")!).render(
-  <Sentry.ErrorBoundary fallback={<p>Something went wrong. Please refresh the page</p>}>
+  <Sentry.ErrorBoundary fallback={<ErrorFallback />}>
     <AppWrapper>
       <App />
     </AppWrapper>
