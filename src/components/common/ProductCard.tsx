@@ -1,8 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Heart, Star, ShoppingCart } from 'lucide-react';
+import { Heart, Star, ShoppingCart, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { cn } from '@/lib/utils';
@@ -19,26 +18,41 @@ export function ProductCard({ product, className }: ProductCardProps) {
   const { wishlistIds, toggleWishlist } = useWishlist();
   const inWishlist = wishlistIds.has(product.id);
 
+  const [heartPop, setHeartPop] = useState(false);
+  const [justAdded, setJustAdded] = useState(false);
+
   const discountPct = product.original_price && product.original_price > product.price
     ? Math.round((1 - product.price / product.original_price) * 100)
     : null;
+  const isHot = product.is_deal && !!discountPct;
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (product.stock === 0) return;
+    if (product.stock === 0 || justAdded) return;
     addItem(product);
     toast.success(`${product.name} added to cart`);
+    setJustAdded(true);
+    setTimeout(() => setJustAdded(false), 1200);
   };
 
   const handleWishlist = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     toggleWishlist(product.id);
+    setHeartPop(true);
+    setTimeout(() => setHeartPop(false), 450);
   };
 
   return (
-    <Link to={`/product/${product.slug}`} className={cn('product-card group block', className)}>
+    <Link
+      to={`/product/${product.slug}`}
+      className={cn(
+        'product-card group block',
+        isHot && 'ring-1 ring-[hsl(var(--ember))]/30',
+        className
+      )}
+    >
       {/* Image */}
       <div className="relative aspect-square overflow-hidden bg-muted">
         <img
@@ -50,15 +64,29 @@ export function ProductCard({ product, className }: ProductCardProps) {
         {/* Badges */}
         <div className="absolute top-2 left-2 flex flex-col gap-1">
           {product.is_new && <span className="badge-new">New</span>}
-          {discountPct && <span className="badge-sale">-{discountPct}%</span>}
+          {discountPct && (
+            <span
+              className={cn(
+                'text-xs font-bold px-2 py-0.5 rounded text-white',
+                isHot ? 'bg-hot glow-hot' : 'bg-destructive'
+              )}
+            >
+              -{discountPct}%
+            </span>
+          )}
         </div>
         {/* Wishlist */}
         <button
           onClick={handleWishlist}
-          className="absolute top-2 right-2 w-8 h-8 rounded-full bg-background/80 flex items-center justify-center transition-colors hover:bg-background"
+          aria-label={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
+          className="absolute top-2 right-2 w-8 h-8 rounded-full glass flex items-center justify-center transition-colors hover:bg-background/60"
         >
           <Heart
-            className={cn('w-4 h-4 transition-colors', inWishlist ? 'fill-destructive text-destructive' : 'text-muted-foreground')}
+            className={cn(
+              'w-4 h-4 transition-colors',
+              heartPop && 'animate-heart-pop',
+              inWishlist ? 'fill-[hsl(var(--hot-pink))] text-[hsl(var(--hot-pink))]' : 'text-muted-foreground'
+            )}
           />
         </button>
         {/* Out of stock overlay */}
@@ -90,19 +118,25 @@ export function ProductCard({ product, className }: ProductCardProps) {
         {/* Price */}
        <div className="flex items-center justify-between gap-2">
           <div className="flex items-baseline gap-1 min-w-0">
-            <span className="text-sm sm:text-base font-bold text-foreground truncate">${product.price.toFixed(2)}</span>
+            <span className={cn('text-sm sm:text-base font-bold truncate', isHot ? 'text-spectrum' : 'text-foreground')}>
+              ${product.price.toFixed(2)}
+            </span>
             {product.original_price && product.original_price > product.price && (
               <span className="text-[10px] sm:text-xs text-muted-foreground line-through truncate">${product.original_price.toFixed(2)}</span>
             )}
           </div>
           <Button
             size="sm"
-            className="h-8 px-2 sm:px-3 text-xs shrink-0"
+            className={cn(
+              'h-8 px-2 sm:px-3 text-xs shrink-0 transition-colors',
+              justAdded && 'animate-cart-pop bg-[hsl(var(--success))] hover:bg-[hsl(var(--success))]',
+              isHot && !justAdded && 'bg-hot hover:opacity-90'
+            )}
             onClick={handleAddToCart}
             disabled={product.stock === 0}
           >
-            <ShoppingCart className="w-3 h-3 sm:mr-1" />
-            <span className="hidden sm:inline">Add</span>
+            {justAdded ? <Check className="w-3 h-3 sm:mr-1" /> : <ShoppingCart className="w-3 h-3 sm:mr-1" />}
+            <span className="hidden sm:inline">{justAdded ? 'Added' : 'Add'}</span>
           </Button>
         </div>
       </div>
