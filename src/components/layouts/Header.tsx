@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ShoppingCart, Heart, User, Search, Menu, X, ChevronDown, Cpu, Laptop, Smartphone, Tablet, Headphones, Volume2, Watch, Gamepad2, Camera, Monitor, HardDrive, Flame, Grid3x3 } from 'lucide-react';
+import { ShoppingCart, Heart, User, Search, Menu, X, ChevronDown, Cpu, Laptop, Smartphone, Tablet, Headphones, Volume2, Watch, Gamepad2, Camera, Monitor, HardDrive, Flame, Grid3x3, LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -120,6 +120,13 @@ export function Header({ showSidebar = true, sidebarOpen, onSidebarToggle }: Hea
                       <User className="w-4 h-4" /> My Account
                     </Button>
                   </Link>
+                  {profile?.role === 'admin' && (
+                    <Link to="/admin" onClick={() => setMobileOpen(false)}>
+                      <Button variant="ghost" className="w-full justify-start gap-2">
+                        <LayoutDashboard className="w-4 h-4" /> Admin Dashboard
+                      </Button>
+                    </Link>
+                  )}
                   <Button variant="ghost" className="w-full justify-start gap-2 text-destructive" onClick={() => { signOut(); setMobileOpen(false); }}>
                     Sign Out
                   </Button>
