@@ -1,0 +1,100 @@
+/* stylelint-disable */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --radius: 0.5rem;
+    /* TechStore dark theme - single theme, no light/dark toggle */
+    --background: 222 47% 7%;
+    --foreground: 213 31% 95%;
+    --card: 220 40% 13%;
+    --card-foreground: 213 31% 95%;
+    --popover: 220 40% 13%;
+    --popover-foreground: 213 31% 95%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 213 50% 23%;
+    --secondary-foreground: 213 31% 95%;
+    --muted: 220 40% 13%;
+    --muted-foreground: 215 16% 57%;
+    --accent: 189 94% 43%;
+    --accent-foreground: 222 47% 7%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 213 40% 18%;
+    --input: 213 40% 18%;
+    --ring: 217 91% 60%;
+    --chart-1: 217 91% 60%;
+    --chart-2: 142 69% 58%;
+    --chart-3: 38 92% 50%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+    --sidebar-background: 222 47% 7%;
+    --sidebar-foreground: 213 31% 95%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 40% 13%;
+    --sidebar-accent-foreground: 213 31% 95%;
+    --sidebar-border: 213 40% 18%;
+    --sidebar-ring: 217 91% 60%;
+    --shadow-card: 0 4px 24px rgba(0,0,0,0.4);
+    --shadow-hover: 0 0 0 1px hsl(217 91% 60%), 0 4px 24px rgba(59,130,246,0.2);
+    --gradient-primary: linear-gradient(135deg, hsl(217,91%,60%), hsl(189,94%,43%));
+    --gradient-card: linear-gradient(180deg, hsl(220,40%,13%), hsl(222,47%,7%));
+    --gradient-background: linear-gradient(180deg, hsl(222,47%,7%), hsl(222,47%,5%));
+    --success: 142 69% 58%;
+    --warning: 38 92% 50%;
+    --info: 189 94% 43%;
+    --education-blue: 217 91% 60%;
+    --education-green: 142 69% 58%;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  html { color-scheme: dark; }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
+    background-color: hsl(222, 47%, 7%);
+  }
+  * { scrollbar-width: thin; scrollbar-color: hsl(var(--border)) transparent; }
+  *::-webkit-scrollbar { width: 6px; height: 6px; }
+  *::-webkit-scrollbar-track { background: transparent; }
+  *::-webkit-scrollbar-thumb { background-color: hsl(var(--border)); border-radius: 3px; }
+}
+
+@layer utilities {
+  .gradient-text {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .card-glow {
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
+  }
+  .card-glow:hover {
+    box-shadow: var(--shadow-hover);
+    transform: translateY(-2px) scale(1.01);
+  }
+  .neon-border {
+    border: 1px solid hsl(var(--primary));
+    box-shadow: 0 0 12px rgba(59,130,246,0.3);
+  }
+  .section-header {
+    @apply flex items-center justify-between mb-6;
+  }
+  .badge-new {
+    @apply bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded;
+  }
+  .badge-sale {
+    @apply bg-destructive text-destructive-foreground text-xs font-bold px-2 py-0.5 rounded;
+  }
+  .product-card {
+    @apply bg-card border border-border rounded-lg overflow-hidden card-glow cursor-pointer;
+  }
+}
