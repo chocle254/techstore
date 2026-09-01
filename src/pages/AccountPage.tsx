@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { getUserOrders, updateProfile } from '@/lib/api';
+import { supabase } from '@/db/supabase';
 import type { Order } from '@/types/types';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -34,11 +35,36 @@ export default function AccountPage() {
   }, [profile]);
 
   useEffect(() => {
-    if (activeTab === 'orders') {
+    if (activeTab === 'orders' && user) {
       setOrdersLoading(true);
       getUserOrders().then(data => { setOrders(data); setOrdersLoading(false); });
     }
-  }, [activeTab]);
+  }, [activeTab, user]);
+
+  // Live-update order status (e.g. when admin marks an order as processing/shipped)
+  // so the buyer sees it without needing to refresh or log back in.
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel(`orders-status-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'orders', filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          const updated = payload.new as Order;
+          setOrders(prev => {
+            const exists = prev.some(o => o.id === updated.id);
+            if (!exists) return prev;
+            return prev.map(o => o.id === updated.id ? { ...o, ...updated } : o);
+          });
+          toast.success(`Order ${updated.order_number} is now ${updated.status}`);
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user]);
 
   const handleSaveProfile = async () => {
     try {
