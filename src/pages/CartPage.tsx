@@ -5,9 +5,23 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useCart } from '@/contexts/CartContext';
 import { EmptyState } from '@/components/common/SharedComponents';
+import { YouMayAlsoLike } from '@/components/common/YouMayAlsoLike';
+import { AdSlot } from '@/components/common/AdSlot';
+import { getFeaturedProducts } from '@/lib/api';
+import type { Product } from '@/types/types';
 
 export default function CartPage() {
   const { items, removeItem, updateQty, subtotal, clearCart } = useCart();
+  const [suggestions, setSuggestions] = useState<Product[]>([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(true);
+
+  useEffect(() => {
+    const cartIds = new Set(items.map(i => i.product.id));
+    getFeaturedProducts(10)
+      .then(products => setSuggestions(products.filter(p => !cartIds.has(p.id)).slice(0, 6)))
+      .finally(() => setSuggestionsLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const shipping = subtotal >= 99 ? 0 : 9.99;
   const tax = subtotal * 0.08;
@@ -15,14 +29,17 @@ export default function CartPage() {
 
   if (items.length === 0) {
     return (
-      <div className="p-6">
-        <h1 className="text-2xl font-bold text-foreground mb-8">Shopping Cart</h1>
-        <EmptyState
-          icon={<ShoppingBag className="w-16 h-16" />}
-          title="Your cart is empty"
-          description="Browse our products and add some tech to your cart!"
-          action={<Button asChild><Link to="/shop">Start Shopping</Link></Button>}
-        />
+      <div className="p-6 space-y-10">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground mb-8">Shopping Cart</h1>
+          <EmptyState
+            icon={<ShoppingBag className="w-16 h-16" />}
+            title="Your cart is empty"
+            description="Browse our products and add some tech to your cart!"
+            action={<Button asChild><Link to="/shop">Start Shopping</Link></Button>}
+          />
+        </div>
+        <YouMayAlsoLike products={suggestions} loading={suggestionsLoading} />
       </div>
     );
   }
@@ -123,6 +140,11 @@ export default function CartPage() {
             </Button>
           </div>
         </div>
+      </div>
+
+      <div className="mt-10">
+        <AdSlot height={90} className="mb-10" />
+        <YouMayAlsoLike products={suggestions} loading={suggestionsLoading} />
       </div>
     </div>
   );
