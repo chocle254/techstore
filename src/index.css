@@ -7,7 +7,58 @@
 @layer base {
   :root {
     --radius: 0.5rem;
-    /* TechStore dark theme - single theme, no light/dark toggle */
+    /* TechStore light theme (default) — soft, warm off-white, not stark white */
+    --background: 220 25% 96%;
+    --foreground: 222 47% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 12%;
+    --primary: 217 91% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 213 40% 92%;
+    --secondary-foreground: 222 47% 15%;
+    --muted: 220 20% 93%;
+    --muted-foreground: 215 16% 42%;
+    --accent: 189 85% 38%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 15% 88%;
+    --input: 220 15% 88%;
+    --ring: 217 91% 55%;
+    --chart-1: 217 91% 55%;
+    --chart-2: 142 60% 42%;
+    --chart-3: 38 92% 50%;
+    --chart-4: 280 60% 55%;
+    --chart-5: 340 70% 50%;
+    --sidebar-background: 220 25% 96%;
+    --sidebar-foreground: 222 47% 12%;
+    --sidebar-primary: 217 91% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 20% 93%;
+    --sidebar-accent-foreground: 222 47% 12%;
+    --sidebar-border: 220 15% 88%;
+    --sidebar-ring: 217 91% 55%;
+    --shadow-card: 0 4px 24px rgba(15,23,42,0.08);
+    --shadow-hover: 0 0 0 1px hsl(217 91% 55%), 0 4px 24px rgba(59,130,246,0.15);
+    --gradient-primary: linear-gradient(135deg, hsl(217,91%,55%), hsl(189,85%,38%));
+    --gradient-card: linear-gradient(180deg, hsl(0,0%,100%), hsl(220,20%,97%));
+    --gradient-background: linear-gradient(180deg, hsl(220,25%,96%), hsl(220,22%,93%));
+    --gradient-hot: linear-gradient(135deg, hsl(0,84%,55%), hsl(24,95%,52%), hsl(38,92%,48%));
+    --glass-bg: linear-gradient(135deg, rgba(255,255,255,0.6), rgba(255,255,255,0.28));
+    --glass-strong-bg: rgba(255,255,255,0.75);
+    --glass-border: rgba(15,23,42,0.08);
+    --success: 142 60% 38%;
+    --warning: 38 92% 45%;
+    --info: 189 85% 38%;
+    --education-blue: 217 91% 55%;
+    --education-green: 142 60% 42%;
+    color-scheme: light;
+  }
+
+  .dark {
+    /* TechStore dark theme */
     --background: 222 47% 7%;
     --foreground: 213 31% 95%;
     --card: 220 40% 13%;
@@ -45,32 +96,25 @@
     --gradient-primary: linear-gradient(135deg, hsl(217,91%,60%), hsl(189,94%,43%));
     --gradient-card: linear-gradient(180deg, hsl(220,40%,13%), hsl(222,47%,7%));
     --gradient-background: linear-gradient(180deg, hsl(222,47%,7%), hsl(222,47%,5%));
+    --gradient-hot: linear-gradient(135deg, hsl(0,84%,60%), hsl(24,95%,55%), hsl(38,92%,50%));
+    --glass-bg: linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+    --glass-strong-bg: rgba(20,28,46,0.65);
+    --glass-border: rgba(255,255,255,0.1);
     --success: 142 69% 58%;
     --warning: 38 92% 50%;
     --info: 189 94% 43%;
     --education-blue: 217 91% 60%;
     --education-green: 142 69% 58%;
-
-    /* Warm → cool spectrum: hot deals live at the warm end, tech/brand content at the cool end */
-    --ember: 16 100% 58%;
-    --hot-pink: 340 88% 58%;
-    --violet: 265 80% 62%;
-    --electric: 217 91% 60%;
-    --gradient-spectrum: linear-gradient(115deg, hsl(var(--ember)), hsl(var(--hot-pink)) 38%, hsl(var(--violet)) 68%, hsl(var(--electric)) 100%);
-    --gradient-hot: linear-gradient(135deg, hsl(var(--ember)), hsl(var(--hot-pink)));
-    --gradient-cool: linear-gradient(135deg, hsl(var(--violet)), hsl(var(--electric)));
-    --glass-bg: hsla(220, 45%, 16%, 0.55);
-    --glass-border: hsla(213, 70%, 80%, 0.14);
+    color-scheme: dark;
   }
 }
 
 @layer base {
   * { @apply border-border; }
-  html { color-scheme: dark; }
   body {
     @apply bg-background text-foreground;
     font-family: 'Inter', sans-serif;
-    background-color: hsl(222, 47%, 7%);
+    transition: background-color 0.25s ease, color 0.25s ease;
   }
   * { scrollbar-width: thin; scrollbar-color: hsl(var(--border)) transparent; }
   *::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -109,91 +153,81 @@
     @apply bg-card border border-border rounded-lg overflow-hidden card-glow cursor-pointer;
   }
 
-  /* Glassmorphism — tinted with the card hue rather than plain white, so it stays part of the same world */
+  /* ── Glassmorphism ─────────────────────────────────────────────── */
   .glass {
     background: var(--glass-bg);
+    backdrop-filter: blur(16px) saturate(160%);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
     border: 1px solid var(--glass-border);
-    backdrop-filter: blur(20px) saturate(160%);
-    -webkit-backdrop-filter: blur(20px) saturate(160%);
   }
   .glass-strong {
-    background: hsla(220, 45%, 12%, 0.72);
+    background: var(--glass-strong-bg);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
     border: 1px solid var(--glass-border);
-    backdrop-filter: blur(28px) saturate(160%);
-    -webkit-backdrop-filter: blur(28px) saturate(160%);
   }
 
-  /* Text/border/bg spectrum gradients */
-  .text-spectrum {
-    background: var(--gradient-spectrum);
+  /* ── Gradients ──────────────────────────────────────────────────── */
+  .bg-gradient-hot {
+    background: var(--gradient-hot);
+  }
+  .gradient-text-hot {
+    background: var(--gradient-hot);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
-  .bg-spectrum { background: var(--gradient-spectrum); }
-  .bg-hot { background: var(--gradient-hot); }
-  .bg-cool { background: var(--gradient-cool); }
-  .border-spectrum {
+  .gradient-border {
+    position: relative;
     border: 1px solid transparent;
-    background-image: linear-gradient(hsl(var(--card)), hsl(var(--card))), var(--gradient-spectrum);
-    background-origin: border-box;
-    background-clip: padding-box, border-box;
+    background:
+      linear-gradient(hsl(var(--card)), hsl(var(--card))) padding-box,
+      var(--gradient-primary) border-box;
+  }
+  .gradient-border-hot {
+    position: relative;
+    border: 1px solid transparent;
+    background:
+      linear-gradient(hsl(var(--card)), hsl(var(--card))) padding-box,
+      var(--gradient-hot) border-box;
+  }
+  .animated-gradient {
+    background: var(--gradient-hot);
+    background-size: 200% 200%;
+    @apply animate-gradient-shift;
   }
 
-  /* Horizontal scroll rail: snap-scroll with a soft edge fade instead of arrow chrome */
-  .rail {
-    display: flex;
-    gap: 0.75rem;
-    overflow-x: auto;
-    scroll-snap-type: x proximity;
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-    padding-block: 2px;
-    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
-    mask-image: linear-gradient(90deg, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
+  /* ── Hot deals ──────────────────────────────────────────────────── */
+  .hot-badge {
+    background: var(--gradient-hot);
+    @apply text-white text-xs font-bold px-2 py-0.5 rounded flex items-center gap-1 animate-pulse-glow;
   }
-  .rail::-webkit-scrollbar { display: none; }
-  .rail-item { scroll-snap-align: start; flex-shrink: 0; }
-
-  /* Hot-deal pulse — a slow ember glow so sale badges/cards actually feel "hot" */
-  .glow-hot {
-    animation: pulse-hot 2.2s ease-out infinite;
+  .shimmer-overlay {
+    position: relative;
+    overflow: hidden;
   }
-  @keyframes pulse-hot {
-    0%, 100% { box-shadow: 0 0 0 0 hsla(var(--ember), 0.55), 0 0 0 0 hsla(var(--hot-pink), 0); }
-    60% { box-shadow: 0 0 0 7px hsla(var(--ember), 0), 0 0 14px 2px hsla(var(--hot-pink), 0.35); }
-  }
-
-  /* Micro-interaction feedback for wishlist / add-to-cart clicks */
-  @keyframes heart-pop {
-    0% { transform: scale(1); }
-    35% { transform: scale(1.45) rotate(-6deg); }
-    65% { transform: scale(0.9); }
-    100% { transform: scale(1); }
-  }
-  .animate-heart-pop { animation: heart-pop 0.45s cubic-bezier(.34,1.56,.64,1); }
-
-  @keyframes cart-pop {
-    0% { transform: scale(1); }
-    40% { transform: scale(0.86); }
-    70% { transform: scale(1.08); }
-    100% { transform: scale(1); }
-  }
-  .animate-cart-pop { animation: cart-pop 0.4s cubic-bezier(.34,1.56,.64,1); }
-
-  @keyframes hero-in {
-    0% { opacity: 0; transform: scale(1.04); }
-    100% { opacity: 1; transform: scale(1); }
-  }
-  .animate-hero-in { animation: hero-in 0.9s ease-out; }
-
-  @keyframes shine {
-    0% { background-position: -160% 0; }
-    100% { background-position: 160% 0; }
-  }
-  .animate-shine {
-    background-image: linear-gradient(110deg, transparent 30%, hsla(0,0%,100%,0.16) 50%, transparent 70%);
+  .shimmer-overlay::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.12) 50%, transparent 70%);
     background-size: 200% 100%;
-    animation: shine 2.6s linear infinite;
+    @apply animate-shimmer;
+  }
+
+  /* ── Motion helpers ────────────────────────────────────────────── */
+  .btn-press {
+    transition: transform 0.12s ease;
+  }
+  .btn-press:active {
+    transform: scale(0.93);
+  }
+  .fade-in-up {
+    @apply animate-fade-in;
+  }
+
+  /* ── Ads ────────────────────────────────────────────────────────── */
+  .ad-slot {
+    @apply bg-card/40 border border-dashed border-border rounded-xl flex items-center justify-center text-muted-foreground text-xs;
   }
 }
