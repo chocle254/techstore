@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ProductCard } from '@/components/common/ProductCard';
+import { YouMayAlsoLike } from '@/components/common/YouMayAlsoLike';
 import { getProductBySlug, getReviewsByProduct, getProducts } from '@/lib/api';
 import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
@@ -233,14 +234,7 @@ export default function ProductDetailPage() {
       </Tabs>
 
       {/* Related products */}
-      {related.length > 0 && (
-        <section>
-          <h2 className="text-xl font-bold text-foreground mb-4">Related Products</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {related.map(p => <ProductCard key={p.id} product={p} />)}
-          </div>
-        </section>
-      )}
+      <YouMayAlsoLike products={related} />
     </div>
   );
 }
