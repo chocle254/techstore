@@ -1,12 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Truck, RotateCcw, Shield, Headphones, ChevronRight, Flame } from 'lucide-react';
+import { ArrowRight, Truck, RotateCcw, Shield, Headphones, ChevronRight, Flame, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ProductCard } from '@/components/common/ProductCard';
 import { ProductCardSkeleton } from '@/components/common/SharedComponents';
-import { CountdownTimer, useEndOfDayDeadline } from '@/components/common/CountdownTimer';
+import { CountdownTimer } from '@/components/common/CountdownTimer';
+import { AdSlot } from '@/components/common/AdSlot';
 import { getFeaturedProducts, getCategories, getProducts } from '@/lib/api';
 import type { Product, Category } from '@/types/types';
+
+const heroImages = [
+  'https://miaoda-site-img.s3cdn.medo.dev/images/KLing_6dc99f9b-d024-470a-97fc-3cf85760db8f.jpg',
+  'https://miaoda-site-img.s3cdn.medo.dev/images/KLing_e2d7945b-a4e8-4296-ac08-c747f9557f93.jpg',
+  'https://miaoda-site-img.s3cdn.medo.dev/images/KLing_9aaf3a0c-6c76-4434-8d1a-9ae68c132930.jpg',
+];
 
 const featureBadges = [
   { icon: Truck, title: 'Free Delivery', sub: 'On orders over $99' },
@@ -17,119 +24,65 @@ const featureBadges = [
 
 export default function HomePage() {
   const [products, setProducts] = useState<Product[]>([]);
-  const [deals, setDeals] = useState<Product[]>([]);
+  const [hotDeals, setHotDeals] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dealsLoading, setDealsLoading] = useState(true);
   const [heroIdx, setHeroIdx] = useState(0);
-  const [paused, setPaused] = useState(false);
-  const dealsDeadline = useEndOfDayDeadline();
 
   useEffect(() => {
-    Promise.all([
-      getFeaturedProducts(6),
-      getCategories(),
-      getProducts({ isDeal: true, limit: 6 }),
-    ]).then(([p, c, d]) => {
+    Promise.all([getFeaturedProducts(6), getCategories()]).then(([p, c]) => {
       setProducts(p);
       setCategories(c);
-      setDeals(d.products);
       setLoading(false);
     });
-  }, []);
-
-  const heroSlides = deals.length > 0 ? deals : products;
-
-  useEffect(() => {
-    if (heroSlides.length < 2 || paused) return;
-    const t = setInterval(() => setHeroIdx(i => (i + 1) % heroSlides.length), 5000);
+    getProducts({ isDeal: true, limit: 8, page: 1 }).then(({ products }) => {
+      setHotDeals(products);
+      setDealsLoading(false);
+    });
+    const t = setInterval(() => setHeroIdx(i => (i + 1) % heroImages.length), 5000);
     return () => clearInterval(t);
-  }, [heroSlides.length, paused]);
-
-  const heroProduct = heroSlides[heroIdx];
-  const heroDiscount = heroProduct?.original_price && heroProduct.original_price > heroProduct.price
-    ? Math.round((1 - heroProduct.price / heroProduct.original_price) * 100)
-    : null;
+  }, []);
 
   return (
     <div className="flex flex-col">
-      {/* Hero — carousel of hot deals / time-limited offers */}
-      <section
-        className="relative overflow-hidden min-h-[380px] md:min-h-[460px]"
-        onMouseEnter={() => setPaused(true)}
-        onMouseLeave={() => setPaused(false)}
-      >
-        {heroProduct ? (
-          <div
-            key={heroProduct.id}
-            className="absolute inset-0 bg-cover bg-center animate-hero-in"
-            style={{ backgroundImage: `url(${heroProduct.image_url})` }}
-          />
-        ) : (
-          <div className="absolute inset-0 bg-cool" />
-        )}
-        {/* Warm-to-cool sweep, darkest where the copy sits */}
-        <div className="absolute inset-0 bg-gradient-to-r from-background via-background/85 to-background/25" />
-        <div className="absolute inset-0 opacity-40 mix-blend-overlay bg-spectrum" />
-
-        <div className="relative z-10 flex flex-col justify-center h-full min-h-[380px] md:min-h-[460px] px-6 md:px-10 py-10 max-w-2xl">
-          {heroDiscount ? (
-            <span className="text-xs font-bold text-white bg-hot rounded-full px-3 py-1 w-fit mb-4 flex items-center gap-1 glow-hot">
-              <Flame className="w-3.5 h-3.5" /> {heroDiscount}% OFF · TODAY ONLY
-            </span>
-          ) : (
-            <span className="text-xs font-semibold text-primary bg-primary/10 border border-primary/20 rounded px-2 py-1 w-fit mb-4">
-              New Arrival
-            </span>
-          )}
-
+      {/* Hero */}
+      <section className="relative overflow-hidden min-h-[320px] md:min-h-[400px]">
+        <div
+          className="absolute inset-0 bg-cover bg-center transition-all duration-700"
+          style={{ backgroundImage: `url(${heroImages[heroIdx]})` }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-background via-background/80 to-background/20" />
+        <div className="relative z-10 flex flex-col justify-center h-full min-h-[320px] md:min-h-[400px] px-6 md:px-10 py-10 max-w-2xl">
+          <span className="text-xs font-semibold text-primary bg-primary/10 border border-primary/20 rounded px-2 py-1 w-fit mb-4">
+            New Arrival
+          </span>
           <h1 className="text-3xl md:text-5xl font-extrabold text-foreground leading-tight mb-3">
             Technology<br />
-            That <span className="text-spectrum">Inspires</span>
+            That <span className="text-primary">Inspires</span>
           </h1>
-
-          {heroProduct ? (
-            <>
-              <p className="text-foreground/90 text-base md:text-lg font-medium mb-1 max-w-md line-clamp-1">
-                {heroProduct.name}
-              </p>
-              <div className="flex items-baseline gap-2 mb-4">
-                <span className="text-2xl font-bold text-spectrum">${heroProduct.price.toFixed(2)}</span>
-                {heroProduct.original_price && heroProduct.original_price > heroProduct.price && (
-                  <span className="text-sm text-muted-foreground line-through">${heroProduct.original_price.toFixed(2)}</span>
-                )}
-              </div>
-            </>
-          ) : (
-            <p className="text-muted-foreground text-sm md:text-base mb-6 max-w-md">
-              Discover the latest tech gadgets and accessories at unbeatable prices.
-            </p>
-          )}
-
-          {heroDiscount && <CountdownTimer endsAt={dealsDeadline} className="mb-5 w-fit" />}
-
+          <p className="text-muted-foreground text-sm md:text-base mb-6 max-w-md">
+            Discover the latest tech gadgets and accessories at unbeatable prices.
+          </p>
           <div className="flex items-center gap-3">
-            <Button size="lg" className="bg-spectrum border-0 text-white hover:opacity-90" asChild>
-              <Link to={heroProduct ? `/product/${heroProduct.slug}` : '/shop'}>Shop Now</Link>
+            <Button size="lg" asChild>
+              <Link to="/shop">Shop Now</Link>
             </Button>
-            <Button size="lg" variant="ghost" className="glass gap-1" asChild>
+            <Button size="lg" variant="ghost" className="border border-border gap-1" asChild>
               <Link to="/deals">View Deals <ArrowRight className="w-4 h-4" /></Link>
             </Button>
           </div>
         </div>
-
         {/* Dots */}
-        {heroSlides.length > 1 && (
-          <div className="absolute bottom-4 left-6 flex gap-2">
-            {heroSlides.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setHeroIdx(i)}
-                aria-label={`Go to slide ${i + 1}`}
-                className={`h-1.5 rounded-full transition-all ${i === heroIdx ? 'w-6 bg-spectrum' : 'w-1.5 bg-border'}`}
-              />
-            ))}
-          </div>
-        )}
+        <div className="absolute bottom-4 left-6 flex gap-2">
+          {heroImages.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setHeroIdx(i)}
+              className={`w-2 h-2 rounded-full transition-colors ${i === heroIdx ? 'bg-primary' : 'bg-border'}`}
+            />
+          ))}
+        </div>
       </section>
 
       {/* Feature badges */}
@@ -150,19 +103,19 @@ export default function HomePage() {
       </section>
 
       <div className="px-4 md:px-6 py-8 space-y-12">
-        {/* Shop By Category — horizontal scroll rail, 6-up */}
+        {/* Shop By Category */}
         <section>
           <div className="section-header">
             <h2 className="text-xl font-bold text-foreground">Shop By Category</h2>
             <Link to="/shop" className="text-sm text-primary hover:underline font-medium">View All</Link>
           </div>
-          <div className="rail">
-            {(loading ? Array(8).fill(null) : categories).map((cat, i) =>
+          <div className="flex md:grid md:grid-cols-8 gap-3 overflow-x-auto snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0 pb-1 md:pb-0">
+            {(loading ? Array(8).fill(null) : categories.slice(0, 8)).map((cat, i) =>
               cat ? (
                 <Link
                   key={cat.id}
                   to={`/shop?category=${cat.slug}`}
-                  className="rail-item group flex flex-col items-center gap-2 w-[104px] sm:w-[120px] lg:w-[calc((100%-3.75rem)/6)] lg:min-w-[130px]"
+                  className="flex flex-col items-center gap-2 group shrink-0 w-20 md:w-auto snap-start"
                 >
                   <div className="w-full aspect-square rounded-lg overflow-hidden bg-muted border border-border group-hover:border-primary/50 transition-colors">
                     <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
@@ -171,7 +124,7 @@ export default function HomePage() {
                   <span className="text-[10px] text-muted-foreground">{cat.item_count}+ items</span>
                 </Link>
               ) : (
-                <div key={i} className="rail-item flex flex-col items-center gap-2 w-[104px] sm:w-[120px]">
+                <div key={i} className="flex flex-col items-center gap-2 shrink-0 w-20 md:w-auto">
                   <div className="w-full aspect-square rounded-lg bg-muted animate-pulse" />
                   <div className="h-3 w-12 bg-muted rounded animate-pulse" />
                 </div>
@@ -180,28 +133,51 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Hot Deals — horizontal rail with a shared countdown, warm gradient header */}
-        {(loading || deals.length > 0) && (
+        {/* Limited Time Offer — countdown banner */}
+        <section className="relative overflow-hidden rounded-xl min-h-[180px] animated-gradient">
+          <div className="absolute inset-0 bg-black/10" />
+          <div
+            className="absolute inset-0 bg-cover bg-center mix-blend-overlay opacity-60"
+            style={{ backgroundImage: `url(https://miaoda-site-img.s3cdn.medo.dev/images/KLing_9aaf3a0c-6c76-4434-8d1a-9ae68c132930.jpg)` }}
+          />
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4 h-full min-h-[180px] px-6 md:px-8 py-8">
+            <div>
+              <p className="text-xs text-white/90 font-bold mb-2 uppercase tracking-wider flex items-center gap-1.5">
+                <Zap className="w-3.5 h-3.5 animate-flicker" /> Limited Time Offer
+              </p>
+              <h3 className="text-2xl md:text-3xl font-extrabold text-white mb-1 drop-shadow">Gaming Week Sale</h3>
+              <p className="text-white/90 text-sm mb-4 max-w-sm">Up to 30% off on gaming laptops, consoles & accessories — ends tonight</p>
+              <Button asChild variant="secondary" className="w-fit bg-white text-foreground hover:bg-white/90">
+                <Link to="/deals">Shop Deals <ChevronRight className="w-4 h-4 ml-1" /></Link>
+              </Button>
+            </div>
+            <CountdownTimer className="shrink-0" variant="on-gradient" />
+          </div>
+        </section>
+
+        {/* Hot Deals */}
+        {(dealsLoading || hotDeals.length > 0) && (
           <section>
             <div className="section-header">
-              <div className="flex items-center gap-3">
-                <h2 className="text-xl font-bold text-foreground flex items-center gap-1.5">
-                  <Flame className="w-5 h-5 text-[hsl(var(--ember))]" /> Hot Deals
-                </h2>
-                {!loading && <CountdownTimer endsAt={dealsDeadline} compact className="hidden sm:inline-flex" />}
-              </div>
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <span className="w-9 h-9 rounded-lg bg-gradient-hot flex items-center justify-center animate-pulse-glow shrink-0">
+                  <Flame className="w-5 h-5 text-white" />
+                </span>
+                <span className="gradient-text-hot">Hot Deals</span>
+              </h2>
               <Link to="/deals" className="text-sm text-primary hover:underline font-medium">View All</Link>
             </div>
-            <div className="rail">
-              {(loading ? Array(6).fill(null) : deals).map((p, i) =>
-                p ? (
-                  <div key={p.id} className="rail-item w-[150px] sm:w-[190px] lg:w-[calc((100%-4.5rem)/6)] lg:min-w-[170px]">
-                    <ProductCard product={p} />
-                  </div>
-                ) : (
-                  <div key={i} className="rail-item w-[150px] sm:w-[190px]"><ProductCardSkeleton /></div>
-                )
-              )}
+            <div className="flex md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 overflow-x-auto snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0 pb-2 md:pb-0">
+              {dealsLoading
+                ? Array(6).fill(null).map((_, i) => (
+                    <div key={i} className="shrink-0 w-40 md:w-auto snap-start"><ProductCardSkeleton /></div>
+                  ))
+                : hotDeals.map(p => (
+                    <div key={p.id} className="shrink-0 w-40 md:w-auto snap-start">
+                      <ProductCard product={p} />
+                    </div>
+                  ))
+              }
             </div>
           </section>
         )}
@@ -220,24 +196,8 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Promo banner */}
-        <section className="relative overflow-hidden rounded-xl glass-strong min-h-[160px]">
-          {deals[0] && (
-            <div
-              className="absolute inset-0 bg-cover bg-center opacity-25"
-              style={{ backgroundImage: `url(${deals[0].image_url})` }}
-            />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/70 to-transparent" />
-          <div className="relative z-10 flex flex-col justify-center h-full min-h-[160px] px-8 py-8">
-            <p className="text-xs font-semibold mb-2 tracking-wide text-spectrum w-fit">Limited Time Offer</p>
-            <h3 className="text-2xl md:text-3xl font-bold text-foreground mb-1">Gaming Week Sale</h3>
-            <p className="text-muted-foreground text-sm mb-4">Up to 30% off on gaming laptops, consoles &amp; accessories</p>
-            <Button asChild className="w-fit bg-spectrum border-0 text-white hover:opacity-90">
-              <Link to="/deals">Shop Deals <ChevronRight className="w-4 h-4 ml-1" /></Link>
-            </Button>
-          </div>
-        </section>
+        {/* Ad slot — sits between organic sections, clearly labeled, reserved height */}
+        <AdSlot height={100} />
       </div>
     </div>
   );
