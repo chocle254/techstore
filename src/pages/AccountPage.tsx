@@ -7,11 +7,13 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { getUserOrders, updateProfile } from '@/lib/api';
 import { supabase } from '@/db/supabase';
 import type { Order } from '@/types/types';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { ThemeToggle } from '@/components/common/ThemeToggle';
 
 const STATUS_COLORS: Record<string, string> = {
   pending: 'bg-yellow-500/10 text-yellow-400',
@@ -23,6 +25,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function AccountPage() {
   const { user, profile, signOut, refreshProfile } = useAuth();
+  const { theme } = useTheme();
   const [searchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'profile';
   const [orders, setOrders] = useState<Order[]>([]);
@@ -94,6 +97,7 @@ export default function AccountPage() {
         <TabsList className="bg-card border border-border mb-6">
           <TabsTrigger value="profile" className="gap-2"><User className="w-4 h-4" /> Profile</TabsTrigger>
           <TabsTrigger value="orders" className="gap-2"><Package className="w-4 h-4" /> Orders</TabsTrigger>
+          <TabsTrigger value="settings" className="gap-2"><Settings className="w-4 h-4" /> Settings</TabsTrigger>
         </TabsList>
 
         {/* Profile Tab */}
@@ -205,6 +209,20 @@ export default function AccountPage() {
                 )}
               </div>
             ))}
+          </div>
+        </TabsContent>
+
+        {/* Settings Tab */}
+        <TabsContent value="settings">
+          <div className="bg-card border border-border rounded-xl p-5">
+            <h2 className="text-lg font-bold text-foreground mb-4">Appearance</h2>
+            <div className="flex items-center justify-between gap-4 bg-muted rounded-lg px-4 py-3">
+              <div>
+                <p className="text-sm font-medium text-foreground">{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</p>
+                <p className="text-xs text-muted-foreground">Choose how TechStore looks on this device.</p>
+              </div>
+              <ThemeToggle />
+            </div>
           </div>
         </TabsContent>
       </Tabs>
