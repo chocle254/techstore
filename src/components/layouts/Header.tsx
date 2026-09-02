@@ -268,7 +268,7 @@ export function CategorySidebar({ isOpen }: { isOpen: boolean }) {
   return (
     <aside
       className={cn(
-        'shrink-0 bg-card border-r border-border flex-col hidden md:flex transition-all duration-300',
+        'shrink-0 bg-card border-r border-border flex-col hidden md:flex transition-all duration-300 md:sticky md:top-[101px] md:h-[calc(100vh-101px)] md:overflow-y-auto',
         isOpen ? 'w-52' : 'w-0 overflow-hidden'
       )}
     >
