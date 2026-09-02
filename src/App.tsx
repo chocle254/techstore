@@ -6,6 +6,7 @@ import IntersectObserver from '@/components/common/IntersectObserver';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { CartProvider } from '@/contexts/CartContext';
 import { WishlistProvider } from '@/contexts/WishlistContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 
 import { StorefrontLayout } from '@/components/layouts/StorefrontLayout';
 import { AdminLayout } from '@/components/layouts/AdminLayout';
@@ -15,6 +16,7 @@ import { storefrontRoutes, adminRoutes } from './routes';
 const App: React.FC = () => {
   return (
     <Router>
+      <ThemeProvider>
       <AuthProvider>
         <CartProvider>
           <WishlistProvider>
@@ -41,6 +43,7 @@ const App: React.FC = () => {
           </WishlistProvider>
         </CartProvider>
       </AuthProvider>
+      </ThemeProvider>
     </Router>
   );
 };
