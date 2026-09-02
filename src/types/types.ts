@@ -122,5 +122,10 @@ export interface StoreSettings {
   contact_email: string;
   currency: string;
   low_stock_threshold: number;
+  about_us?: string | null;
+  facebook_url?: string | null;
+  twitter_url?: string | null;
+  instagram_url?: string | null;
+  whatsapp_url?: string | null;
   updated_at: string;
 }
