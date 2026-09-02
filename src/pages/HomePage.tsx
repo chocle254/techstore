@@ -1,12 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Truck, RotateCcw, Shield, Headphones, ChevronRight, Flame, Zap } from 'lucide-react';
+import { ArrowRight, Truck, RotateCcw, Shield, Headphones, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ProductCard } from '@/components/common/ProductCard';
 import { ProductCardSkeleton } from '@/components/common/SharedComponents';
-import { CountdownTimer } from '@/components/common/CountdownTimer';
-import { AdSlot } from '@/components/common/AdSlot';
-import { getFeaturedProducts, getCategories, getProducts } from '@/lib/api';
+import { getFeaturedProducts, getCategories } from '@/lib/api';
 import type { Product, Category } from '@/types/types';
 
 const heroImages = [
@@ -24,10 +22,8 @@ const featureBadges = [
 
 export default function HomePage() {
   const [products, setProducts] = useState<Product[]>([]);
-  const [hotDeals, setHotDeals] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dealsLoading, setDealsLoading] = useState(true);
   const [heroIdx, setHeroIdx] = useState(0);
 
   useEffect(() => {
@@ -35,10 +31,6 @@ export default function HomePage() {
       setProducts(p);
       setCategories(c);
       setLoading(false);
-    });
-    getProducts({ isDeal: true, limit: 8, page: 1 }).then(({ products }) => {
-      setHotDeals(products);
-      setDealsLoading(false);
     });
     const t = setInterval(() => setHeroIdx(i => (i + 1) % heroImages.length), 5000);
     return () => clearInterval(t);
@@ -109,13 +101,13 @@ export default function HomePage() {
             <h2 className="text-xl font-bold text-foreground">Shop By Category</h2>
             <Link to="/shop" className="text-sm text-primary hover:underline font-medium">View All</Link>
           </div>
-          <div className="flex md:grid md:grid-cols-8 gap-3 overflow-x-auto snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0 pb-1 md:pb-0">
+          <div className="grid grid-cols-4 md:grid-cols-8 gap-3">
             {(loading ? Array(8).fill(null) : categories.slice(0, 8)).map((cat, i) =>
               cat ? (
                 <Link
                   key={cat.id}
                   to={`/shop?category=${cat.slug}`}
-                  className="flex flex-col items-center gap-2 group shrink-0 w-20 md:w-auto snap-start"
+                  className="flex flex-col items-center gap-2 group"
                 >
                   <div className="w-full aspect-square rounded-lg overflow-hidden bg-muted border border-border group-hover:border-primary/50 transition-colors">
                     <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
@@ -124,7 +116,7 @@ export default function HomePage() {
                   <span className="text-[10px] text-muted-foreground">{cat.item_count}+ items</span>
                 </Link>
               ) : (
-                <div key={i} className="flex flex-col items-center gap-2 shrink-0 w-20 md:w-auto">
+                <div key={i} className="flex flex-col items-center gap-2">
                   <div className="w-full aspect-square rounded-lg bg-muted animate-pulse" />
                   <div className="h-3 w-12 bg-muted rounded animate-pulse" />
                 </div>
@@ -132,55 +124,6 @@ export default function HomePage() {
             )}
           </div>
         </section>
-
-        {/* Limited Time Offer — countdown banner */}
-        <section className="relative overflow-hidden rounded-xl min-h-[180px] animated-gradient">
-          <div className="absolute inset-0 bg-black/10" />
-          <div
-            className="absolute inset-0 bg-cover bg-center mix-blend-overlay opacity-60"
-            style={{ backgroundImage: `url(https://miaoda-site-img.s3cdn.medo.dev/images/KLing_9aaf3a0c-6c76-4434-8d1a-9ae68c132930.jpg)` }}
-          />
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4 h-full min-h-[180px] px-6 md:px-8 py-8">
-            <div>
-              <p className="text-xs text-white/90 font-bold mb-2 uppercase tracking-wider flex items-center gap-1.5">
-                <Zap className="w-3.5 h-3.5 animate-flicker" /> Limited Time Offer
-              </p>
-              <h3 className="text-2xl md:text-3xl font-extrabold text-white mb-1 drop-shadow">Gaming Week Sale</h3>
-              <p className="text-white/90 text-sm mb-4 max-w-sm">Up to 30% off on gaming laptops, consoles & accessories — ends tonight</p>
-              <Button asChild variant="secondary" className="w-fit bg-white text-foreground hover:bg-white/90">
-                <Link to="/deals">Shop Deals <ChevronRight className="w-4 h-4 ml-1" /></Link>
-              </Button>
-            </div>
-            <CountdownTimer className="shrink-0" variant="on-gradient" />
-          </div>
-        </section>
-
-        {/* Hot Deals */}
-        {(dealsLoading || hotDeals.length > 0) && (
-          <section>
-            <div className="section-header">
-              <h2 className="text-xl font-bold flex items-center gap-2">
-                <span className="w-9 h-9 rounded-lg bg-gradient-hot flex items-center justify-center animate-pulse-glow shrink-0">
-                  <Flame className="w-5 h-5 text-white" />
-                </span>
-                <span className="gradient-text-hot">Hot Deals</span>
-              </h2>
-              <Link to="/deals" className="text-sm text-primary hover:underline font-medium">View All</Link>
-            </div>
-            <div className="flex md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 overflow-x-auto snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0 pb-2 md:pb-0">
-              {dealsLoading
-                ? Array(6).fill(null).map((_, i) => (
-                    <div key={i} className="shrink-0 w-40 md:w-auto snap-start"><ProductCardSkeleton /></div>
-                  ))
-                : hotDeals.map(p => (
-                    <div key={p.id} className="shrink-0 w-40 md:w-auto snap-start">
-                      <ProductCard product={p} />
-                    </div>
-                  ))
-              }
-            </div>
-          </section>
-        )}
 
         {/* Best Selling Products */}
         <section>
@@ -196,8 +139,22 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Ad slot — sits between organic sections, clearly labeled, reserved height */}
-        <AdSlot height={100} />
+        {/* Promo banner */}
+        <section className="relative overflow-hidden rounded-xl bg-card border border-border min-h-[160px]">
+          <div
+            className="absolute inset-0 bg-cover bg-center opacity-30"
+            style={{ backgroundImage: `url(https://miaoda-site-img.s3cdn.medo.dev/images/KLing_9aaf3a0c-6c76-4434-8d1a-9ae68c132930.jpg)` }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-background to-transparent" />
+          <div className="relative z-10 flex flex-col justify-center h-full min-h-[160px] px-8 py-8">
+            <p className="text-xs text-primary font-semibold mb-2 uppercase tracking-wider">Limited Time Offer</p>
+            <h3 className="text-2xl md:text-3xl font-bold text-foreground mb-1">Gaming Week Sale</h3>
+            <p className="text-muted-foreground text-sm mb-4">Up to 30% off on gaming laptops, consoles & accessories</p>
+            <Button asChild className="w-fit">
+              <Link to="/deals">Shop Deals <ChevronRight className="w-4 h-4 ml-1" /></Link>
+            </Button>
+          </div>
+        </section>
       </div>
     </div>
   );
