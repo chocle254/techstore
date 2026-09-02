@@ -1,59 +1,65 @@
 import React, { useEffect, useState } from 'react';
-import { Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-function getParts(msLeft: number) {
-  const total = Math.max(0, Math.floor(msLeft / 1000));
-  return {
-    h: String(Math.floor(total / 3600)).padStart(2, '0'),
-    m: String(Math.floor((total % 3600) / 60)).padStart(2, '0'),
-    s: String(total % 60).padStart(2, '0'),
-  };
+function getTimeLeft(target: Date) {
+  const diff = Math.max(0, target.getTime() - Date.now());
+  const hours = Math.floor(diff / 3_600_000);
+  const minutes = Math.floor((diff % 3_600_000) / 60_000);
+  const seconds = Math.floor((diff % 60_000) / 1000);
+  return { diff, hours, minutes, seconds };
+}
+
+function endOfToday() {
+  const d = new Date();
+  d.setHours(23, 59, 59, 999);
+  return d;
 }
 
 interface CountdownTimerProps {
-  /** Deal deadline */
-  endsAt: Date;
+  /** Defaults to the end of today (local time) — a rolling "deal ends tonight" countdown. */
+  target?: Date;
   className?: string;
-  /** Compact = just the digits, no icon/label (for hero overlay) */
-  compact?: boolean;
+  /** Use light text/cards when placed over a dark or colorful gradient background. */
+  variant?: 'default' | 'on-gradient';
 }
 
-export function CountdownTimer({ endsAt, className, compact }: CountdownTimerProps) {
-  const [now, setNow] = useState(() => Date.now());
+export function CountdownTimer({ target, className, variant = 'default' }: CountdownTimerProps) {
+  const [targetDate] = useState(() => target || endOfToday());
+  const [{ hours, minutes, seconds }, setTimeLeft] = useState(() => getTimeLeft(targetDate));
 
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, []);
+    const id = setInterval(() => setTimeLeft(getTimeLeft(targetDate)), 1000);
+    return () => clearInterval(id);
+  }, [targetDate]);
 
-  const { h, m, s } = getParts(endsAt.getTime() - now);
+  const units = [
+    { label: 'Hrs', value: hours },
+    { label: 'Min', value: minutes },
+    { label: 'Sec', value: seconds },
+  ];
+
+  const onGradient = variant === 'on-gradient';
 
   return (
-    <div
-      className={cn(
-        'inline-flex items-center gap-1.5 glass rounded-full px-3 py-1.5 text-xs font-semibold tabular-nums',
-        className
-      )}
-    >
-      {!compact && <Clock className="w-3.5 h-3.5 text-[hsl(var(--ember))]" />}
-      {!compact && <span className="text-muted-foreground font-normal mr-0.5">Ends in</span>}
-      <span className="text-foreground">{h}</span>
-      <span className="text-[hsl(var(--ember))]">:</span>
-      <span className="text-foreground">{m}</span>
-      <span className="text-[hsl(var(--ember))]">:</span>
-      <span className="text-foreground">{s}</span>
+    <div className={className}>
+      <div className="flex items-center gap-2">
+        {units.map((u, i) => (
+          <React.Fragment key={u.label}>
+            <div className={cn(
+              'flex flex-col items-center rounded-lg px-2.5 py-1.5 min-w-[48px] backdrop-blur-sm border',
+              onGradient ? 'bg-black/25 border-white/25' : 'bg-background/90 border-white/10'
+            )}>
+              <span className={cn('text-lg font-extrabold tabular-nums leading-none', onGradient ? 'text-white' : 'text-foreground')}>
+                {String(u.value).padStart(2, '0')}
+              </span>
+              <span className={cn('text-[9px] uppercase tracking-wide mt-0.5', onGradient ? 'text-white/80' : 'text-muted-foreground')}>{u.label}</span>
+            </div>
+            {i < units.length - 1 && (
+              <span className={cn('text-lg font-bold animate-flicker', onGradient ? 'text-white' : 'text-destructive')}>:</span>
+            )}
+          </React.Fragment>
+        ))}
+      </div>
     </div>
   );
-}
-
-/** Deterministic "flash sale ends tonight" deadline — stable across re-renders/refreshes within the same day */
-export function useEndOfDayDeadline() {
-  const [deadline] = useState(() => {
-    const d = new Date();
-    d.setHours(23, 59, 59, 0);
-    if (d.getTime() < Date.now()) d.setDate(d.getDate() + 1);
-    return d;
-  });
-  return deadline;
 }
