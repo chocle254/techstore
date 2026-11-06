@@ -65,7 +65,7 @@ function Card({ n, title, id, children }: { n: number; title: string; id: string
   return (
     <section aria-labelledby={id} className="jw-clay p-5 sm:p-7">
       <h2 id={id} className="flex items-center gap-3 text-lg">
-        <span className="grid h-8 w-8 place-items-center rounded-full bg-jw-ink text-sm text-white">{n}</span>
+        <span className="grid h-8 w-8 place-items-center rounded-full bg-night text-sm text-white">{n}</span>
         {title}
       </h2>
       <div className="mt-5 space-y-5">{children}</div>
@@ -122,7 +122,7 @@ export function CheckoutForm({ user, areas, saved, toRate, images }: Props) {
 
       <div className="min-w-0 space-y-4">
         {toRate && (
-          <section aria-labelledby="rate-title" className="jw-clay p-5 sm:p-7" style={{ background: "linear-gradient(160deg, #fff7ed, #ffffff)" }}>
+          <section aria-labelledby="rate-title" className="jw-clay p-5 sm:p-7" style={{ background: "var(--tile-rate)" }}>
             <h2 id="rate-title" className="text-lg">
               How was order {toRate.orderNo}?
             </h2>
@@ -288,7 +288,7 @@ export function CheckoutForm({ user, areas, saved, toRate, images }: Props) {
                 <span className="absolute inset-0 flex items-end justify-center overflow-hidden rounded-xl pb-1">
                   <ProductPic slug={l.slug} sizeMl={l.sizeMl} height={38} image={images[l.slug] ?? photoFor(l.slug, l.sizeMl)} />
                 </span>
-                <span className="absolute -top-1.5 -right-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-jw-ink px-1 text-[0.6875rem] font-bold text-white">{l.qty}</span>
+                <span className="absolute -top-1.5 -right-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-night px-1 text-[0.6875rem] font-bold text-white">{l.qty}</span>
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-semibold">{short(l.name)}</span>

@@ -172,7 +172,7 @@ export function SellScreen({ products }: { products: SellProduct[] }) {
             aria-selected={p.id === productId}
             onClick={() => setProductId(p.id)}
             className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold ${
-              p.id === productId ? "border-brand-600 bg-brand-600 text-white" : "border-line bg-white"
+              p.id === productId ? "border-brand-600 bg-brand-600 text-white" : "border-line bg-card"
             }`}
           >
             {p.name.replace(/^JonWin\s+/, "")}
@@ -191,11 +191,10 @@ export function SellScreen({ products }: { products: SellProduct[] }) {
               type="button"
               disabled={noPrice}
               onClick={() => add(s.variantId)}
-              className="relative rounded-2xl border border-line bg-white p-3 text-left active:scale-[0.98] disabled:opacity-40"
+              className="relative rounded-2xl border border-line bg-card p-3 text-left active:scale-[0.98] disabled:opacity-40"
             >
               <span className="block text-lg font-bold">{sizeLabel(s.sizeMl)}</span>
               <span className="block text-sm">{noPrice ? "No price set" : ksh(s.price)}</span>
-              <span className={`block text-xs ${s.onHand <= 0 ? "text-red-600" : "text-muted"}`}>{s.onHand} in stock</span>
               {inCart > 0 && (
                 <span className="absolute top-2 right-2 grid size-6 place-items-center rounded-full bg-brand-600 text-xs font-bold text-white">
                   {inCart}
@@ -219,7 +218,7 @@ export function SellScreen({ products }: { products: SellProduct[] }) {
                       {v.name.replace(/^JonWin\s+/, "")} {sizeLabel(v.sizeMl)}
                     </p>
                     <p className="text-xs text-muted">
-                      {ksh(v.price)} each{l.qty > v.onHand && <span className="text-amber-700"> · only {v.onHand} in stock</span>}
+                      {ksh(v.price)} each
                     </p>
                   </div>
                   <button type="button" className="btn-secondary size-11 p-0" onClick={() => setQty(l.variantId, l.qty - 1)} aria-label="One less">

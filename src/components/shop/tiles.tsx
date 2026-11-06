@@ -1,18 +1,18 @@
 // Shared by server and browser code: the soft tile colour behind each product, and a bottle drawn to fill a card.
 import { Bottle, liquidFor, scaleOf } from "./bottle";
 
-const TILES: Record<string, string> = {
-  "liquid-soap": "linear-gradient(160deg, #e3f6e6, #c6ecce)",
-  bleach: "linear-gradient(160deg, #eef4fb, #d6e6f7)",
-  antiseptic: "linear-gradient(160deg, #fbeee3, #f4d9c2)",
-  disinfectant: "linear-gradient(160deg, #e8f0e2, #cfe0c3)",
-};
-export const tileFor = (slug: string) => TILES[slug] ?? "linear-gradient(160deg, #e6f1f5, #cde3ec)";
+// Colours live in globals.css (--tile-*) so they can change in dark mode.
+const TILE_SLUGS = new Set(["liquid-soap", "bleach", "antiseptic", "disinfectant"]);
+export const tileFor = (slug: string) => `var(--tile-${TILE_SLUGS.has(slug) ? slug : "other"})`;
 
 /** The name people use in Kenya, shown in brackets after ours. */
-const NICKNAMES: [RegExp, string][] = [[/^bleach$/i, "Jik"]];
+const NICKNAMES: [RegExp, string][] = [
+  [/^bleach$/i, "Jik"],
+  [/^antiseptic$/i, "Dettol"],
+  [/disinfectant$/i, "Kerol"],
+];
 /** Extra words a shopper might search for, by product slug. */
-export const SEARCH_ALIASES: Record<string, string> = { bleach: "jik", antiseptic: "dettol", "liquid-soap": "sabuni" };
+export const SEARCH_ALIASES: Record<string, string> = { bleach: "jik", antiseptic: "dettol detol", disinfectant: "kerol pine", "liquid-soap": "sabuni" };
 
 /** "Bleach" → "Bleach (Jik)", unless the name already has brackets. */
 export function nick(name: string) {

@@ -5,6 +5,7 @@ import { CartButton, SearchBox } from "./client-bits";
 import { Icon } from "./icons";
 import { short } from "./tiles";
 import { Logo } from "./logo";
+import { ThemePicker } from "@/components/theme-picker";
 
 /** Sticky frosted header on every shop page: logo, search, account, cart, then the product row. */
 export async function ShopHeader({ q = "" }: { q?: string }) {
@@ -63,13 +64,13 @@ export function StepBar({ at }: { at: 0 | 1 | 2 | 3 }) {
         <li key={s} className="flex flex-1 items-center gap-2" aria-current={i === at ? "step" : undefined}>
           <span
             className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs ${
-              i < at ? "bg-jw-ink text-white" : i === at ? "bg-jw-ground text-white shadow-[0_6px_14px_-6px_rgb(247_107_21/0.9)]" : "bg-jw-paper text-jw-soft shadow-[0_0_0_1px_rgb(0_0_0/0.08)]"
+              i < at ? "bg-night text-white" : i === at ? "bg-jw-ground text-white shadow-[0_6px_14px_-6px_rgb(247_107_21/0.9)]" : "bg-jw-paper text-jw-soft shadow-[0_0_0_1px_rgb(0_0_0/0.08)]"
             }`}
           >
             {i < at ? <Icon name="check" className="h-3.5 w-3.5" /> : i + 1}
           </span>
           <span className={`hidden min-[420px]:inline ${i === at ? "text-jw-ink" : "text-jw-soft"}`}>{s}</span>
-          {i < steps.length - 1 && <span className={`h-0.5 flex-1 rounded-full ${i < at ? "bg-jw-ink" : "bg-jw-ink/10"}`} aria-hidden />}
+          {i < steps.length - 1 && <span className={`h-0.5 flex-1 rounded-full ${i < at ? "bg-night" : "bg-jw-ink/10"}`} aria-hidden />}
         </li>
       ))}
     </ol>
@@ -85,7 +86,7 @@ export const CREDITS = [
 
 export function ShopFooter({ credits = false }: { credits?: boolean }) {
   return (
-    <footer className="mt-16 bg-jw-ink pb-28 text-white/80 md:pb-10">
+    <footer className="mt-16 bg-night pb-28 dark:bg-black/40 text-white/80 md:pb-10">
       <div className="mx-auto grid max-w-7xl gap-10 px-5 pt-12 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <p className="text-lg font-extrabold text-white">
@@ -99,6 +100,7 @@ export function ShopFooter({ credits = false }: { credits?: boolean }) {
       </div>
       <div className="mx-auto mt-10 flex max-w-7xl flex-wrap items-center justify-between gap-3 border-t border-white/10 px-5 pt-6 text-xs text-white/60">
         <p>© {new Date().getFullYear()} JonWin Clean, a family business</p>
+        <ThemePicker tone="dark" />
         <p className="flex items-center gap-2">
           <span className="rounded-md bg-jw-mpesa px-2 py-0.5 font-bold text-white">M-PESA</span> Cash on delivery for regulars
         </p>

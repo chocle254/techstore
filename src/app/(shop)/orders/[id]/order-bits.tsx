@@ -13,7 +13,7 @@ export function ClearCart() {
 function Send() {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" disabled={pending} className="inline-flex min-h-12 items-center rounded-full bg-white px-5 font-semibold text-jw-ink active:scale-95 disabled:opacity-60">
+    <button type="submit" disabled={pending} className="inline-flex min-h-12 items-center rounded-full bg-card px-5 font-semibold text-jw-ink active:scale-95 disabled:opacity-60">
       {pending ? "Sending…" : "Send code"}
     </button>
   );

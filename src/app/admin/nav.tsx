@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { ThemePicker } from "@/components/theme-picker";
 
 export type NavItem = { href: string; label: string; icon: string; primary?: boolean };
 
@@ -18,7 +19,7 @@ export function AdminNav({ home, items, userName, logout }: { home: string; item
   return (
     <>
       {/* Desktop / tablet sidebar */}
-      <aside className="sticky top-0 hidden h-dvh w-56 shrink-0 flex-col border-r border-line bg-white p-3 md:flex">
+      <aside className="sticky top-0 hidden h-dvh w-56 shrink-0 flex-col border-r border-line bg-card p-3 md:flex">
         <Link href={home} className="px-2 py-3 text-lg font-bold text-brand-700">
           JonWin <span className="text-ink">Admin</span>
         </Link>
@@ -38,6 +39,7 @@ export function AdminNav({ home, items, userName, logout }: { home: string; item
         </nav>
         <div className="border-t border-line pt-3 text-sm">
           <p className="truncate px-3 text-muted">{userName}</p>
+          <ThemePicker className="my-2 w-full justify-between" />
           <Link href="/account/password" className="block rounded-lg px-3 py-2 hover:bg-surface">
             Change password
           </Link>
@@ -47,7 +49,7 @@ export function AdminNav({ home, items, userName, logout }: { home: string; item
 
       {/* Phone bottom bar */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-line bg-white pb-[env(safe-area-inset-bottom)] md:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-line bg-card pb-[env(safe-area-inset-bottom)] md:hidden"
         aria-label="Main"
       >
         {primary.map((i) => (
@@ -80,7 +82,7 @@ export function AdminNav({ home, items, userName, logout }: { home: string; item
       {open && (
         <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label="All pages">
           <button type="button" className="absolute inset-0 bg-black/30" onClick={() => setOpen(false)} aria-label="Close menu" />
-          <div className="absolute inset-x-0 bottom-0 max-h-[80dvh] overflow-y-auto rounded-t-3xl bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          <div className="absolute inset-x-0 bottom-0 max-h-[80dvh] overflow-y-auto rounded-t-3xl bg-card p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
             <p className="mb-2 px-2 text-sm text-muted">{userName}</p>
             <div className="grid grid-cols-3 gap-2">
               {items.map((i) => (
@@ -98,6 +100,10 @@ export function AdminNav({ home, items, userName, logout }: { home: string; item
                   {i.label}
                 </Link>
               ))}
+            </div>
+            <div className="mt-3 flex items-center justify-between gap-2">
+              <span className="text-sm text-muted">Appearance</span>
+              <ThemePicker />
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2">
               <Link href="/account/password" onClick={() => setOpen(false)} className="btn-secondary">

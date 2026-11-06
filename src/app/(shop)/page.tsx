@@ -111,7 +111,7 @@ export default async function ShopHome({ searchParams }: PageProps<"/">) {
               <div className="grid grid-cols-2 gap-3 lg:grid-cols-1 lg:gap-4">
                 <a href="#shop" className="jw-clay jw-clay-hover relative flex flex-col justify-between overflow-hidden p-4 sm:p-5" style={{ background: tileFor("bleach") }}>
                   <div>
-                    <p className="jw-badge bg-jw-ink text-white">Bulk saver</p>
+                    <p className="jw-badge bg-night text-white">Bulk saver</p>
                     <p className="mt-2 text-base leading-tight font-extrabold sm:text-xl">
                       {maxSaving >= 0.05 ? `Save up to ${Math.round(maxSaving * 100)}% a litre` : "Buy bigger, pay less a litre"}
                     </p>
@@ -122,7 +122,7 @@ export default async function ShopHome({ searchParams }: PageProps<"/">) {
                     <img src="/shop/products/bleach.webp" alt="" className="h-20 w-20 rounded-2xl object-cover shadow-md sm:h-24 sm:w-24" />
                   </div>
                 </a>
-                <Link href="/checkout" className="jw-clay jw-clay-hover relative flex flex-col justify-between overflow-hidden p-4 sm:p-5" style={{ background: "linear-gradient(160deg, #e2f6e9, #c3ebd2)" }}>
+                <Link href="/checkout" className="jw-clay jw-clay-hover relative flex flex-col justify-between overflow-hidden p-4 sm:p-5" style={{ background: "var(--tile-mpesa)" }}>
                   <div>
                     <p className="jw-badge bg-jw-mpesa text-white">M-Pesa</p>
                     <p className="mt-2 text-base leading-tight font-extrabold sm:text-xl">Pay in seconds with M-Pesa</p>
@@ -207,7 +207,7 @@ export default async function ShopHome({ searchParams }: PageProps<"/">) {
                 <li key={s.title} className="jw-well flex gap-3 p-4">
                   <span className="relative grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-jw-paper text-jw-deep shadow-sm">
                     <Icon name={s.icon} />
-                    <span className="absolute -top-1.5 -left-1.5 grid h-5 w-5 place-items-center rounded-full bg-jw-ink text-[0.625rem] font-bold text-white">{i + 1}</span>
+                    <span className="absolute -top-1.5 -left-1.5 grid h-5 w-5 place-items-center rounded-full bg-night text-[0.625rem] font-bold text-white">{i + 1}</span>
                   </span>
                   <span>
                     <span className="block font-bold">{s.title}</span>

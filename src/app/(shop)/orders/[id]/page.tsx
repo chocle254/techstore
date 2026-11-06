@@ -69,11 +69,11 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/or
                   <li key={s} className={`flex flex-col gap-2 ${i <= reached ? "" : "text-jw-soft"}`} aria-current={i === reached ? "step" : undefined}>
                     <span className="flex items-center gap-1" aria-hidden>
                       <span
-                        className={`grid h-6 w-6 shrink-0 place-items-center rounded-full ${i < reached ? "bg-jw-ink text-white" : i === reached ? "bg-jw-ground text-white ring-4 ring-jw-ground/20" : "bg-jw-paper ring-1 ring-jw-ink/10"}`}
+                        className={`grid h-6 w-6 shrink-0 place-items-center rounded-full ${i < reached ? "bg-night text-white" : i === reached ? "bg-jw-ground text-white ring-4 ring-jw-ground/20" : "bg-jw-paper ring-1 ring-jw-ink/10"}`}
                       >
                         {i < reached && <Icon name="check" className="h-3.5 w-3.5" />}
                       </span>
-                      {i < STEPS.length - 1 && <span className={`h-0.5 flex-1 rounded-full ${i < reached ? "bg-jw-ink" : "bg-jw-ink/10"}`} />}
+                      {i < STEPS.length - 1 && <span className={`h-0.5 flex-1 rounded-full ${i < reached ? "bg-night" : "bg-jw-ink/10"}`} />}
                     </span>
                     <span className={i === reached ? "font-bold" : ""}>{stepLabel(s)}</span>
                   </li>

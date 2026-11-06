@@ -109,7 +109,7 @@ export default async function Dashboard({ searchParams }: PageProps<"/admin">) {
           <Link
             key={p.key}
             href={`?p=${p.key}`}
-            className={`rounded-full border px-3 py-1.5 text-sm font-medium ${preset === p.key ? "border-brand-600 bg-brand-600 text-white" : "border-line bg-white"}`}
+            className={`rounded-full border px-3 py-1.5 text-sm font-medium ${preset === p.key ? "border-brand-600 bg-brand-600 text-white" : "border-line bg-card"}`}
           >
             {p.label}
           </Link>
@@ -137,7 +137,7 @@ export default async function Dashboard({ searchParams }: PageProps<"/admin">) {
       <div className="flex items-center gap-1 text-sm">
         <span className="mr-1 text-muted">Group by</span>
         {(["day", "week", "month", "year"] as const).map((b) => (
-          <Link key={b} href={qs({ by: b })} className={`rounded-lg px-2.5 py-1 font-medium capitalize ${bucket === b ? "bg-ink text-white" : "bg-white"}`}>
+          <Link key={b} href={qs({ by: b })} className={`rounded-lg px-2.5 py-1 font-medium capitalize ${bucket === b ? "bg-night text-white" : "bg-card"}`}>
             {b}
           </Link>
         ))}

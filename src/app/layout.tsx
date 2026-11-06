@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { cookies } from "next/headers";
 import "./globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
@@ -22,13 +23,19 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#0b8a6b",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#0b8a6b" },
+    { media: "(prefers-color-scheme: dark)", color: "#0e1412" },
+  ],
   viewportFit: "cover",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // Light, dark, or "system" to follow the phone. Set by the appearance switch.
+  const saved = (await cookies()).get("theme")?.value;
+  const theme = saved === "light" || saved === "dark" ? saved : "system";
   return (
-    <html lang="en" className="h-full antialiased">
+    <html lang="en" className="h-full antialiased" data-theme={theme}>
       <body className="flex min-h-full flex-col">{children}</body>
     </html>
   );

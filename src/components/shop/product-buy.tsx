@@ -56,7 +56,7 @@ export function ProductBuy({
                 <CardBottle slug={product.slug} sizeMl={ml} height={ml >= 10000 ? 250 : 270} />
               </div>
             )}
-            <span className="absolute top-3 right-3 rounded-full bg-white/80 px-3 py-1 text-sm font-bold tabular-nums backdrop-blur">{sizeLabel(ml)}</span>
+            <span className="absolute top-3 right-3 rounded-full bg-card/80 px-3 py-1 text-sm font-bold tabular-nums backdrop-blur">{sizeLabel(ml)}</span>
             {saving >= 0.05 && <span className="jw-badge absolute top-3 left-3 bg-jw-ground px-2.5 py-1 text-white">Save {Math.round(saving * 100)}% a litre</span>}
           </div>
         </div>
@@ -101,7 +101,7 @@ export function ProductBuy({
                 <label
                   key={s.variantId}
                   className={`relative flex cursor-pointer flex-col items-center rounded-2xl px-2 py-2.5 text-center transition has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-jw-ground/30 ${
-                    on ? "bg-jw-ink text-white shadow-[0_8px_18px_-8px_rgb(22_24_29/0.6)]" : "jw-well hover:bg-jw-ground/10"
+                    on ? "bg-night text-white shadow-[0_8px_18px_-8px_rgb(22_24_29/0.6)]" : "jw-well hover:bg-jw-ground/10"
                   }`}
                 >
                   <input

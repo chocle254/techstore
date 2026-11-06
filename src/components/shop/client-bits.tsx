@@ -38,7 +38,7 @@ export function CartButton() {
   return (
     <Link
       href="/cart"
-      className="relative flex min-h-11 items-center gap-2 rounded-full bg-jw-ink px-3.5 text-sm font-semibold text-white sm:px-4"
+      className="relative flex min-h-11 items-center gap-2 rounded-full bg-night px-3.5 text-sm font-semibold text-white sm:px-4"
       aria-label={n ? `Cart, ${n} ${n === 1 ? "item" : "items"}, ${ksh(cartTotal(lines))}` : "Cart, empty"}
     >
       <Icon name="cart" className="h-5 w-5" />
@@ -60,7 +60,7 @@ export function SearchBox({ defaultValue = "" }: { defaultValue?: string }) {
         name="q"
         type="search"
         defaultValue={defaultValue}
-        placeholder="Search soap, Jik, 20 litres…"
+        placeholder="Search soap, Jik, Dettol…"
         className="h-11 w-full rounded-full border border-jw-ink/5 bg-jw-paper/90 pr-24 pl-11 text-base outline-none placeholder:text-jw-soft/80 focus:border-jw-ground focus:ring-4 focus:ring-jw-ground/15"
         style={{ boxShadow: "inset 0 2px 4px rgb(60 35 15 / .05)" }}
       />

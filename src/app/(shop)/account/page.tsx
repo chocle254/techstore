@@ -8,6 +8,7 @@ import { fmtDate, ksh, METHOD_LABELS } from "@/lib/format";
 import { formatPhone } from "@/lib/phone";
 import { ShopFooter, ShopHeader } from "@/components/shop/chrome";
 import { LocationForm } from "./location-form";
+import { ThemePicker } from "@/components/theme-picker";
 
 export const metadata = { title: "My account" };
 export const dynamic = "force-dynamic";
@@ -145,6 +146,10 @@ export default async function AccountPage() {
             <h2 id="settings-title" className="text-lg">
               Settings
             </h2>
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+              <span className="text-sm font-semibold">Appearance</span>
+              <ThemePicker />
+            </div>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link href="/account/password" className="jw-btn-quiet">
                 Change password

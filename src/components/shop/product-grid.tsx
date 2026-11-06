@@ -50,8 +50,8 @@ export function ProductCard({ item, inCart }: { item: GridItem; inCart: number }
         <div className="relative flex aspect-square items-end justify-center pb-4 transition-transform duration-300 ease-out group-hover:scale-[1.04]">
           <ProductPic slug={item.slug} sizeMl={item.sizeMl} height={item.sizeMl >= 10000 ? 118 : 128} image={item.image} alt={label} />
         </div>
-        <span className="absolute top-2 right-2 rounded-full bg-white/80 px-2 py-0.5 text-xs font-bold tabular-nums backdrop-blur">{sizeLabel(item.sizeMl)}</span>
-        {item.bestValue && item.price > 0 && <span className="jw-badge absolute top-2 left-2 bg-jw-ink text-white">Best value</span>}
+        <span className="absolute top-2 right-2 rounded-full bg-card/80 px-2 py-0.5 text-xs font-bold tabular-nums backdrop-blur">{sizeLabel(item.sizeMl)}</span>
+        {item.bestValue && item.price > 0 && <span className="jw-badge absolute top-2 left-2 bg-night text-white">Best value</span>}
         {!item.bestValue && item.saving >= 0.05 && item.price > 0 && (
           <span className="jw-badge absolute top-2 left-2 bg-jw-ground text-white">Save {Math.round(item.saving * 100)}%/L</span>
         )}
