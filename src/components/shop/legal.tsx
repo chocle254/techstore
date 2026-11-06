@@ -11,14 +11,14 @@ export function LegalPage({ title, updated, sections }: { title: string; updated
   return (
     <>
       <ShopHeader />
-      <main className="mx-3 mt-3 bg-jw-paper px-5 py-12 sm:px-10 lg:px-16 lg:py-16">
-        <div className="mx-auto max-w-[44rem]">
+      <main className="mx-auto w-full max-w-3xl flex-1 px-3 pt-6 sm:px-4">
+        <div className="jw-clay p-6 sm:p-10">
           <h1 className="text-[length:var(--step-head)]">{title}</h1>
-          <p className="mt-4 text-jw-soft">Last updated {updated}</p>
+          <p className="mt-2 text-sm text-jw-soft">Last updated {updated}</p>
           {sections.map(([h, body]) => (
-            <section key={h} className="mt-12">
-              <h2 className="text-[length:var(--step-lead)]">{h}</h2>
-              <div className="mt-4 space-y-4">{body}</div>
+            <section key={h} className="mt-8">
+              <h2 className="text-lg">{h}</h2>
+              <div className="mt-2 space-y-3 text-jw-ink/85">{body}</div>
             </section>
           ))}
         </div>

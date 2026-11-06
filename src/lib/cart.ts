@@ -51,9 +51,13 @@ export function useCart() {
   return useSyncExternalStore(subscribe, read, () => EMPTY);
 }
 
+/** Fired on window after something is added, so the shop can show a small "added" note. */
+export const ADDED_EVENT = "jw:cart-added";
+
 export const cart = {
   add(line: Omit<CartLine, "qty">, qty = 1) {
     const lines = read();
+    queueMicrotask(() => window.dispatchEvent(new CustomEvent(ADDED_EVENT, { detail: { ...line, qty } })));
     const found = lines.find((l) => l.variantId === line.variantId);
     write(
       found

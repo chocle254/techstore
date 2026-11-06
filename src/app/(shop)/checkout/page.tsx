@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { getDb, schema } from "@/db";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getAreas, pendingRatings } from "@/lib/shop";
-import { ShopFooter, ShopHeader } from "@/components/shop/chrome";
+import { ShopFooter, ShopHeader, StepBar } from "@/components/shop/chrome";
 import { CheckoutForm } from "./checkout-form";
 
 export const metadata = { title: "Checkout" };
@@ -25,8 +25,9 @@ export default async function CheckoutPage() {
   return (
     <>
       <ShopHeader />
-      <main className="mx-3 mt-3 bg-jw-paper px-5 py-12 sm:px-10 lg:px-16 lg:py-16">
-        <h1 className="text-[length:var(--step-head)]">Checkout</h1>
+      <main className="mx-auto w-full max-w-6xl flex-1 px-3 pt-6 sm:px-4">
+        <StepBar at={1} />
+        <h1 className="mt-8 text-[length:var(--step-head)]">Checkout</h1>
         <CheckoutForm
           user={user ? { name: user.name, phone: user.phone, isTrusted: user.isTrusted } : null}
           areas={areas}

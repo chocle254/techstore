@@ -7,11 +7,13 @@ import { useFormStatus } from "react-dom";
 import { cartTotal, useCart } from "@/lib/cart";
 import { formatPhone } from "@/lib/phone";
 import { ksh, sizeLabel } from "@/lib/format";
+import { CardBottle, short, tileFor } from "@/components/shop/tiles";
+import { Icon } from "@/components/shop/icons";
 import { placeOrderAction, type ShopState } from "../actions";
 
 const MapPin = dynamic(() => import("@/components/shop/map-pin"), {
   ssr: false,
-  loading: () => <p className="flex h-72 items-center justify-center bg-jw-ground/15">Loading the map…</p>,
+  loading: () => <p className="jw-well flex h-72 items-center justify-center text-sm text-jw-soft">Loading the map…</p>,
 });
 
 const noop = () => () => {};
@@ -27,7 +29,7 @@ type Props = {
 function PlaceButton({ total }: { total: number }) {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" className="jw-btn w-full" disabled={pending}>
+    <button type="submit" className="jw-btn w-full text-base" disabled={pending}>
       {pending ? "Placing your order…" : `Place order · ${ksh(total)}`}
     </button>
   );
@@ -36,7 +38,7 @@ function PlaceButton({ total }: { total: number }) {
 function Stars({ name, label }: { name: string; label: string }) {
   return (
     <fieldset className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
-      <legend className="float-left mr-4">{label}</legend>
+      <legend className="float-left mr-4 font-medium">{label}</legend>
       <div className="flex flex-row-reverse justify-end gap-1">
         {[5, 4, 3, 2, 1].map((n) => (
           <label key={n} className="cursor-pointer">
@@ -44,7 +46,7 @@ function Stars({ name, label }: { name: string; label: string }) {
             <svg
               viewBox="0 0 24 24"
               aria-hidden
-              className="jw-press block h-10 w-10 p-1 text-jw-ink/25 peer-checked/star:text-jw-ground peer-focus-visible/star:outline-3 peer-focus-visible/star:outline-jw-ink hover:text-jw-ground"
+              className="jw-press block h-10 w-10 p-1 text-jw-ink/15 peer-checked/star:text-amber-400 peer-focus-visible/star:outline-2 peer-focus-visible/star:outline-jw-ground hover:text-amber-300"
             >
               <path fill="currentColor" d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1Z" />
             </svg>
@@ -55,6 +57,18 @@ function Stars({ name, label }: { name: string; label: string }) {
         ))}
       </div>
     </fieldset>
+  );
+}
+
+function Card({ n, title, id, children }: { n: number; title: string; id: string; children: React.ReactNode }) {
+  return (
+    <section aria-labelledby={id} className="jw-clay p-5 sm:p-7">
+      <h2 id={id} className="flex items-center gap-3 text-lg">
+        <span className="grid h-8 w-8 place-items-center rounded-full bg-jw-ink text-sm text-white">{n}</span>
+        {title}
+      </h2>
+      <div className="mt-5 space-y-5">{children}</div>
+    </section>
   );
 }
 
@@ -86,32 +100,33 @@ export function CheckoutForm({ user, areas, saved, toRate }: Props) {
     );
   };
 
-  if (!mounted) return <p className="mt-10">Loading your cart…</p>;
+  if (!mounted) return <div className="jw-clay mt-6 h-64 animate-pulse" aria-label="Loading your cart" />;
   if (!lines.length) {
     return (
-      <div className="mt-10">
-        <p className="text-[length:var(--step-lead)]">Your cart is empty.</p>
-        <Link href="/#products" className="jw-btn mt-8">
-          See the price list
+      <div className="jw-clay mt-6 flex flex-col items-center px-6 py-14 text-center">
+        <p className="text-xl font-bold">Your cart is empty</p>
+        <p className="mt-1 text-jw-soft">Add some products first, then come back to check out.</p>
+        <Link href="/#shop" className="jw-btn mt-6">
+          Start shopping
         </Link>
       </div>
     );
   }
 
   return (
-    <form action={action} className="mt-10 grid gap-14 lg:grid-cols-[minmax(0,7fr)_minmax(0,4fr)] lg:gap-20">
+    <form action={action} className="mt-6 grid gap-4 lg:grid-cols-[1fr_24rem] lg:items-start">
       <input type="hidden" name="items" value={JSON.stringify(lines.map((l) => ({ variantId: l.variantId, qty: l.qty })))} />
       <input type="hidden" name="lat" value={pin ? pin[0].toFixed(6) : ""} />
       <input type="hidden" name="lng" value={pin ? pin[1].toFixed(6) : ""} />
 
-      <div className="min-w-0 space-y-14">
+      <div className="min-w-0 space-y-4">
         {toRate && (
-          <section aria-labelledby="rate-title" className="bg-jw-ground/15 p-5 sm:p-7">
-            <h2 id="rate-title" className="text-[length:var(--step-lead)]">
+          <section aria-labelledby="rate-title" className="jw-clay p-5 sm:p-7" style={{ background: "linear-gradient(160deg, #fff7ed, #ffffff)" }}>
+            <h2 id="rate-title" className="text-lg">
               How was order {toRate.orderNo}?
             </h2>
-            <p className="mt-2">Rate each product from your last delivery. It helps us make the next batch better.</p>
-            <div className="mt-5 space-y-4">
+            <p className="mt-1 text-sm text-jw-soft">Rate each product from your last delivery. It helps us make the next batch better.</p>
+            <div className="mt-4 space-y-3">
               {toRate.products.map((p) => (
                 <Stars key={p.id} name={`rate:${p.id}`} label={p.name} />
               ))}
@@ -119,12 +134,9 @@ export function CheckoutForm({ user, areas, saved, toRate }: Props) {
           </section>
         )}
 
-        <section aria-labelledby="where-title" className="space-y-6">
-          <h2 id="where-title" className="text-[length:var(--step-lead)]">
-            Where to deliver
-          </h2>
+        <Card n={1} title="Where to deliver" id="where-title">
           {areas.length === 0 ? (
-            <p className="bg-jw-ground/15 p-4">We are still setting up delivery areas, so orders can&apos;t be placed yet. Please check back soon.</p>
+            <p className="jw-well p-4 text-sm">We are still setting up delivery areas, so orders can&apos;t be placed yet. Please check back soon.</p>
           ) : (
             <label className="block">
               <span className="jw-label">Area</span>
@@ -155,34 +167,36 @@ export function CheckoutForm({ user, areas, saved, toRate }: Props) {
 
           <div>
             <p className="jw-label">Map pin (optional)</p>
-            <div className="flex flex-wrap gap-3">
-              <button type="button" className="jw-btn-quiet border-2 border-jw-ink" onClick={() => setShowMap((s) => !s)} aria-expanded={showMap}>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className="jw-btn-quiet min-h-11 px-4 text-sm" onClick={() => setShowMap((s) => !s)} aria-expanded={showMap}>
+                <Icon name="pin" className="h-4 w-4 text-jw-ground" />
                 {showMap ? "Hide map" : pin ? "Move my pin" : "Pin my gate"}
               </button>
-              <button type="button" className="jw-btn-quiet border-2 border-jw-ink" onClick={locate} disabled={locating}>
+              <button type="button" className="jw-btn-quiet min-h-11 px-4 text-sm" onClick={locate} disabled={locating}>
                 {locating ? "Finding you…" : "Use my location"}
               </button>
             </div>
-            {pin && <p className="mt-3 text-jw-soft">Pin set. The rider will see it on a map.</p>}
+            {pin && (
+              <p className="mt-3 flex items-center gap-1.5 text-sm text-jw-mpesa">
+                <Icon name="check" className="h-4 w-4" /> Pin set. The rider will see it on a map.
+              </p>
+            )}
             {showMap && (
-              <div className="mt-4">
+              <div className="mt-4 overflow-hidden rounded-2xl">
                 <MapPin value={pin} onChange={setPin} />
-                <p className="mt-2 text-[length:var(--step-small)] text-jw-soft">Tap the map where we should bring the bottles.</p>
+                <p className="mt-2 text-xs text-jw-soft">Tap the map where we should bring the bottles.</p>
               </div>
             )}
           </div>
-          <label className="flex items-center gap-3">
-            <input type="checkbox" name="saveLocation" defaultChecked className="h-5 w-5 accent-jw-ink" />
+          <label className="flex items-center gap-3 text-sm">
+            <input type="checkbox" name="saveLocation" defaultChecked className="h-5 w-5 accent-jw-ground" />
             <span>Remember this for my next order</span>
           </label>
-        </section>
+        </Card>
 
-        <section aria-labelledby="you-title" className="space-y-6">
-          <h2 id="you-title" className="text-[length:var(--step-lead)]">
-            Your details
-          </h2>
+        <Card n={2} title="Your details" id="you-title">
           {!user && (
-            <p>
+            <p className="jw-well p-4 text-sm">
               Ordered before?{" "}
               <Link href="/login?next=/checkout" className="jw-link">
                 Log in
@@ -190,114 +204,133 @@ export function CheckoutForm({ user, areas, saved, toRate }: Props) {
               first. New here? These details make your account, so you can follow the order.
             </p>
           )}
-          <label className="block">
-            <span className="jw-label">Name</span>
-            <input name="contactName" required maxLength={80} autoComplete="name" defaultValue={user?.name ?? ""} className="jw-input" />
-          </label>
-          <label className="block">
-            <span className="jw-label">Phone number</span>
-            <input
-              name="contactPhone"
-              required
-              inputMode="tel"
-              autoComplete="tel"
-              maxLength={20}
-              defaultValue={user ? formatPhone(user.phone) : ""}
-              className="jw-input"
-              placeholder="0712 345 678"
-            />
-          </label>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <label className="block">
+              <span className="jw-label">Name</span>
+              <input name="contactName" required maxLength={80} autoComplete="name" defaultValue={user?.name ?? ""} className="jw-input" />
+            </label>
+            <label className="block">
+              <span className="jw-label">Phone number</span>
+              <input
+                name="contactPhone"
+                required
+                inputMode="tel"
+                autoComplete="tel"
+                maxLength={20}
+                defaultValue={user ? formatPhone(user.phone) : ""}
+                className="jw-input"
+                placeholder="0712 345 678"
+              />
+            </label>
+          </div>
           {!user && (
-            <>
+            <div className="grid gap-5 sm:grid-cols-2">
               <label className="block">
                 <span className="jw-label">Choose a password</span>
                 <input name="password" type="password" required autoComplete="new-password" aria-describedby="pw-rule" className="jw-input" />
-                <span id="pw-rule" className="mt-1 block text-[length:var(--step-small)] text-jw-soft">
+                <span id="pw-rule" className="mt-1 block text-xs text-jw-soft">
                   At least 8 characters.
                 </span>
               </label>
               <label className="block">
                 <span className="jw-label">Email (optional)</span>
                 <input name="email" type="email" autoComplete="email" maxLength={120} aria-describedby="email-why" className="jw-input" />
-                <span id="email-why" className="mt-1 block text-[length:var(--step-small)] text-jw-soft">
+                <span id="email-why" className="mt-1 block text-xs text-jw-soft">
                   Only used to reset your password.
                 </span>
               </label>
-            </>
+            </div>
           )}
           <label className="block">
             <span className="jw-label">Note for us (optional)</span>
             <input name="note" maxLength={300} className="jw-input" placeholder="For example: call when you reach the gate" />
           </label>
-        </section>
+        </Card>
 
-        <section aria-labelledby="pay-title" className="space-y-4">
-          <h2 id="pay-title" className="text-[length:var(--step-lead)]">
-            Payment
-          </h2>
-          <label className="flex cursor-pointer items-start gap-3 bg-jw-ground/15 p-4">
-            <input type="radio" name="payMethod" value="mpesa" defaultChecked className="mt-1.5 h-5 w-5 accent-jw-ink" />
-            <span>
-              <span className="font-medium">M-Pesa</span>
-              <span className="block text-jw-soft">After you order, we show our till number and where to type your M-Pesa code.</span>
-            </span>
-          </label>
-          {user?.isTrusted && (
-            <label className="flex cursor-pointer items-start gap-3 bg-jw-ground/15 p-4">
-              <input type="radio" name="payMethod" value="cod" className="mt-1.5 h-5 w-5 accent-jw-ink" />
+        <Card n={3} title="Payment" id="pay-title">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="relative flex cursor-pointer items-start gap-3 rounded-2xl bg-jw-well p-4 ring-2 ring-transparent transition has-[:checked]:bg-jw-paper has-[:checked]:ring-jw-mpesa has-[:focus-visible]:ring-jw-ground">
+              <input type="radio" name="payMethod" value="mpesa" defaultChecked className="mt-1 h-5 w-5 accent-jw-mpesa" />
               <span>
-                <span className="font-medium">Cash on delivery</span>
-                <span className="block text-jw-soft">Pay the rider when the bottles arrive.</span>
+                <span className="flex items-center gap-2 font-bold">
+                  <span className="rounded-md bg-jw-mpesa px-1.5 py-0.5 text-[0.6875rem] text-white">M-PESA</span> Pay by M-Pesa
+                </span>
+                <span className="mt-1 block text-sm text-jw-soft">After you order, we show our till number and where to type your M-Pesa code.</span>
               </span>
             </label>
-          )}
-        </section>
+            {user?.isTrusted && (
+              <label className="relative flex cursor-pointer items-start gap-3 rounded-2xl bg-jw-well p-4 ring-2 ring-transparent transition has-[:checked]:bg-jw-paper has-[:checked]:ring-jw-ground has-[:focus-visible]:ring-jw-ground">
+                <input type="radio" name="payMethod" value="cod" className="mt-1 h-5 w-5 accent-jw-ground" />
+                <span>
+                  <span className="font-bold">Cash on delivery</span>
+                  <span className="mt-1 block text-sm text-jw-soft">Pay the rider when the bottles arrive.</span>
+                </span>
+              </label>
+            )}
+          </div>
+        </Card>
       </div>
 
-      <aside aria-labelledby="sum-title" className="lg:sticky lg:top-6 lg:self-start">
-        <h2 id="sum-title" className="text-[length:var(--step-lead)]">
-          Your bottles
-        </h2>
-        <ul className="mt-5 space-y-3">
+      <aside aria-labelledby="sum-title" className="jw-clay p-5 lg:sticky lg:top-36">
+        <div className="flex items-center justify-between">
+          <h2 id="sum-title" className="text-lg">
+            Your order
+          </h2>
+          <Link href="/cart" className="jw-link text-sm">
+            Edit cart
+          </Link>
+        </div>
+        <ul className="mt-4 max-h-72 space-y-3 overflow-y-auto pr-1">
           {lines.map((l) => (
-            <li key={l.variantId} className="flex items-baseline justify-between gap-4 tabular-nums">
-              <span>
-                {l.qty} × {l.name.replace(/^JonWin\s+/, "")} {sizeLabel(l.sizeMl)}
+            <li key={l.variantId} className="flex items-center gap-3 text-sm">
+              <span className="relative flex h-14 w-14 shrink-0 items-end justify-center rounded-xl pb-1" style={{ background: tileFor(l.slug) }}>
+                <CardBottle slug={l.slug} sizeMl={l.sizeMl} height={38} />
+                <span className="absolute -top-1.5 -right-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-jw-ink px-1 text-[0.6875rem] font-bold text-white">{l.qty}</span>
               </span>
-              <span>{ksh(l.qty * l.price)}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-semibold">{short(l.name)}</span>
+                <span className="text-jw-soft">{sizeLabel(l.sizeMl)}</span>
+              </span>
+              <span className="font-semibold tabular-nums">{ksh(l.qty * l.price)}</span>
             </li>
           ))}
         </ul>
-        <p className="mt-6 flex items-baseline justify-between gap-4 tabular-nums">
-          <span>Delivery</span>
-          <span>{areaId ? (fee > 0 ? ksh(fee) : "Free") : "Choose area"}</span>
-        </p>
-        <p className="mt-3 flex items-baseline justify-between gap-4 text-[length:var(--step-lead)] font-medium tabular-nums">
-          <span>Total</span>
-          <span>{ksh(total)}</span>
-        </p>
-        <Link href="/cart" className="jw-link mt-3 inline-block">
-          Change cart
-        </Link>
+        <dl className="mt-5 space-y-2 border-t border-jw-ink/5 pt-4 text-sm tabular-nums">
+          <div className="flex justify-between">
+            <dt className="text-jw-soft">Items</dt>
+            <dd>{ksh(subtotal)}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-jw-soft">Delivery</dt>
+            <dd className={areaId && fee === 0 ? "font-semibold text-jw-mpesa" : ""}>{areaId ? (fee > 0 ? ksh(fee) : "Free") : "Choose area"}</dd>
+          </div>
+        </dl>
+        <div className="mt-4 flex items-baseline justify-between border-t border-jw-ink/5 pt-4">
+          <span className="font-semibold">Total</span>
+          <span className="text-2xl font-extrabold tabular-nums">{ksh(total)}</span>
+        </div>
 
         {state?.error && (
-          <p role="alert" className="mt-6 bg-jw-ink p-4 text-jw-paper">
+          <p role="alert" className="mt-4 rounded-2xl bg-red-50 p-4 text-sm text-red-800">
             {state.error}{" "}
             {state.field === "login" && (
-              <Link href="/login?next=/checkout" className="underline">
+              <Link href="/login?next=/checkout" className="font-semibold underline">
                 Log in
               </Link>
             )}
           </p>
         )}
-        <div className="mt-6">{areas.length > 0 && <PlaceButton total={total} />}</div>
-        <p className="mt-4 text-[length:var(--step-small)] text-jw-soft">
+        <div className="mt-5">{areas.length > 0 && <PlaceButton total={total} />}</div>
+        <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-jw-soft">
+          <Icon name="shield" className="h-4 w-4 text-jw-mpesa" /> You pay only after the order is placed
+        </p>
+        <p className="mt-3 text-center text-xs text-jw-soft">
           By ordering you agree to our{" "}
-          <Link href="/terms" className="jw-link text-jw-ink">
+          <Link href="/terms" className="underline">
             terms
           </Link>{" "}
           and{" "}
-          <Link href="/delivery" className="jw-link text-jw-ink">
+          <Link href="/delivery" className="underline">
             delivery and refund policy
           </Link>
           .

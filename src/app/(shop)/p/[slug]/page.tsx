@@ -1,11 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getCatalog } from "@/lib/shop";
+import { getAreas, getCatalog, getRatingSummary } from "@/lib/shop";
+import { toGridItems } from "@/lib/shop-grid";
 import { ksh, sizeLabel } from "@/lib/format";
 import { ShopFooter, ShopHeader } from "@/components/shop/chrome";
-import { Bottle, BottleGroup, liquidFor } from "@/components/shop/bottle";
-import { ProductBuy } from "@/components/shop/size-picker";
+import { ProductBuy } from "@/components/shop/product-buy";
+import { RelatedProducts } from "@/components/shop/related";
+import { Icon } from "@/components/shop/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -25,103 +27,92 @@ export async function generateMetadata({ params }: PageProps<"/p/[slug]">) {
 export default async function ProductPage({ params, searchParams }: PageProps<"/p/[slug]">) {
   const { slug } = await params;
   const { size } = await searchParams;
-  const catalog = await getCatalog();
+  const [catalog, ratings, areas] = await Promise.all([getCatalog(), getRatingSummary(), getAreas()]);
   const product = catalog.find((p) => p.slug === slug);
   if (!product) notFound();
-  const others = catalog.filter((p) => p.id !== product.id);
-  const liquid = liquidFor(product.slug);
-  const biggest = Math.max(...product.sizes.map((s) => s.sizeMl));
-  const priced = product.sizes.filter((s) => s.price > 0);
   const photo = PHOTOS[product.slug] ?? DEFAULT_PHOTO;
-  const from = priced.length ? Math.min(...priced.map((s) => s.price)) : 0;
+  const deliveryFrom = areas.length ? Math.min(...areas.map((a) => a.fee)) : null;
+  // For "also from JonWin": one card per other product, its best-value size.
+  const related = catalog
+    .filter((p) => p.id !== product.id)
+    .map((p) => {
+      const items = toGridItems([p], ratings);
+      return items.find((i) => i.bestValue) ?? items.find((i) => i.price > 0) ?? items[0];
+    })
+    .filter((i) => i !== undefined);
 
   return (
     <>
       <ShopHeader />
-      <main className="grid gap-3 p-3 lg:grid-cols-2">
-        {/* The product, drawn large on a white field. */}
-        <div className="relative">
-          <div className="flex h-[44svh] items-end justify-center bg-jw-paper px-6 pt-10 lg:sticky lg:top-3 lg:h-[calc(100svh-24px)]">
-            <div className="h-full w-full max-w-[36rem] pt-6 pb-10 lg:pt-16 lg:pb-16">
-              <BottleGroup
-                sizes={[...new Set([500, 5000, biggest])]}
-                liquid={liquid}
-                title={`${product.name} in a 500ml bottle, a 5 litre jug and a ${sizeLabel(biggest)} container, drawn to scale`}
-              />
-            </div>
-          </div>
-        </div>
+      <main className="mx-auto w-full max-w-7xl flex-1 px-3 pt-4 sm:px-4">
+        <nav aria-label="Breadcrumb" className="mb-4 flex items-center gap-1.5 text-sm text-jw-soft">
+          <Link href="/" className="hover:text-jw-ink">
+            Home
+          </Link>
+          <Icon name="chevron" className="h-3.5 w-3.5 -rotate-90" />
+          <Link href="/#shop" className="hover:text-jw-ink">
+            Products
+          </Link>
+          <Icon name="chevron" className="h-3.5 w-3.5 -rotate-90" />
+          <span className="truncate font-medium text-jw-ink" aria-current="page">
+            {product.name}
+          </span>
+        </nav>
 
-        <div className="min-w-0 px-2 py-8 sm:px-8 lg:py-12">
-          <div data-reveal>
-            <h1 className="text-[length:var(--step-head)]">{product.name}</h1>
-            <p className="mt-4 max-w-[46ch]">
-              {product.description || "Made by our family in 25-litre batches."}
-              {from > 0 && <> From {ksh(from)}, delivered.</>}
+        <ProductBuy
+          product={{ id: product.id, slug: product.slug, name: product.name, sizes: product.sizes }}
+          initialSize={typeof size === "string" ? Number(size) : undefined}
+          rating={ratings[product.id] ?? null}
+          deliveryFrom={deliveryFrom}
+        />
+
+        <div className="mt-6 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+          <section className="jw-clay p-6 sm:p-8" aria-labelledby="about-title">
+            <h2 id="about-title" className="text-xl">
+              About this product
+            </h2>
+            <p className="mt-3 text-jw-ink/85">{product.description || "Made by our family in 25-litre batches and bottled at home."}</p>
+            <h3 className="mt-6 text-base">Use it safely</h3>
+            <p className="mt-2 text-sm text-jw-soft">
+              Keep the bottle closed and out of reach of children. Never mix with other cleaners, especially bleach. If it gets in your eyes, rinse with clean
+              water for several minutes.
             </p>
-          </div>
-
-          <section aria-labelledby="buy-title" className="mt-10" data-reveal>
-            <h2 id="buy-title" className="mb-4 text-[length:var(--step-lead)]">
-              Choose a size
-            </h2>
-            <ProductBuy
-              product={{ id: product.id, slug: product.slug, name: product.name, sizes: product.sizes }}
-              initialSize={typeof size === "string" ? Number(size) : undefined}
-            />
-          </section>
-
-          <section aria-labelledby="all-title" className="mt-24" data-reveal>
-            <h2 id="all-title" className="text-[length:var(--step-lead)]">
-              All sizes
-            </h2>
-            <ul className="mt-5 max-w-[26rem] space-y-3 tabular-nums">
-              {product.sizes.map((s) => (
-                <li key={s.variantId} className="flex items-baseline justify-between gap-6">
-                  <span>{sizeLabel(s.sizeMl)}</span>
-                  <span>{s.price > 0 ? ksh(s.price) : <span className="text-jw-soft">Soon</span>}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          <section aria-labelledby="care-title" className="mt-24 max-w-[46ch]" data-reveal>
-            <h2 id="care-title" className="text-[length:var(--step-lead)]">
-              Use it safely
-            </h2>
-            <p className="mt-4">
-              Keep the bottle closed and out of reach of children. Never mix with other cleaners, especially bleach. If it gets in your eyes,
-              rinse with clean water for several minutes.
-            </p>
-          </section>
-
-          <figure className="mt-24" data-reveal>
-            <Image src={photo.src} alt={photo.alt} width={photo.width} height={photo.height} sizes="(min-width: 1024px) 45vw, 100vw" className="h-auto w-full" />
-            <figcaption className="mt-3 text-[length:var(--step-small)] text-jw-soft">{photo.caption}</figcaption>
-          </figure>
-
-          {others.length > 0 && (
-            <section aria-labelledby="more-title" className="mt-24" data-reveal>
-              <h2 id="more-title" className="text-[length:var(--step-lead)]">
-                Also from JonWin
-              </h2>
-              <ul className="mt-5 space-y-6">
-                {others.map((o) => (
-                  <li key={o.id}>
-                    <Link href={`/p/${o.slug}`} className="group flex items-end gap-5">
-                      <Bottle sizeMl={1000} liquid={liquidFor(o.slug)} fullHeight={170} />
-                      <span className="pb-1 text-[length:var(--step-lead)] group-hover:underline group-hover:decoration-2 group-hover:underline-offset-4">
-                        {o.name}
-                      </span>
-                    </Link>
-                  </li>
+            <h3 className="mt-6 text-base">Every size</h3>
+            <table className="mt-3 w-full text-sm tabular-nums">
+              <thead className="text-left text-xs text-jw-soft">
+                <tr>
+                  <th className="py-2 font-medium">Size</th>
+                  <th className="py-2 text-right font-medium">Price</th>
+                  <th className="py-2 text-right font-medium">Per litre</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-jw-ink/5">
+                {product.sizes.map((s) => (
+                  <tr key={s.variantId}>
+                    <td className="py-2.5 font-semibold">{sizeLabel(s.sizeMl)}</td>
+                    <td className="py-2.5 text-right">{s.price > 0 ? ksh(s.price) : "Soon"}</td>
+                    <td className="py-2.5 text-right text-jw-soft">{s.price > 0 ? ksh(Math.round((s.price * 1000) / s.sizeMl)) : "–"}</td>
+                  </tr>
                 ))}
-              </ul>
-            </section>
-          )}
+              </tbody>
+            </table>
+          </section>
+          <figure className="jw-clay self-start overflow-hidden p-2">
+            <Image src={photo.src} alt={photo.alt} width={photo.width} height={photo.height} sizes="(min-width: 1024px) 40vw, 100vw" className="h-auto w-full rounded-[1.25rem]" />
+            <figcaption className="px-3 py-2 text-xs text-jw-soft">{photo.caption}</figcaption>
+          </figure>
         </div>
+
+        {related.length > 0 && (
+          <section className="mt-10" aria-labelledby="more-title">
+            <h2 id="more-title" className="text-[length:var(--step-head)]">
+              Also from JonWin
+            </h2>
+            <RelatedProducts items={related} />
+          </section>
+        )}
       </main>
-      <ShopFooter />
+      <ShopFooter credits />
     </>
   );
 }

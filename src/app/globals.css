@@ -12,11 +12,15 @@
   --color-line: #dfe7e4;
   --color-surface: #f6f8f7;
   /* Shop (buyer side): orange ground, blue-black ink, white paper. */
-  --color-jw-ground: #ff7a1f;
-  --color-jw-raise: #ff8633;
-  --color-jw-ink: #050f16;
-  --color-jw-soft: #5a2306;
+  --color-jw-ground: #f76b15;
+  --color-jw-raise: #ff8a3d;
+  --color-jw-deep: #c2410c;
+  --color-jw-ink: #16181d;
+  --color-jw-soft: #646a73;
   --color-jw-paper: #ffffff;
+  --color-jw-bg: #f3f0eb;
+  --color-jw-well: #f6f4f0;
+  --color-jw-mpesa: #14a44d;
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
@@ -70,172 +74,179 @@ body {
 }
 
 
-/* ---------- Shop ---------- */
+/* ---------- Shop (buyer side) ----------
+   Warm light page, white "clay" cards with soft depth, a frosted header and bottom bar, orange for action. */
 .shop {
-  --step-small: clamp(0.8125rem, 0.79rem + 0.1vw, 0.875rem);
-  --step-body: clamp(1.125rem, 1.07rem + 0.2vw, 1.25rem);
-  --step-lead: clamp(1.25rem, 1.1rem + 0.7vw, 1.625rem);
-  --step-head: clamp(2rem, 1.3rem + 3.2vw, 4rem);
-  --step-display: clamp(2.25rem, 1.5rem + 3.6vw, 4.25rem);
-  background: var(--color-jw-ground);
+  --step-small: 0.8125rem;
+  --step-body: 0.9375rem;
+  --step-lead: clamp(1.0625rem, 1rem + 0.3vw, 1.25rem);
+  --step-head: clamp(1.5rem, 1.25rem + 1.1vw, 2.125rem);
+  --step-display: clamp(1.875rem, 1.4rem + 2.2vw, 3.25rem);
+  --clay: 0 1px 0 rgb(255 255 255 / 0.9) inset, 0 -3px 8px rgb(60 40 20 / 0.04) inset, 0 10px 24px -14px rgb(60 35 15 / 0.22), 0 2px 5px rgb(60 35 15 / 0.05);
+  --clay-hover: 0 1px 0 rgb(255 255 255 / 0.9) inset, 0 -3px 8px rgb(60 40 20 / 0.04) inset, 0 20px 36px -16px rgb(60 35 15 / 0.3), 0 3px 8px rgb(60 35 15 / 0.06);
+  background:
+    radial-gradient(60rem 30rem at 110% -10%, rgb(247 107 21 / 0.10), transparent 60%),
+    radial-gradient(50rem 30rem at -20% 30%, rgb(20 164 77 / 0.06), transparent 60%),
+    var(--color-jw-bg);
+  background-attachment: fixed;
   color: var(--color-jw-ink);
-  font-family: var(--font-literata), Georgia, "Times New Roman", serif;
+  font-family: var(--font-sans);
   font-size: var(--step-body);
-  line-height: 1.6;
-  font-optical-sizing: auto;
+  line-height: 1.55;
 }
 .shop h1,
 .shop h2,
 .shop h3 {
-  font-weight: 500;
+  font-weight: 700;
   letter-spacing: -0.02em;
-  line-height: 1.05;
+  line-height: 1.15;
   text-wrap: balance;
 }
 .shop ::selection {
-  background: var(--color-jw-ink);
-  color: var(--color-jw-ground);
+  background: var(--color-jw-ground);
+  color: #fff;
 }
 .shop :focus-visible {
-  outline: 3px solid var(--color-jw-ink);
-  outline-offset: 3px;
+  outline: 2px solid var(--color-jw-ground);
+  outline-offset: 2px;
 }
 
 @layer components {
-  /* One button shape for the whole shop: a square block of ink with orange text. */
+  /* Surfaces */
+  .jw-clay {
+    @apply rounded-3xl bg-jw-paper;
+    box-shadow: var(--clay);
+  }
+  .jw-clay-hover {
+    @apply transition-[box-shadow,translate] duration-200 ease-out hover:-translate-y-0.5;
+  }
+  .jw-clay-hover:hover {
+    box-shadow: var(--clay-hover);
+  }
+  .jw-glass {
+    background: rgb(255 255 255 / 0.72);
+    -webkit-backdrop-filter: blur(18px) saturate(1.6);
+    backdrop-filter: blur(18px) saturate(1.6);
+    border: 1px solid rgb(255 255 255 / 0.65);
+    box-shadow: 0 8px 30px -12px rgb(40 25 10 / 0.18);
+  }
+  .jw-well {
+    @apply rounded-2xl bg-jw-well;
+    box-shadow: inset 0 2px 4px rgb(60 35 15 / 0.06);
+  }
+
+  /* Buttons: a soft orange pill that looks pressable, and a white one. */
   .jw-btn {
-    @apply inline-flex min-h-13 items-center justify-center gap-2 bg-jw-ink px-6 py-3 text-[length:var(--step-body)] font-medium text-jw-ground transition-transform duration-150 ease-out select-none hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 py-3 text-[0.9375rem] font-semibold text-white transition-[transform,box-shadow,filter] duration-150 ease-out select-none hover:brightness-105 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100;
+    background: linear-gradient(180deg, var(--color-jw-raise), var(--color-jw-ground));
+    box-shadow: 0 1px 0 rgb(255 255 255 / 0.35) inset, 0 -2px 0 rgb(0 0 0 / 0.08) inset, 0 8px 18px -8px rgb(247 107 21 / 0.7);
   }
   .jw-btn-quiet {
-    @apply inline-flex min-h-13 items-center justify-center gap-2 bg-jw-paper px-6 py-3 text-[length:var(--step-body)] font-medium text-jw-ink transition-transform duration-150 ease-out select-none hover:-translate-y-0.5 active:scale-[0.98];
+    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-jw-paper px-6 py-3 text-[0.9375rem] font-semibold text-jw-ink transition-[transform,box-shadow] duration-150 ease-out select-none active:scale-[0.97] disabled:opacity-50;
+    box-shadow: var(--clay), 0 0 0 1px rgb(22 24 29 / 0.06);
+  }
+  .jw-btn-dark {
+    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-jw-ink px-6 py-3 text-[0.9375rem] font-semibold text-white transition-transform duration-150 select-none active:scale-[0.97] disabled:opacity-50;
   }
   .jw-press {
     @apply transition-transform duration-150 select-none active:scale-90;
   }
   .jw-link {
-    @apply underline decoration-2 underline-offset-4 transition-colors hover:decoration-jw-ground;
+    @apply font-medium text-jw-deep underline decoration-jw-ground/40 decoration-1 underline-offset-4 transition-colors hover:decoration-jw-ground;
   }
-  /* Form fields keep their own conventions: a field is a white box with a visible edge. */
+  .jw-chip {
+    @apply inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full bg-jw-paper px-3.5 text-sm font-medium whitespace-nowrap text-jw-ink transition-colors;
+    box-shadow: 0 0 0 1px rgb(22 24 29 / 0.08), 0 2px 6px -2px rgb(60 35 15 / 0.12);
+  }
+  .jw-chip[aria-pressed="true"],
+  .jw-chip[aria-current="page"] {
+    @apply bg-jw-ink text-white;
+    box-shadow: 0 6px 14px -6px rgb(22 24 29 / 0.5);
+  }
+
+  /* Form fields: a soft inset well that lights up orange when in use. 16px text stops iPhone zoom. */
   .jw-input {
-    @apply block w-full border-2 border-jw-ink/80 bg-jw-paper px-3 py-3 text-base text-jw-ink outline-none placeholder:text-jw-soft/70 focus:border-jw-ink focus:outline-3 focus:outline-offset-2 focus:outline-jw-ink;
+    @apply block w-full rounded-2xl border border-transparent bg-jw-well px-4 py-3 text-base text-jw-ink outline-none transition-[box-shadow,border-color,background-color] placeholder:text-jw-soft/70 focus:border-jw-ground focus:bg-jw-paper;
+    box-shadow: inset 0 2px 4px rgb(60 35 15 / 0.06);
+  }
+  .jw-input:focus {
+    box-shadow: 0 0 0 4px rgb(247 107 21 / 0.15);
   }
   .jw-label {
-    @apply mb-1.5 block font-medium;
+    @apply mb-1.5 block text-sm font-semibold;
+  }
+  .jw-badge {
+    @apply inline-flex items-center rounded-full px-2 py-0.5 text-[0.6875rem] font-bold tracking-wide uppercase;
   }
 }
 
-/* A printed sheet with scalloped top and bottom edges. */
-.jw-sheet {
-  position: relative;
-  background: var(--color-jw-paper);
+/* The small "added to cart" note slides up from the bottom. */
+@keyframes jw-rise {
+  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+  to { opacity: 1; transform: none; }
 }
-.jw-sheet::before,
-.jw-sheet::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 10px;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='10'%3E%3Ccircle cx='10' cy='10' r='10' fill='%23fff'/%3E%3C/svg%3E") 0 0 / 20px 10px repeat-x;
+.jw-rise {
+  animation: jw-rise 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-.jw-sheet::before {
-  top: -10px;
+@keyframes jw-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.35); }
+  100% { transform: scale(1); }
 }
-.jw-sheet::after {
-  bottom: -10px;
+.jw-pop {
+  animation: jw-pop 0.35s ease-out;
+}
+.jw-scroll-x {
+  scrollbar-width: none;
+}
+.jw-scroll-x::-webkit-scrollbar {
+  display: none;
+}
+.shop details > summary {
+  list-style: none;
+}
+.shop details > summary::-webkit-details-marker {
+  display: none;
+}
+.shop details[open] .jw-chevron {
   transform: rotate(180deg);
 }
 
-/* A receipt slip with a zigzag bottom edge. */
-.jw-slip {
-  background: var(--color-jw-paper);
-  clip-path: polygon(
-    0 0, 100% 0, 100% calc(100% - 12px),
-    95% 100%, 90% calc(100% - 12px), 85% 100%, 80% calc(100% - 12px), 75% 100%, 70% calc(100% - 12px),
-    65% 100%, 60% calc(100% - 12px), 55% 100%, 50% calc(100% - 12px), 45% 100%, 40% calc(100% - 12px),
-    35% 100%, 30% calc(100% - 12px), 25% 100%, 20% calc(100% - 12px), 15% 100%, 10% calc(100% - 12px),
-    5% 100%, 0 calc(100% - 12px)
-  );
-  padding-bottom: 40px;
-}
-.jw-dots {
-  flex: 1;
-  min-width: 1.5rem;
-  align-self: center;
-  height: 4px;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='4'%3E%3Ccircle cx='2' cy='2' r='2' fill='%23050f16'/%3E%3C/svg%3E") 0 0 / 8px 4px repeat-x;
-  opacity: 0.55;
-}
-
-/* Entrances: parts of a section rise in, one after another. Content stays visible without script. */
-.jw-js [data-reveal] > * {
-  opacity: 0;
-  transform: translateY(24px);
-  transition:
-    opacity 0.6s cubic-bezier(0.2, 0.7, 0.2, 1),
-    transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-.jw-js [data-reveal].is-in > * {
-  opacity: 1;
-  transform: none;
-}
-.jw-js [data-reveal].is-in > *:nth-child(2) { transition-delay: 0.08s; }
-.jw-js [data-reveal].is-in > *:nth-child(3) { transition-delay: 0.16s; }
-.jw-js [data-reveal].is-in > *:nth-child(4) { transition-delay: 0.24s; }
-.jw-js [data-reveal].is-in > *:nth-child(n + 5) { transition-delay: 0.3s; }
-
-/* The stage photograph: slow drift, and a crossfade when its section changes. */
-.jw-stage img {
-  transition: opacity 1.6s ease;
-}
-.jw-stage img[data-on="false"] {
-  opacity: 0;
-}
-.jw-stage img[data-on="true"] {
-  opacity: 1;
-  animation: jw-drift 24s ease-in-out infinite alternate;
-}
-@keyframes jw-drift {
-  from { transform: scale(1.02); }
-  to { transform: scale(1.09) translateY(-1.5%); }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .jw-js [data-reveal] > * {
-    opacity: 1;
-    transform: none;
-    transition: none;
-  }
-  .jw-stage img {
-    transition: none;
-    animation: none !important;
+  .jw-rise,
+  .jw-pop {
+    animation: none;
   }
   .jw-btn,
   .jw-btn-quiet,
-  .jw-press {
+  .jw-btn-dark,
+  .jw-press,
+  .jw-clay-hover {
     transition: none;
   }
 }
 
-/* Shared form pieces (login, password pages) take the shop look inside the shop. */
+/* Shared form pieces (log in and password pages) take the shop look inside the shop. */
 .shop .label {
-  @apply mb-1.5 block text-base font-medium text-jw-ink;
+  @apply mb-1.5 block text-sm font-semibold text-jw-ink;
 }
 .shop .input {
-  @apply rounded-none border-2 border-jw-ink/80 bg-jw-paper py-3 text-jw-ink placeholder:text-jw-soft/70 focus:border-jw-ink focus:ring-0 focus:outline-3 focus:outline-offset-2 focus:outline-jw-ink;
+  @apply rounded-2xl border-transparent bg-jw-well px-4 py-3 text-jw-ink placeholder:text-jw-soft/70 focus:border-jw-ground focus:bg-jw-paper focus:ring-4 focus:ring-jw-ground/15;
 }
 .shop .btn-primary {
-  @apply min-h-13 rounded-none bg-jw-ink font-medium text-jw-ground hover:bg-jw-ink active:bg-jw-ink;
+  @apply min-h-12 rounded-full text-white;
+  background: linear-gradient(180deg, var(--color-jw-raise), var(--color-jw-ground));
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.35) inset, 0 8px 18px -8px rgb(247 107 21 / 0.7);
 }
 .shop .btn-secondary {
-  @apply min-h-13 rounded-none border-2 border-jw-ink bg-jw-paper font-medium text-jw-ink;
+  @apply min-h-12 rounded-full border-transparent bg-jw-paper text-jw-ink;
+  box-shadow: var(--clay), 0 0 0 1px rgb(22 24 29 / 0.06);
 }
-.shop [role="alert"].bg-red-50,
-.shop [role="status"].bg-brand-50 {
-  @apply rounded-none bg-jw-ink text-base text-jw-paper;
+.shop [role="alert"].bg-red-50 {
+  @apply rounded-2xl text-sm;
 }
 .shop .text-brand-700 {
-  @apply text-jw-ink;
+  @apply text-jw-deep;
 }
 .shop .text-muted {
   @apply text-jw-soft;

@@ -49,6 +49,22 @@ export async function getProduct(slug: string): Promise<CatalogProduct | null> {
   return (await getCatalog()).find((p) => p.slug === slug) ?? null;
 }
 
+export type RatingSummary = Record<string, { avg: number; count: number }>;
+
+/** Average stars per product id, from customer ratings. */
+export async function getRatingSummary(): Promise<RatingSummary> {
+  const db = await getDb();
+  const rows = await db
+    .select({
+      productId: ratings.productId,
+      avg: sql<number>`avg(${ratings.stars})`.mapWith(Number),
+      count: sql<number>`count(*)`.mapWith(Number),
+    })
+    .from(ratings)
+    .groupBy(ratings.productId);
+  return Object.fromEntries(rows.map((r) => [r.productId, { avg: r.avg, count: r.count }]));
+}
+
 export type Area = { id: string; name: string; fee: number };
 
 export async function getAreas(): Promise<Area[]> {

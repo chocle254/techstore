@@ -41,7 +41,7 @@ export function SignupForm({ next }: { next?: string }) {
         </span>
       </label>
       {state?.error && (
-        <p role="alert" className="bg-jw-ink p-3 text-jw-paper">
+        <p role="alert" className="rounded-2xl bg-red-50 p-3 text-sm text-red-800">
           {state.error}
         </p>
       )}
