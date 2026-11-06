@@ -207,3 +207,53 @@ export async function owedTotal(): Promise<number> {
   const [r] = await rows<{ total: string }>(sql`select coalesce(sum(o.total - o.paid), 0) as total from (${OWED_SQL}) o`);
   return Number(r.total);
 }
+
+// ---------- Online shop ----------
+
+/** Live counts of online orders that need someone to act. Not tied to the date filter. */
+export async function orderQueue() {
+  const [r] = await rows<{ check_pay: string; need_rider: string; on_road: string; oldest: Date | null }>(sql`
+    select count(*) filter (where status = 'pending' and pay_method = 'mpesa') as check_pay,
+           count(*) filter (where status = 'paid' or (status = 'pending' and pay_method = 'cod')) as need_rider,
+           count(*) filter (where status in ('assigned', 'out_for_delivery')) as on_road,
+           min(created_at) filter (where status in ('pending', 'paid')) as oldest
+    from orders`);
+  return {
+    checkPay: Number(r.check_pay),
+    needRider: Number(r.need_rider),
+    onRoad: Number(r.on_road),
+    oldestWaiting: r.oldest ? new Date(r.oldest) : null,
+  };
+}
+
+/** Product sales (delivery fees left out) split into shop counter and online. */
+export async function channelSplit(r: Range) {
+  return (
+    await rows<{ channel: string; revenue: string; sales_count: string }>(sql`
+      select s.channel, sum(i.qty * i.unit_price) as revenue, count(distinct s.id) as sales_count
+      from sales s join sale_items i on i.sale_id = s.id
+      where s.voided_at is null and ${inRange(sql`s.sold_at`, r)}
+      group by 1 order by 2 desc`)
+  ).map((x) => ({ channel: x.channel as "walk_in" | "online", revenue: Number(x.revenue), count: Number(x.sales_count) }));
+}
+
+/** Online orders per delivery area, cancelled ones left out. */
+export async function ordersByArea(r: Range) {
+  return (
+    await rows<{ area: string; orders: string; fees: string }>(sql`
+      select area_name as area, count(*) as orders, sum(delivery_fee) as fees
+      from orders
+      where status <> 'cancelled' and ${inRange(sql`created_at`, r)}
+      group by 1 order by 2 desc, 1`)
+  ).map((x) => ({ area: x.area, orders: Number(x.orders), fees: Number(x.fees) }));
+}
+
+/** Average customer star rating per product, all time. */
+export async function productRatings() {
+  return (
+    await rows<{ name: string; avg: string; n: string }>(sql`
+      select p.name, avg(r.stars) as avg, count(*) as n
+      from ratings r join products p on p.id = r.product_id
+      group by p.name order by 2 desc, 3 desc`)
+  ).map((x) => ({ name: x.name, avg: Number(x.avg), count: Number(x.n) }));
+}

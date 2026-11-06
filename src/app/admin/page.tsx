@@ -1,7 +1,19 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth/guard";
 import { EXPENSE_LABELS, fmtDate, ksh, METHOD_LABELS, sizeLabel } from "@/lib/format";
-import { expensesByCategory, paymentSplit, salesSeries, stockLevels, summary, topProducts, topSizes } from "@/lib/queries";
+import {
+  channelSplit,
+  expensesByCategory,
+  orderQueue,
+  ordersByArea,
+  paymentSplit,
+  productRatings,
+  salesSeries,
+  stockLevels,
+  summary,
+  topProducts,
+  topSizes,
+} from "@/lib/queries";
 import { bucketLabel, PRESETS, resolveRange } from "@/lib/range";
 import { ChartCard, IncomeExpenseChart, RankBars, TrendChart } from "@/components/charts";
 import { SERIES } from "@/lib/chart-colors";
@@ -18,12 +30,32 @@ function Stat({ label, value, sub, tone }: { label: string; value: string; sub?:
   );
 }
 
+/** "12 min", "3 h", "2 days" since a time. */
+function waitedFor(since: Date): string {
+  const min = Math.max(0, Math.round((Date.now() - since.getTime()) / 60_000));
+  if (min < 60) return `${min} min`;
+  const h = Math.round(min / 60);
+  if (h < 48) return `${h} h`;
+  return `${Math.round(h / 24)} days`;
+}
+
+const CHANNEL_LABELS = { walk_in: "Shop counter", online: "Online" } as const;
+
+function QueueTile({ href, label, n, urgent }: { href: string; label: string; n: number; urgent?: boolean }) {
+  return (
+    <Link href={href} className={`card block p-3 hover:border-brand-500 ${urgent && n > 0 ? "border-amber-400 bg-amber-50" : ""}`}>
+      <p className="text-xs font-medium text-muted">{label}</p>
+      <p className={`mt-0.5 text-xl font-bold tabular-nums ${urgent && n > 0 ? "text-amber-800" : ""}`}>{n}</p>
+    </Link>
+  );
+}
+
 export default async function Dashboard({ searchParams }: PageProps<"/admin">) {
   const user = await requireUser("boss", "helper");
   const sp = await searchParams;
   const { range, preset, bucket } = resolveRange(sp);
 
-  const [s, series, products, sizes, expenses, methods, stock] = await Promise.all([
+  const [s, series, products, sizes, expenses, methods, stock, queue, channels, areas, ratings] = await Promise.all([
     summary(range),
     salesSeries(range, bucket),
     topProducts(range),
@@ -31,6 +63,10 @@ export default async function Dashboard({ searchParams }: PageProps<"/admin">) {
     expensesByCategory(range),
     paymentSplit(range),
     stockLevels(),
+    orderQueue(),
+    channelSplit(range),
+    ordersByArea(range),
+    productRatings(),
   ]);
   const trend = series.map((p) => ({ ...p, label: bucketLabel(p.bucket, bucket) }));
   const low = stock.filter((v) => v.isActive && v.onHand <= v.lowStockAt);
@@ -52,6 +88,20 @@ export default async function Dashboard({ searchParams }: PageProps<"/admin">) {
           ⚠️ {noPrices} product size(s) have no price yet, so they can&apos;t be sold. Tap to set prices →
         </Link>
       )}
+
+      <section aria-labelledby="queue" className="space-y-2">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 id="queue" className="font-semibold">
+            Online orders right now
+          </h2>
+          {queue.oldestWaiting && <p className="text-sm text-amber-800">Oldest has waited {waitedFor(queue.oldestWaiting)}</p>}
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          <QueueTile href="/admin/orders" label="Check M-Pesa code" n={queue.checkPay} urgent />
+          <QueueTile href="/admin/orders" label="Need a rider" n={queue.needRider} urgent />
+          <QueueTile href="/admin/orders" label="On the road" n={queue.onRoad} />
+        </div>
+      </section>
 
       {/* Filters: one row above the charts */}
       <div className="flex flex-wrap items-center gap-2">
@@ -115,6 +165,19 @@ export default async function Dashboard({ searchParams }: PageProps<"/admin">) {
         </ChartCard>
         <ChartCard title="How customers paid">
           <RankBars data={methods.map((m) => ({ name: METHOD_LABELS[m.method], value: m.total }))} valueLabel="Sales" />
+        </ChartCard>
+        <ChartCard title="Shop counter vs online">
+          <RankBars data={channels.map((c) => ({ name: CHANNEL_LABELS[c.channel], value: c.revenue }))} valueLabel="Sales (no delivery fees)" />
+        </ChartCard>
+        <ChartCard title="Online orders by area">
+          <RankBars data={areas.map((a) => ({ name: a.area, value: a.orders }))} valueLabel="Orders" format="count" />
+        </ChartCard>
+        <ChartCard title="Customer ratings (out of 5, all time)">
+          <RankBars
+            data={ratings.map((r) => ({ name: `${r.name.replace(/^JonWin\s+/, "")} (${r.count})`, value: Math.round(r.avg * 10) / 10 }))}
+            valueLabel="Average stars"
+            format="count"
+          />
         </ChartCard>
       </div>
     </div>

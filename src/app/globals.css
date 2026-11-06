@@ -11,6 +11,12 @@
   --color-muted: #5b6b66;
   --color-line: #dfe7e4;
   --color-surface: #f6f8f7;
+  /* Shop (buyer side): orange ground, blue-black ink, white paper. */
+  --color-jw-ground: #ff7a1f;
+  --color-jw-raise: #ff8633;
+  --color-jw-ink: #050f16;
+  --color-jw-soft: #5a2306;
+  --color-jw-paper: #ffffff;
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
@@ -63,3 +69,174 @@ body {
   }
 }
 
+
+/* ---------- Shop ---------- */
+.shop {
+  --step-small: clamp(0.8125rem, 0.79rem + 0.1vw, 0.875rem);
+  --step-body: clamp(1.125rem, 1.07rem + 0.2vw, 1.25rem);
+  --step-lead: clamp(1.25rem, 1.1rem + 0.7vw, 1.625rem);
+  --step-head: clamp(2rem, 1.3rem + 3.2vw, 4rem);
+  --step-display: clamp(2.25rem, 1.5rem + 3.6vw, 4.25rem);
+  background: var(--color-jw-ground);
+  color: var(--color-jw-ink);
+  font-family: var(--font-literata), Georgia, "Times New Roman", serif;
+  font-size: var(--step-body);
+  line-height: 1.6;
+  font-optical-sizing: auto;
+}
+.shop h1,
+.shop h2,
+.shop h3 {
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  text-wrap: balance;
+}
+.shop ::selection {
+  background: var(--color-jw-ink);
+  color: var(--color-jw-ground);
+}
+.shop :focus-visible {
+  outline: 3px solid var(--color-jw-ink);
+  outline-offset: 3px;
+}
+
+@layer components {
+  /* One button shape for the whole shop: a square block of ink with orange text. */
+  .jw-btn {
+    @apply inline-flex min-h-13 items-center justify-center gap-2 bg-jw-ink px-6 py-3 text-[length:var(--step-body)] font-medium text-jw-ground transition-transform duration-150 ease-out select-none hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .jw-btn-quiet {
+    @apply inline-flex min-h-13 items-center justify-center gap-2 bg-jw-paper px-6 py-3 text-[length:var(--step-body)] font-medium text-jw-ink transition-transform duration-150 ease-out select-none hover:-translate-y-0.5 active:scale-[0.98];
+  }
+  .jw-press {
+    @apply transition-transform duration-150 select-none active:scale-90;
+  }
+  .jw-link {
+    @apply underline decoration-2 underline-offset-4 transition-colors hover:decoration-jw-ground;
+  }
+  /* Form fields keep their own conventions: a field is a white box with a visible edge. */
+  .jw-input {
+    @apply block w-full border-2 border-jw-ink/80 bg-jw-paper px-3 py-3 text-base text-jw-ink outline-none placeholder:text-jw-soft/70 focus:border-jw-ink focus:outline-3 focus:outline-offset-2 focus:outline-jw-ink;
+  }
+  .jw-label {
+    @apply mb-1.5 block font-medium;
+  }
+}
+
+/* A printed sheet with scalloped top and bottom edges. */
+.jw-sheet {
+  position: relative;
+  background: var(--color-jw-paper);
+}
+.jw-sheet::before,
+.jw-sheet::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 10px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='10'%3E%3Ccircle cx='10' cy='10' r='10' fill='%23fff'/%3E%3C/svg%3E") 0 0 / 20px 10px repeat-x;
+}
+.jw-sheet::before {
+  top: -10px;
+}
+.jw-sheet::after {
+  bottom: -10px;
+  transform: rotate(180deg);
+}
+
+/* A receipt slip with a zigzag bottom edge. */
+.jw-slip {
+  background: var(--color-jw-paper);
+  clip-path: polygon(
+    0 0, 100% 0, 100% calc(100% - 12px),
+    95% 100%, 90% calc(100% - 12px), 85% 100%, 80% calc(100% - 12px), 75% 100%, 70% calc(100% - 12px),
+    65% 100%, 60% calc(100% - 12px), 55% 100%, 50% calc(100% - 12px), 45% 100%, 40% calc(100% - 12px),
+    35% 100%, 30% calc(100% - 12px), 25% 100%, 20% calc(100% - 12px), 15% 100%, 10% calc(100% - 12px),
+    5% 100%, 0 calc(100% - 12px)
+  );
+  padding-bottom: 40px;
+}
+.jw-dots {
+  flex: 1;
+  min-width: 1.5rem;
+  align-self: center;
+  height: 4px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='4'%3E%3Ccircle cx='2' cy='2' r='2' fill='%23050f16'/%3E%3C/svg%3E") 0 0 / 8px 4px repeat-x;
+  opacity: 0.55;
+}
+
+/* Entrances: parts of a section rise in, one after another. Content stays visible without script. */
+.jw-js [data-reveal] > * {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 0.6s cubic-bezier(0.2, 0.7, 0.2, 1),
+    transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.jw-js [data-reveal].is-in > * {
+  opacity: 1;
+  transform: none;
+}
+.jw-js [data-reveal].is-in > *:nth-child(2) { transition-delay: 0.08s; }
+.jw-js [data-reveal].is-in > *:nth-child(3) { transition-delay: 0.16s; }
+.jw-js [data-reveal].is-in > *:nth-child(4) { transition-delay: 0.24s; }
+.jw-js [data-reveal].is-in > *:nth-child(n + 5) { transition-delay: 0.3s; }
+
+/* The stage photograph: slow drift, and a crossfade when its section changes. */
+.jw-stage img {
+  transition: opacity 1.6s ease;
+}
+.jw-stage img[data-on="false"] {
+  opacity: 0;
+}
+.jw-stage img[data-on="true"] {
+  opacity: 1;
+  animation: jw-drift 24s ease-in-out infinite alternate;
+}
+@keyframes jw-drift {
+  from { transform: scale(1.02); }
+  to { transform: scale(1.09) translateY(-1.5%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jw-js [data-reveal] > * {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .jw-stage img {
+    transition: none;
+    animation: none !important;
+  }
+  .jw-btn,
+  .jw-btn-quiet,
+  .jw-press {
+    transition: none;
+  }
+}
+
+/* Shared form pieces (login, password pages) take the shop look inside the shop. */
+.shop .label {
+  @apply mb-1.5 block text-base font-medium text-jw-ink;
+}
+.shop .input {
+  @apply rounded-none border-2 border-jw-ink/80 bg-jw-paper py-3 text-jw-ink placeholder:text-jw-soft/70 focus:border-jw-ink focus:ring-0 focus:outline-3 focus:outline-offset-2 focus:outline-jw-ink;
+}
+.shop .btn-primary {
+  @apply min-h-13 rounded-none bg-jw-ink font-medium text-jw-ground hover:bg-jw-ink active:bg-jw-ink;
+}
+.shop .btn-secondary {
+  @apply min-h-13 rounded-none border-2 border-jw-ink bg-jw-paper font-medium text-jw-ink;
+}
+.shop [role="alert"].bg-red-50,
+.shop [role="status"].bg-brand-50 {
+  @apply rounded-none bg-jw-ink text-base text-jw-paper;
+}
+.shop .text-brand-700 {
+  @apply text-jw-ink;
+}
+.shop .text-muted {
+  @apply text-jw-soft;
+}

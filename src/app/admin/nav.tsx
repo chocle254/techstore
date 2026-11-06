@@ -10,7 +10,7 @@ function isActive(pathname: string, href: string) {
   return href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
 }
 
-export function AdminNav({ items, userName, logout }: { items: NavItem[]; userName: string; logout: React.ReactNode }) {
+export function AdminNav({ home, items, userName, logout }: { home: string; items: NavItem[]; userName: string; logout: React.ReactNode }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const primary = items.filter((i) => i.primary).slice(0, 4);
@@ -19,7 +19,7 @@ export function AdminNav({ items, userName, logout }: { items: NavItem[]; userNa
     <>
       {/* Desktop / tablet sidebar */}
       <aside className="sticky top-0 hidden h-dvh w-56 shrink-0 flex-col border-r border-line bg-white p-3 md:flex">
-        <Link href="/admin" className="px-2 py-3 text-lg font-bold text-brand-700">
+        <Link href={home} className="px-2 py-3 text-lg font-bold text-brand-700">
           JonWin <span className="text-ink">Admin</span>
         </Link>
         <nav className="mt-2 flex-1 space-y-0.5 overflow-y-auto">

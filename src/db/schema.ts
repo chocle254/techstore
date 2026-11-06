@@ -48,6 +48,8 @@ export const users = pgTable(
     locationLabel: text("location_label"),
     locationLat: text("location_lat"),
     locationLng: text("location_lng"),
+    // Saved delivery area for the shop checkout.
+    areaId: uuid("area_id"),
     notes: text("notes"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -218,3 +220,70 @@ export const passwordResets = pgTable("password_resets", {
   usedAt: timestamp("used_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// ---------- Shop ----------
+
+export const orderStatusEnum = pgEnum("order_status", ["pending", "paid", "assigned", "out_for_delivery", "delivered", "cancelled"]);
+export const orderPayEnum = pgEnum("order_pay", ["mpesa", "cod"]);
+
+// Places we deliver to, each with its own delivery fee.
+export const deliveryAreas = pgTable("delivery_areas", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull().unique(),
+  fee: integer("fee").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// The delivery side of an online sale. The sale itself (money, items, stock) stays append-only;
+// this row carries what changes: status, rider, the customer's M-Pesa code.
+export const orders = pgTable(
+  "orders",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    saleId: uuid("sale_id")
+      .notNull()
+      .unique()
+      .references(() => sales.id),
+    customerId: uuid("customer_id")
+      .notNull()
+      .references(() => users.id),
+    status: orderStatusEnum("status").notNull().default("pending"),
+    payMethod: orderPayEnum("pay_method").notNull(),
+    // M-Pesa confirmation code typed in by the customer; staff check it before marking paid.
+    payRef: text("pay_ref"),
+    areaId: uuid("area_id").references(() => deliveryAreas.id),
+    areaName: text("area_name").notNull(),
+    deliveryFee: integer("delivery_fee").notNull().default(0),
+    address: text("address").notNull(),
+    lat: text("lat"),
+    lng: text("lng"),
+    contactName: text("contact_name").notNull(),
+    contactPhone: text("contact_phone").notNull(),
+    riderId: uuid("rider_id").references(() => users.id),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("orders_customer_idx").on(t.customerId), index("orders_status_idx").on(t.status)],
+);
+
+// A customer's 1–5 rating of one product from one delivered order.
+export const ratings = pgTable(
+  "ratings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => orders.id),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id),
+    customerId: uuid("customer_id")
+      .notNull()
+      .references(() => users.id),
+    stars: integer("stars").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("ratings_order_product_idx").on(t.orderId, t.productId), index("ratings_product_idx").on(t.productId)],
+);
