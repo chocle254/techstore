@@ -1,4 +1,4 @@
-import { Logo } from "@/components/shop/chrome";
+import { Logo } from "@/components/shop/logo";
 
 /** Log in, sign up and password pages, in the shop's look. */
 export function AuthShell({ title, children, aside }: { title: string; children: React.ReactNode; aside?: React.ReactNode }) {
