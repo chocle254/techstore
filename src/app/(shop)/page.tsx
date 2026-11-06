@@ -5,8 +5,7 @@ import { toGridItems } from "@/lib/shop-grid";
 import { ksh } from "@/lib/format";
 import { ShopFooter, ShopHeader } from "@/components/shop/chrome";
 import { ProductGrid } from "@/components/shop/product-grid";
-import { CardBottle, ProductPic, short, tileFor } from "@/components/shop/tiles";
-import { BottleGroup, liquidFor } from "@/components/shop/bottle";
+import { ProductPic, short, tileFor } from "@/components/shop/tiles";
 import { Icon, type IconName } from "@/components/shop/icons";
 
 // Prices and areas change in the admin, so this page is built per visit.
@@ -91,8 +90,14 @@ export default async function ShopHome({ searchParams }: PageProps<"/">) {
                     </div>
                   </div>
                   <div className="relative hidden h-64 md:block">
-                    <div className="absolute inset-x-4 bottom-0 h-56">
-                      <BottleGroup sizes={[500, 5000, 20000]} liquid={liquidFor("liquid-soap")} title="A 500ml bottle, a 5 litre jug and a 20 litre jerrycan of liquid soap" />
+                    {/* Two product shots stacked like photos on a table */}
+                    <div className="absolute right-24 bottom-2 h-48 w-48 rotate-[-7deg] overflow-hidden rounded-3xl border-4 border-white/70 shadow-2xl">
+                      {/* eslint-disable-next-line @next/next/no-img-element -- small static product shot */}
+                      <img src="/shop/products/bleach.webp" alt="" className="h-full w-full object-cover" />
+                    </div>
+                    <div className="absolute right-0 bottom-0 h-56 w-56 rotate-[5deg] overflow-hidden rounded-3xl border-4 border-white shadow-2xl">
+                      {/* eslint-disable-next-line @next/next/no-img-element -- small static product shot */}
+                      <img src="/shop/products/liquid-soap.webp" alt="JonWin liquid soap in a 500ml bottle, a 5 litre jug and a 20 litre jerrycan" className="h-full w-full object-cover" />
                     </div>
                     {from > 0 && (
                       <p className="absolute top-0 right-0 rounded-2xl border border-white/40 bg-white/25 px-4 py-2 text-sm backdrop-blur-md">
@@ -113,7 +118,8 @@ export default async function ShopHome({ searchParams }: PageProps<"/">) {
                     <p className="mt-1 text-xs text-jw-soft sm:text-sm">on 10 and 20 litre jerrycans</p>
                   </div>
                   <div className="mt-2 flex justify-end">
-                    <CardBottle slug="bleach" sizeMl={20000} height={80} />
+                    {/* eslint-disable-next-line @next/next/no-img-element -- small static product shot */}
+                    <img src="/shop/products/bleach.webp" alt="" className="h-20 w-20 rounded-2xl object-cover shadow-md sm:h-24 sm:w-24" />
                   </div>
                 </a>
                 <Link href="/checkout" className="jw-clay jw-clay-hover relative flex flex-col justify-between overflow-hidden p-4 sm:p-5" style={{ background: "linear-gradient(160deg, #e2f6e9, #c3ebd2)" }}>

@@ -14,6 +14,14 @@ export type CatalogProduct = {
   sizes: CatalogSize[];
 };
 
+// Built-in pictures used until the boss uploads a real photo in admin.
+const DEFAULT_PHOTOS: Record<string, string> = {
+  "liquid-soap": "/shop/products/liquid-soap.webp",
+  bleach: "/shop/products/bleach.webp",
+  antiseptic: "/shop/products/antiseptic.webp",
+  disinfectant: "/shop/products/disinfectant.webp",
+};
+
 /** Products and sizes a customer can see. Sizes with no price yet are listed with price 0 and can't be bought. */
 export async function getCatalog(): Promise<CatalogProduct[]> {
   const db = await getDb();
@@ -38,7 +46,7 @@ export async function getCatalog(): Promise<CatalogProduct[]> {
   for (const r of rows) {
     let p = map.get(r.id);
     if (!p) {
-      p = { id: r.id, slug: r.slug, name: r.name, description: r.description, imageUrl: r.imageUrl, sizes: [] };
+      p = { id: r.id, slug: r.slug, name: r.name, description: r.description, imageUrl: r.imageUrl ?? DEFAULT_PHOTOS[r.slug] ?? null, sizes: [] };
       map.set(r.id, p);
     }
     p.sizes.push({ variantId: r.variantId, sizeMl: r.sizeMl, price: r.price });
