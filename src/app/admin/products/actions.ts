@@ -1,6 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
+import { SHOP_TAG } from "@/lib/shop";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb, schema } from "@/db";
@@ -32,6 +33,7 @@ export async function updateVariantAction(_: FormState, form: FormData): Promise
     to: { price, cost, lowStockAt, isActive: isActive === "on" },
   });
   revalidatePath("/admin", "layout");
+  updateTag(SHOP_TAG);
   return { ok: "Saved." };
 }
 
@@ -68,6 +70,7 @@ export async function saveProductAction(_: FormState, form: FormData): Promise<F
     await audit(user.id, "product_created", "product", row.id, values);
   }
   revalidatePath("/admin", "layout");
+  updateTag(SHOP_TAG);
   return { ok: "Saved." };
 }
 
@@ -82,6 +85,7 @@ export async function addSizeAction(_: FormState, form: FormData): Promise<FormS
   if (!row) return { error: "That size already exists." };
   await audit(user.id, "size_added", "variant", row.id, parsed.data);
   revalidatePath("/admin", "layout");
+  updateTag(SHOP_TAG);
   return { ok: "Size added. Set its price." };
 }
 
@@ -99,5 +103,6 @@ export async function saveProductPhotoAction(_: FormState, form: FormData): Prom
   await db.update(products).set({ imageUrl: remove ? null : photo }).where(eq(products.id, productId));
   await audit(user.id, remove ? "product_photo_removed" : "product_photo_set", "product", productId, {});
   revalidatePath("/", "layout");
+  updateTag(SHOP_TAG);
   return { ok: remove ? "Photo removed." : "Photo saved. It's on the shop now." };
 }

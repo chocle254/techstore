@@ -77,6 +77,8 @@ body {
 /* ---------- Shop (buyer side) ----------
    Warm light page, white "clay" cards with soft depth, a frosted header and bottom bar, orange for action. */
 .shop {
+  /* Nothing may make the page wider than the phone (clip keeps the sticky header working). */
+  overflow-x: clip;
   --step-small: 0.8125rem;
   --step-body: 0.9375rem;
   --step-lead: clamp(1.0625rem, 1rem + 0.3vw, 1.25rem);
@@ -181,6 +183,13 @@ body {
 }
 
 /* The small "added to cart" note slides up from the bottom. */
+@keyframes jw-fade {
+  from { opacity: 0.4; }
+  to { opacity: 1; }
+}
+.jw-fade {
+  animation: jw-fade 0.25s ease-out;
+}
 @keyframes jw-rise {
   from { opacity: 0; transform: translateY(16px) scale(0.98); }
   to { opacity: 1; transform: none; }
@@ -214,6 +223,7 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .jw-rise,
+  .jw-fade,
   .jw-pop {
     animation: none;
   }

@@ -1,6 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
+import { SHOP_TAG } from "@/lib/shop";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb, schema } from "@/db";
@@ -37,6 +38,7 @@ export async function saveAreaAction(_: FormState, form: FormData): Promise<Form
     return { error: "There is already an area with that name." };
   }
   revalidatePath("/admin/areas");
+  updateTag(SHOP_TAG);
   revalidatePath("/");
   return { ok: "Saved." };
 }

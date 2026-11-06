@@ -1,5 +1,7 @@
 import "server-only";
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { getDb, schema } from "@/db";
 
 const { products, variants, deliveryAreas, orders, sales, saleItems, payments, ratings } = schema;
@@ -14,16 +16,8 @@ export type CatalogProduct = {
   sizes: CatalogSize[];
 };
 
-// Built-in pictures used until the boss uploads a real photo in admin.
-const DEFAULT_PHOTOS: Record<string, string> = {
-  "liquid-soap": "/shop/products/liquid-soap.webp",
-  bleach: "/shop/products/bleach.webp",
-  antiseptic: "/shop/products/antiseptic.webp",
-  disinfectant: "/shop/products/disinfectant.webp",
-};
-
 /** Products and sizes a customer can see. Sizes with no price yet are listed with price 0 and can't be bought. */
-export async function getCatalog(): Promise<CatalogProduct[]> {
+async function loadCatalog(): Promise<CatalogProduct[]> {
   const db = await getDb();
   const rows = await db
     .select({
@@ -46,7 +40,7 @@ export async function getCatalog(): Promise<CatalogProduct[]> {
   for (const r of rows) {
     let p = map.get(r.id);
     if (!p) {
-      p = { id: r.id, slug: r.slug, name: r.name, description: r.description, imageUrl: r.imageUrl ?? DEFAULT_PHOTOS[r.slug] ?? null, sizes: [] };
+      p = { id: r.id, slug: r.slug, name: r.name, description: r.description, imageUrl: r.imageUrl, sizes: [] };
       map.set(r.id, p);
     }
     p.sizes.push({ variantId: r.variantId, sizeMl: r.sizeMl, price: r.price });
@@ -61,7 +55,7 @@ export async function getProduct(slug: string): Promise<CatalogProduct | null> {
 export type RatingSummary = Record<string, { avg: number; count: number }>;
 
 /** Average stars per product id, from customer ratings. */
-export async function getRatingSummary(): Promise<RatingSummary> {
+async function loadRatingSummary(): Promise<RatingSummary> {
   const db = await getDb();
   const rows = await db
     .select({
@@ -76,7 +70,7 @@ export async function getRatingSummary(): Promise<RatingSummary> {
 
 export type Area = { id: string; name: string; fee: number };
 
-export async function getAreas(): Promise<Area[]> {
+async function loadAreas(): Promise<Area[]> {
   const db = await getDb();
   return db
     .select({ id: deliveryAreas.id, name: deliveryAreas.name, fee: deliveryAreas.fee })
@@ -84,6 +78,16 @@ export async function getAreas(): Promise<Area[]> {
     .where(eq(deliveryAreas.isActive, true))
     .orderBy(asc(deliveryAreas.fee), asc(deliveryAreas.name));
 }
+
+// Shop pages read these on every visit, so they're shared between visitors for up to a minute.
+// Admin changes to products, prices, photos or delivery areas clear them at once (updateTag(SHOP_TAG)).
+// Checkout never trusts these: it reads prices and fees fresh from the database.
+export const SHOP_TAG = "shop";
+const shared = <T,>(fn: () => Promise<T>, key: string, seconds: number) =>
+  cache(unstable_cache(fn, [key], { tags: [SHOP_TAG], revalidate: seconds }));
+export const getCatalog = shared(loadCatalog, "catalog", 60);
+export const getAreas = shared(loadAreas, "areas", 60);
+export const getRatingSummary = shared(loadRatingSummary, "ratings", 300);
 
 export type OrderLine = { productId: string; name: string; sizeMl: number; qty: number; unitPrice: number };
 export type OrderView = {

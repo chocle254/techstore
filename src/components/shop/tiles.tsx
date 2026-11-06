@@ -23,6 +23,14 @@ export function nick(name: string) {
 }
 export const short = (name: string) => nick(name).replace(/^JonWin\s+/, "");
 
+// Built-in studio shots, used until the boss uploads a real photo. One close-up per size, plus a group shot.
+const PHOTO_SLUGS = new Set(["liquid-soap", "bleach", "antiseptic", "disinfectant"]);
+const PHOTO_SIZES = new Set([250, 500, 750, 1000, 1500, 2000, 3000, 4000, 5000, 10000, 20000]);
+export function photoFor(slug: string, sizeMl?: number): string | null {
+  if (!PHOTO_SLUGS.has(slug)) return null;
+  return sizeMl && PHOTO_SIZES.has(sizeMl) ? `/shop/products/${slug}-${sizeMl}.webp` : `/shop/products/${slug}.webp`;
+}
+
 /** A bottle drawn to fill a card, whatever its real size. */
 export function CardBottle({ slug, sizeMl, height }: { slug: string; sizeMl: number; height: number }) {
   return <Bottle sizeMl={sizeMl} liquid={liquidFor(slug)} fullHeight={height / scaleOf(sizeMl)} />;

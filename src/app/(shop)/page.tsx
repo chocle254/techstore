@@ -5,7 +5,7 @@ import { toGridItems } from "@/lib/shop-grid";
 import { ksh } from "@/lib/format";
 import { ShopFooter, ShopHeader } from "@/components/shop/chrome";
 import { ProductGrid } from "@/components/shop/product-grid";
-import { ProductPic, short, tileFor } from "@/components/shop/tiles";
+import { photoFor, ProductPic, short, tileFor } from "@/components/shop/tiles";
 import { Icon, type IconName } from "@/components/shop/icons";
 
 // Prices and areas change in the admin, so this page is built per visit.
@@ -166,7 +166,7 @@ export default async function ShopHome({ searchParams }: PageProps<"/">) {
                         <Link href={`/p/${p.slug}`} className="jw-clay jw-clay-hover group flex h-full flex-col items-center p-3 text-center">
                           <span className="relative flex h-32 w-full items-end justify-center overflow-hidden rounded-2xl pb-3" style={{ background: tileFor(p.slug) }}>
                             <span className="transition-transform duration-300 group-hover:-translate-y-1">
-                              <ProductPic slug={p.slug} sizeMl={1000} height={96} image={p.imageUrl} />
+                              <ProductPic slug={p.slug} sizeMl={1000} height={96} image={p.imageUrl ?? photoFor(p.slug)} />
                             </span>
                           </span>
                           <span className="mt-3 text-sm font-bold">{short(p.name)}</span>

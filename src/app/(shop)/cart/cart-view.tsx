@@ -5,7 +5,7 @@ import { useEffect, useSyncExternalStore } from "react";
 import { cart, cartCount, cartTotal, useCart } from "@/lib/cart";
 import { ksh, sizeLabel } from "@/lib/format";
 import { QtyStepper } from "@/components/shop/product-grid";
-import { ProductPic, short, tileFor } from "@/components/shop/tiles";
+import { photoFor, ProductPic, short, tileFor } from "@/components/shop/tiles";
 import { Icon } from "@/components/shop/icons";
 
 const noop = () => () => {};
@@ -65,7 +65,7 @@ export function CartView({
                 aria-hidden
                 tabIndex={-1}
               >
-                <ProductPic slug={l.slug} sizeMl={l.sizeMl} height={l.sizeMl >= 10000 ? 68 : 76} image={images[l.slug]} />
+                <ProductPic slug={l.slug} sizeMl={l.sizeMl} height={l.sizeMl >= 10000 ? 68 : 76} image={images[l.slug] ?? photoFor(l.slug, l.sizeMl)} />
               </Link>
               <div className="flex min-w-0 flex-1 flex-col">
                 <div className="flex items-start justify-between gap-3">

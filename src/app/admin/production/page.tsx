@@ -45,15 +45,20 @@ export default async function ProductionPage() {
       .map((s) => ({
         ...s,
         waiting: waiting.get(s.variantId) ?? 0,
-        // Enough to cover orders that are short, and get back up to the alert level.
+        // We make to order: first the bottles customers ordered that we don't have yet,
+        forOrders: Math.max(0, -s.onHand),
+        // then, optionally, enough to get back up to the alert level.
         fill: Math.max(0, s.lowStockAt - s.onHand),
       }));
     const fillMl = sizes.reduce((t, s) => t + s.fill * s.sizeMl, 0);
+    const ordersMl = sizes.reduce((t, s) => t + s.forOrders * s.sizeMl, 0);
     const size = batchSize.get(productId) ?? 0;
-    return { productId, name: sizes[0].product, sizes, fillMl, batchSizeMl: size, batches: size > 0 ? Math.ceil(fillMl / size) : 0 };
+    const batchesFor = (ml: number) => (size > 0 ? Math.ceil(ml / size) : 0);
+    return { productId, name: sizes[0].product, sizes, fillMl, ordersMl, batchSizeMl: size, batches: batchesFor(fillMl), orderBatches: batchesFor(ordersMl) };
   });
   const shortages = plan.flatMap((p) => p.sizes.filter((s) => s.onHand < 0).map((s) => `${short(p.name)} ${sizeLabel(s.sizeMl)} (${-s.onHand})`));
-  const todo = plan.filter((p) => p.fillMl > 0).sort((a, b) => b.fillMl - a.fillMl);
+  const todo = plan.filter((p) => p.fillMl > 0).sort((a, b) => b.ordersMl - a.ordersMl || b.fillMl - a.fillMl);
+  const ordersTotalMl = plan.reduce((t, p) => t + p.ordersMl, 0);
 
   const formProducts: BatchProduct[] = [...todo, ...plan.filter((p) => p.fillMl === 0)].map((p) => ({
     id: p.productId,
@@ -75,16 +80,31 @@ export default async function ProductionPage() {
       <div className="grid gap-4 md:grid-cols-[1fr_20rem]">
         <section className="space-y-3" aria-labelledby="plan-title">
           <h2 id="plan-title" className="font-semibold">
-            What to fill
+            What to make
           </h2>
+          <p className="text-sm text-muted">
+            Customers order first and we make what they ordered.{" "}
+            {ordersTotalMl > 0 ? (
+              <b className="text-ink">Open orders need {(ordersTotalMl / 1000).toLocaleString("en-KE")} L in total.</b>
+            ) : (
+              "No open orders are waiting to be made."
+            )}
+          </p>
           {todo.length === 0 && <p className="card text-muted">Every size is above its alert level. Nothing urgent to fill.</p>}
           {todo.map((p) => (
             <article key={p.productId} className="card space-y-2">
               <header className="flex flex-wrap items-baseline justify-between gap-2">
                 <h3 className="font-semibold">{short(p.name)}</h3>
                 <span className="text-sm text-muted">
-                  {(p.fillMl / 1000).toLocaleString("en-KE")} L
-                  {p.batches > 0 && ` · about ${p.batches} batch${p.batches === 1 ? "" : "es"} of ${p.batchSizeMl / 1000} L`}
+                  {p.ordersMl > 0 ? (
+                    <b className="text-red-700">
+                      {(p.ordersMl / 1000).toLocaleString("en-KE")} L for orders
+                      {p.orderBatches > 0 && ` · ${p.orderBatches} batch${p.orderBatches === 1 ? "" : "es"} of ${p.batchSizeMl / 1000} L`}
+                    </b>
+                  ) : (
+                    "Orders covered"
+                  )}
+                  {p.fillMl > p.ordersMl && ` · +${((p.fillMl - p.ordersMl) / 1000).toLocaleString("en-KE")} L to restock the shelf`}
                 </span>
               </header>
               <table className="table">
@@ -93,7 +113,8 @@ export default async function ProductionPage() {
                     <th>Size</th>
                     <th className="text-right">Free in stock</th>
                     <th className="text-right">Packed for orders</th>
-                    <th className="text-right">Fill</th>
+                    <th className="text-right">Make for orders</th>
+                    <th className="text-right">Fill (with shelf)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -104,6 +125,7 @@ export default async function ProductionPage() {
                         {s.onHand}
                       </td>
                       <td className="text-right tabular-nums">{s.waiting || "—"}</td>
+                      <td className="text-right font-semibold text-red-700 tabular-nums">{s.forOrders || "—"}</td>
                       <td className="text-right font-semibold tabular-nums">{s.fill || "—"}</td>
                     </tr>
                   ))}
@@ -112,8 +134,9 @@ export default async function ProductionPage() {
             </article>
           ))}
           <p className="text-xs text-muted">
-            &quot;Free in stock&quot; already has bottles for open orders taken off. A minus number means orders are waiting for that size. &quot;Fill&quot;
-            brings each size back up to its alert level.
+            &quot;Free in stock&quot; already has bottles for open orders taken off. A minus number means orders are waiting for that size. &quot;Make for
+            orders&quot; is only what customers ordered. &quot;Fill&quot; also brings each size back up to its alert level; set an alert level of 0 to make
+            strictly to order.
           </p>
         </section>
 

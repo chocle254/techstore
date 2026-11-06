@@ -1,5 +1,6 @@
 import type { CatalogProduct, RatingSummary } from "./shop";
 import type { GridItem } from "@/components/shop/product-grid";
+import { photoFor } from "@/components/shop/tiles";
 
 /** One card per product size, with the per-litre saving against that product's smallest priced size. */
 export function toGridItems(catalog: CatalogProduct[], ratings: RatingSummary): GridItem[] {
@@ -13,7 +14,7 @@ export function toGridItems(catalog: CatalogProduct[], ratings: RatingSummary): 
       slug: p.slug,
       name: p.name,
       description: p.description,
-      image: p.imageUrl,
+      image: p.imageUrl ?? photoFor(p.slug, s.sizeMl),
       variantId: s.variantId,
       sizeMl: s.sizeMl,
       price: s.price,

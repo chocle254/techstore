@@ -37,7 +37,8 @@ export function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     {
-      source: "/((?!api|_next/static|_next/image|favicon.ico|icon|manifest.webmanifest|robots.txt).*)",
+      // Pages only. Pictures and other files (anything with an extension, and /shop/) skip this, so they come straight from the CDN.
+      source: "/((?!api|_next/static|_next/image|shop/|favicon.ico|icon|manifest.webmanifest|robots.txt|.*\\.(?:webp|jpg|jpeg|png|svg|ico|gif|woff2?|txt)$).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },

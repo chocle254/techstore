@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { cart, useCart } from "@/lib/cart";
 import { ksh, sizeLabel } from "@/lib/format";
-import { CardBottle, nick, tileFor } from "./tiles";
+import { CardBottle, nick, photoFor, tileFor } from "./tiles";
 import { Icon, Stars } from "./icons";
 
 type Size = { variantId: string; sizeMl: number; price: number };
@@ -38,18 +38,19 @@ export function ProductBuy({
 
   const inCart = lines.find((l) => l.variantId === current.variantId)?.qty ?? 0;
   const saving = smallest && current.price > 0 ? 1 - current.price / current.sizeMl / (smallest.price / smallest.sizeMl) : 0;
+  const picture = product.image ?? photoFor(product.slug, ml);
   const line = { variantId: current.variantId, productId: product.id, slug: product.slug, name: product.name, sizeMl: ml, price: current.price };
 
   return (
     <div className="grid gap-4 md:grid-cols-[1.1fr_1fr] md:gap-6">
       {/* Picture */}
-      <div className="md:sticky md:top-36 md:self-start">
+      <div className="min-w-0 md:sticky md:top-36 md:self-start">
         <div className="jw-clay p-3">
           <div className="relative flex aspect-square items-end justify-center overflow-hidden rounded-[1.25rem] pb-10" style={{ background: tileFor(product.slug) }}>
             <div className="absolute -top-20 -left-20 h-64 w-64 rounded-full bg-white/40 blur-3xl" aria-hidden />
-            {product.image ? (
-              // eslint-disable-next-line @next/next/no-img-element -- already resized on upload
-              <img src={product.image} alt={nick(product.name)} className="absolute inset-0 h-full w-full object-cover" />
+            {picture ? (
+              // eslint-disable-next-line @next/next/no-img-element -- already sized for the web
+              <img key={picture} src={picture} alt={`${nick(product.name)}, ${sizeLabel(ml)}`} className="jw-fade absolute inset-0 h-full w-full object-cover" />
             ) : (
               <div key={ml} className="jw-rise relative">
                 <CardBottle slug={product.slug} sizeMl={ml} height={ml >= 10000 ? 250 : 270} />
@@ -58,25 +59,11 @@ export function ProductBuy({
             <span className="absolute top-3 right-3 rounded-full bg-white/80 px-3 py-1 text-sm font-bold tabular-nums backdrop-blur">{sizeLabel(ml)}</span>
             {saving >= 0.05 && <span className="jw-badge absolute top-3 left-3 bg-jw-ground px-2.5 py-1 text-white">Save {Math.round(saving * 100)}% a litre</span>}
           </div>
-          <div className="jw-scroll-x mt-3 flex gap-2 overflow-x-auto" aria-hidden>
-            {sizes.map((s) => (
-              <button
-                key={s.variantId}
-                type="button"
-                tabIndex={-1}
-                onClick={() => setMl(s.sizeMl)}
-                className={`flex h-16 w-16 shrink-0 items-end justify-center rounded-xl pb-1.5 ring-2 transition ${s.sizeMl === ml ? "ring-jw-ground" : "ring-transparent opacity-70 hover:opacity-100"}`}
-                style={{ background: tileFor(product.slug) }}
-              >
-                <CardBottle slug={product.slug} sizeMl={s.sizeMl} height={44} />
-              </button>
-            ))}
-          </div>
         </div>
       </div>
 
       {/* Buy box */}
-      <div className="jw-clay p-5 sm:p-7">
+      <div className="jw-clay min-w-0 p-5 sm:p-7">
         <h1 className="text-[length:var(--step-head)]">{nick(product.name)}</h1>
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-jw-soft">
           {rating ? (
