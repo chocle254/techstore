@@ -23,7 +23,8 @@ export async function getCatalog(): Promise<CatalogProduct[]> {
       slug: products.slug,
       name: products.name,
       description: products.description,
-      imageUrl: products.imageUrl,
+      // Uploaded photos live in the row as data URLs; hand out a short cacheable link instead of the bytes.
+      imageUrl: sql<string | null>`case when ${products.imageUrl} like 'data:%' then '/shop-img/' || ${products.id} || '?v=' || left(md5(${products.imageUrl}), 10) else ${products.imageUrl} end`,
       variantId: variants.id,
       sizeMl: variants.sizeMl,
       price: variants.price,

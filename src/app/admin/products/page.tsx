@@ -2,7 +2,7 @@ import { asc } from "drizzle-orm";
 import { getDb, schema } from "@/db";
 import { hasRole, requireUser } from "@/lib/auth/guard";
 import { stockLevels } from "@/lib/queries";
-import { AddSizeForm, ProductForm, VariantRow } from "./forms";
+import { AddSizeForm, ProductForm, ProductPhotoForm, VariantRow } from "./forms";
 
 export const metadata = { title: "Products" };
 
@@ -50,6 +50,11 @@ export default async function ProductsPage() {
             </table>
             {canEdit && (
               <>
+                <ProductPhotoForm
+                  productId={p.id}
+                  name={p.name}
+                  current={p.imageUrl?.startsWith("data:") ? `/shop-img/${p.id}?v=${p.imageUrl.length}` : p.imageUrl}
+                />
                 <AddSizeForm productId={p.id} existing={sizes.map((s) => s.sizeMl)} />
                 <details>
                   <summary className="cursor-pointer text-sm text-brand-700 underline">Edit name, description, batch size</summary>

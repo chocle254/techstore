@@ -1,9 +1,9 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { FormMessage, SubmitButton } from "@/components/form";
 import { sizeLabel } from "@/lib/format";
-import { addSizeAction, saveProductAction, updateVariantAction } from "./actions";
+import { addSizeAction, saveProductAction, saveProductPhotoAction, updateVariantAction } from "./actions";
 
 export function VariantRow({
   v,
@@ -110,6 +110,68 @@ export function AddSizeForm({ productId, existing }: { productId: string; existi
         + Add size
       </SubmitButton>
       {state && <span className={`text-sm ${state.error ? "text-red-700" : "text-brand-700"}`}>{state.error ?? state.ok}</span>}
+    </form>
+  );
+}
+
+/** Shrink a picked photo to at most 1000px on its long side, as WebP (or JPEG where WebP isn't supported). */
+async function shrink(file: File): Promise<string> {
+  const bmp = await createImageBitmap(file);
+  const scale = Math.min(1, 1000 / Math.max(bmp.width, bmp.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bmp.width * scale);
+  canvas.height = Math.round(bmp.height * scale);
+  canvas.getContext("2d")!.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+  const webp = canvas.toDataURL("image/webp", 0.85);
+  return webp.startsWith("data:image/webp") ? webp : canvas.toDataURL("image/jpeg", 0.85);
+}
+
+export function ProductPhotoForm({ productId, name, current }: { productId: string; name: string; current: string | null }) {
+  const [state, action] = useActionState(saveProductPhotoAction, undefined);
+  const [photo, setPhoto] = useState("");
+  const [busy, setBusy] = useState(false);
+  const shown = photo || current;
+  return (
+    <form action={action} className="flex flex-wrap items-center gap-3">
+      <input type="hidden" name="productId" value={productId} />
+      <input type="hidden" name="photo" value={photo} />
+      <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-xl bg-surface text-center text-xs text-muted">
+        {/* eslint-disable-next-line @next/next/no-img-element -- local preview */}
+        {shown ? <img src={shown} alt={`Photo of ${name}`} className="h-full w-full object-cover" /> : "No photo"}
+      </div>
+      <div className="space-y-1.5">
+        <label className="btn-secondary cursor-pointer">
+          {busy ? "Preparing…" : current ? "Change photo" : "Add photo"}
+          <input
+            type="file"
+            accept="image/*"
+            className="sr-only"
+            onChange={async (e) => {
+              const f = e.target.files?.[0];
+              if (!f) return;
+              setBusy(true);
+              try {
+                setPhoto(await shrink(f));
+              } finally {
+                setBusy(false);
+              }
+            }}
+          />
+        </label>
+        <div className="flex gap-2">
+          {photo && (
+            <SubmitButton className="btn-primary" pendingText="Saving…">
+              Save photo
+            </SubmitButton>
+          )}
+          {current && !photo && (
+            <button type="submit" name="remove" value="1" className="text-sm text-red-700 underline">
+              Remove photo
+            </button>
+          )}
+        </div>
+        {state && <p className={`text-sm ${state.error ? "text-red-700" : "text-brand-700"}`}>{state.error ?? state.ok}</p>}
+      </div>
     </form>
   );
 }

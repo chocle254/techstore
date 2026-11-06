@@ -9,6 +9,7 @@ import { fmtDateTime, ksh, sizeLabel } from "@/lib/format";
 import { ShopFooter, ShopHeader, StepBar } from "@/components/shop/chrome";
 import { Icon } from "@/components/shop/icons";
 import { ClearCart, PayCodeForm } from "./order-bits";
+import { nick } from "@/components/shop/tiles";
 
 export const metadata = { title: "Your order" };
 export const dynamic = "force-dynamic";
@@ -89,7 +90,7 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/or
               {order.lines.map((l, i) => (
                 <li key={i} className="flex items-baseline justify-between gap-4">
                   <span>
-                    {l.qty} × {l.name} {sizeLabel(l.sizeMl)}
+                    {l.qty} × {nick(l.name)} {sizeLabel(l.sizeMl)}
                   </span>
                   <span>{ksh(l.qty * l.unitPrice)}</span>
                 </li>

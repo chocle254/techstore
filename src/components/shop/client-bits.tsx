@@ -1,5 +1,6 @@
 "use client";
 
+import { short } from "./tiles";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -59,7 +60,7 @@ export function SearchBox({ defaultValue = "" }: { defaultValue?: string }) {
         name="q"
         type="search"
         defaultValue={defaultValue}
-        placeholder="Search soap, bleach, 20 litres…"
+        placeholder="Search soap, Jik, 20 litres…"
         className="h-11 w-full rounded-full border border-jw-ink/5 bg-jw-paper/90 pr-24 pl-11 text-base outline-none placeholder:text-jw-soft/80 focus:border-jw-ground focus:ring-4 focus:ring-jw-ground/15"
         style={{ boxShadow: "inset 0 2px 4px rgb(60 35 15 / .05)" }}
       />
@@ -133,7 +134,7 @@ export function CartToast() {
             <Icon name="check" className="h-4 w-4" /> Added to cart
           </span>
           <span className="block truncate">
-            {item.qty} × {item.name.replace(/^JonWin\s+/, "")} {sizeLabel(item.sizeMl)}
+            {item.qty} × {short(item.name)} {sizeLabel(item.sizeMl)}
           </span>
         </span>
         <Link href="/cart" className="jw-btn min-h-10 px-4 text-sm">

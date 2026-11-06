@@ -4,7 +4,7 @@
 export type Liquid = { body: string; cap: string; label: string };
 
 const LIQUIDS: Record<string, Liquid> = {
-  "liquid-soap": { body: "#1f8f5f", cap: "#050f16", label: "#ffffff" },
+  "liquid-soap": { body: "#2fae4a", cap: "#050f16", label: "#ffffff" },
   bleach: { body: "#eef3f6", cap: "#1d5fb8", label: "#1d5fb8" },
   antiseptic: { body: "#a8521a", cap: "#050f16", label: "#ffffff" },
   disinfectant: { body: "#2d4a22", cap: "#050f16", label: "#ffffff" },

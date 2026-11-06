@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { getDb, schema } from "@/db";
 import { getCurrentUser } from "@/lib/auth/session";
-import { getAreas, pendingRatings } from "@/lib/shop";
+import { getAreas, getCatalog, pendingRatings } from "@/lib/shop";
 import { ShopFooter, ShopHeader, StepBar } from "@/components/shop/chrome";
 import { CheckoutForm } from "./checkout-form";
 
@@ -9,7 +9,8 @@ export const metadata = { title: "Checkout" };
 export const dynamic = "force-dynamic";
 
 export default async function CheckoutPage() {
-  const [user, areas] = await Promise.all([getCurrentUser(), getAreas()]);
+  const [user, areas, catalog] = await Promise.all([getCurrentUser(), getAreas(), getCatalog()]);
+  const images = Object.fromEntries(catalog.filter((p) => p.imageUrl).map((p) => [p.slug, p.imageUrl as string]));
   let saved: { areaId: string | null; address: string | null; lat: string | null; lng: string | null } | null = null;
   let toRate = null;
   if (user) {
@@ -33,6 +34,7 @@ export default async function CheckoutPage() {
           areas={areas}
           saved={saved}
           toRate={toRate}
+          images={images}
         />
       </main>
       <ShopFooter />

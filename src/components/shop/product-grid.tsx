@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { cart, useCart } from "@/lib/cart";
 import { ksh, sizeLabel } from "@/lib/format";
-import { CardBottle, short, tileFor } from "./tiles";
+import { ProductPic, SEARCH_ALIASES, short, tileFor } from "./tiles";
 import { Icon, Stars } from "./icons";
 
 export type GridItem = {
@@ -12,6 +12,8 @@ export type GridItem = {
   slug: string;
   name: string;
   description: string;
+  /** Uploaded photo, or null to draw the bottle. */
+  image: string | null;
   variantId: string;
   sizeMl: number;
   price: number;
@@ -45,8 +47,8 @@ export function ProductCard({ item, inCart }: { item: GridItem; inCart: number }
   return (
     <article className="jw-clay jw-clay-hover group flex flex-col p-2.5 sm:p-3">
       <Link href={href} className="relative block overflow-hidden rounded-2xl" style={{ background: tileFor(item.slug) }}>
-        <div className="flex aspect-square items-end justify-center pb-4 transition-transform duration-300 ease-out group-hover:scale-[1.04]">
-          <CardBottle slug={item.slug} sizeMl={item.sizeMl} height={item.sizeMl >= 10000 ? 118 : 128} />
+        <div className="relative flex aspect-square items-end justify-center pb-4 transition-transform duration-300 ease-out group-hover:scale-[1.04]">
+          <ProductPic slug={item.slug} sizeMl={item.sizeMl} height={item.sizeMl >= 10000 ? 118 : 128} image={item.image} alt={label} />
         </div>
         <span className="absolute top-2 right-2 rounded-full bg-white/80 px-2 py-0.5 text-xs font-bold tabular-nums backdrop-blur">{sizeLabel(item.sizeMl)}</span>
         {item.bestValue && item.price > 0 && <span className="jw-badge absolute top-2 left-2 bg-jw-ink text-white">Best value</span>}
@@ -121,7 +123,7 @@ export function ProductGrid({ items, initialQuery = "", initialSize }: { items: 
     const list = items.filter((i) => {
       if (size && i.sizeMl !== size) return false;
       if (product && i.productId !== product) return false;
-      const hay = `${i.name} ${i.description} ${sizeLabel(i.sizeMl)} ${i.sizeMl / 1000} litre litres`.toLowerCase();
+      const hay = `${short(i.name)} ${SEARCH_ALIASES[i.slug] ?? ""} ${i.description} ${sizeLabel(i.sizeMl)} ${i.sizeMl / 1000} litre litres`.toLowerCase();
       return words.every((w) => hay.includes(w.replace(/l$/, "")));
     });
     const perL = (i: GridItem) => (i.price > 0 ? i.price / i.sizeMl : Infinity);

@@ -5,12 +5,20 @@ import { useEffect, useSyncExternalStore } from "react";
 import { cart, cartCount, cartTotal, useCart } from "@/lib/cart";
 import { ksh, sizeLabel } from "@/lib/format";
 import { QtyStepper } from "@/components/shop/product-grid";
-import { CardBottle, short, tileFor } from "@/components/shop/tiles";
+import { ProductPic, short, tileFor } from "@/components/shop/tiles";
 import { Icon } from "@/components/shop/icons";
 
 const noop = () => () => {};
 
-export function CartView({ fresh, deliveryFrom }: { fresh: { variantId: string; price: number; name: string }[]; deliveryFrom: number | null }) {
+export function CartView({
+  fresh,
+  deliveryFrom,
+  images,
+}: {
+  fresh: { variantId: string; price: number; name: string }[];
+  deliveryFrom: number | null;
+  images: Record<string, string>;
+}) {
   const lines = useCart();
   const mounted = useSyncExternalStore(noop, () => true, () => false);
   // Prices may have changed since the bottles were added.
@@ -52,12 +60,12 @@ export function CartView({ fresh, deliveryFrom }: { fresh: { variantId: string; 
             <li key={l.variantId} className="flex gap-3 p-3 sm:gap-4">
               <Link
                 href={`/p/${l.slug}?size=${l.sizeMl}`}
-                className="flex h-24 w-24 shrink-0 items-end justify-center rounded-2xl pb-2 sm:h-28 sm:w-28"
+                className="relative flex h-24 w-24 shrink-0 items-end justify-center overflow-hidden rounded-2xl pb-2 sm:h-28 sm:w-28"
                 style={{ background: tileFor(l.slug) }}
                 aria-hidden
                 tabIndex={-1}
               >
-                <CardBottle slug={l.slug} sizeMl={l.sizeMl} height={l.sizeMl >= 10000 ? 68 : 76} />
+                <ProductPic slug={l.slug} sizeMl={l.sizeMl} height={l.sizeMl >= 10000 ? 68 : 76} image={images[l.slug]} />
               </Link>
               <div className="flex min-w-0 flex-1 flex-col">
                 <div className="flex items-start justify-between gap-3">

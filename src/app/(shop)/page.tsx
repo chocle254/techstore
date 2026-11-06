@@ -5,7 +5,7 @@ import { toGridItems } from "@/lib/shop-grid";
 import { ksh } from "@/lib/format";
 import { ShopFooter, ShopHeader } from "@/components/shop/chrome";
 import { ProductGrid } from "@/components/shop/product-grid";
-import { CardBottle, short, tileFor } from "@/components/shop/tiles";
+import { CardBottle, ProductPic, short, tileFor } from "@/components/shop/tiles";
 import { BottleGroup, liquidFor } from "@/components/shop/bottle";
 import { Icon, type IconName } from "@/components/shop/icons";
 
@@ -158,9 +158,9 @@ export default async function ShopHome({ searchParams }: PageProps<"/">) {
                     return (
                       <li key={p.id} className="w-40 shrink-0 sm:w-auto">
                         <Link href={`/p/${p.slug}`} className="jw-clay jw-clay-hover group flex h-full flex-col items-center p-3 text-center">
-                          <span className="flex h-32 w-full items-end justify-center rounded-2xl pb-3" style={{ background: tileFor(p.slug) }}>
+                          <span className="relative flex h-32 w-full items-end justify-center overflow-hidden rounded-2xl pb-3" style={{ background: tileFor(p.slug) }}>
                             <span className="transition-transform duration-300 group-hover:-translate-y-1">
-                              <CardBottle slug={p.slug} sizeMl={1000} height={96} />
+                              <ProductPic slug={p.slug} sizeMl={1000} height={96} image={p.imageUrl} />
                             </span>
                           </span>
                           <span className="mt-3 text-sm font-bold">{short(p.name)}</span>

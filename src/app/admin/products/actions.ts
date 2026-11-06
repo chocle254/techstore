@@ -84,3 +84,20 @@ export async function addSizeAction(_: FormState, form: FormData): Promise<FormS
   revalidatePath("/admin", "layout");
   return { ok: "Size added. Set its price." };
 }
+
+// Photos arrive already shrunk in the browser (about 1000px wide), as a data URL.
+const PHOTO = /^data:image\/(webp|jpeg|png);base64,[A-Za-z0-9+/=]+$/;
+
+export async function saveProductPhotoAction(_: FormState, form: FormData): Promise<FormState> {
+  const user = await requireUser("boss");
+  const productId = String(form.get("productId") ?? "");
+  const photo = String(form.get("photo") ?? "");
+  if (!z.uuid().safeParse(productId).success) return { error: "Product not found." };
+  const remove = form.get("remove") === "1";
+  if (!remove && (!PHOTO.test(photo) || photo.length > 900_000)) return { error: "Pick a photo first (JPG, PNG or WebP)." };
+  const db = await getDb();
+  await db.update(products).set({ imageUrl: remove ? null : photo }).where(eq(products.id, productId));
+  await audit(user.id, remove ? "product_photo_removed" : "product_photo_set", "product", productId, {});
+  revalidatePath("/", "layout");
+  return { ok: remove ? "Photo removed." : "Photo saved. It's on the shop now." };
+}

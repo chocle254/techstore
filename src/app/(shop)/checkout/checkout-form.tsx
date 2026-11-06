@@ -7,7 +7,7 @@ import { useFormStatus } from "react-dom";
 import { cartTotal, useCart } from "@/lib/cart";
 import { formatPhone } from "@/lib/phone";
 import { ksh, sizeLabel } from "@/lib/format";
-import { CardBottle, short, tileFor } from "@/components/shop/tiles";
+import { ProductPic, short, tileFor } from "@/components/shop/tiles";
 import { Icon } from "@/components/shop/icons";
 import { placeOrderAction, type ShopState } from "../actions";
 
@@ -23,6 +23,7 @@ type Props = {
   user: { name: string; phone: string; isTrusted: boolean } | null;
   areas: Area[];
   saved: { areaId: string | null; address: string | null; lat: string | null; lng: string | null } | null;
+  images: Record<string, string>;
   toRate: { orderId: string; orderNo: number; products: { id: string; name: string }[] } | null;
 };
 
@@ -72,7 +73,7 @@ function Card({ n, title, id, children }: { n: number; title: string; id: string
   );
 }
 
-export function CheckoutForm({ user, areas, saved, toRate }: Props) {
+export function CheckoutForm({ user, areas, saved, toRate, images }: Props) {
   const lines = useCart();
   const [state, action] = useActionState<ShopState, FormData>(placeOrderAction, undefined);
   const [areaId, setAreaId] = useState(saved?.areaId && areas.some((a) => a.id === saved.areaId) ? saved.areaId : "");
@@ -284,7 +285,9 @@ export function CheckoutForm({ user, areas, saved, toRate }: Props) {
           {lines.map((l) => (
             <li key={l.variantId} className="flex items-center gap-3 text-sm">
               <span className="relative flex h-14 w-14 shrink-0 items-end justify-center rounded-xl pb-1" style={{ background: tileFor(l.slug) }}>
-                <CardBottle slug={l.slug} sizeMl={l.sizeMl} height={38} />
+                <span className="absolute inset-0 flex items-end justify-center overflow-hidden rounded-xl pb-1">
+                  <ProductPic slug={l.slug} sizeMl={l.sizeMl} height={38} image={images[l.slug]} />
+                </span>
                 <span className="absolute -top-1.5 -right-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-jw-ink px-1 text-[0.6875rem] font-bold text-white">{l.qty}</span>
               </span>
               <span className="min-w-0 flex-1">

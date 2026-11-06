@@ -5,11 +5,11 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { cart, useCart } from "@/lib/cart";
 import { ksh, sizeLabel } from "@/lib/format";
-import { CardBottle, tileFor } from "./tiles";
+import { CardBottle, nick, tileFor } from "./tiles";
 import { Icon, Stars } from "./icons";
 
 type Size = { variantId: string; sizeMl: number; price: number };
-type Product = { id: string; slug: string; name: string; sizes: Size[] };
+type Product = { id: string; slug: string; name: string; image: string | null; sizes: Size[] };
 
 const perLitre = (price: number, ml: number) => Math.round((price * 1000) / ml);
 
@@ -47,9 +47,14 @@ export function ProductBuy({
         <div className="jw-clay p-3">
           <div className="relative flex aspect-square items-end justify-center overflow-hidden rounded-[1.25rem] pb-10" style={{ background: tileFor(product.slug) }}>
             <div className="absolute -top-20 -left-20 h-64 w-64 rounded-full bg-white/40 blur-3xl" aria-hidden />
-            <div key={ml} className="jw-rise relative">
-              <CardBottle slug={product.slug} sizeMl={ml} height={ml >= 10000 ? 250 : 270} />
-            </div>
+            {product.image ? (
+              // eslint-disable-next-line @next/next/no-img-element -- already resized on upload
+              <img src={product.image} alt={nick(product.name)} className="absolute inset-0 h-full w-full object-cover" />
+            ) : (
+              <div key={ml} className="jw-rise relative">
+                <CardBottle slug={product.slug} sizeMl={ml} height={ml >= 10000 ? 250 : 270} />
+              </div>
+            )}
             <span className="absolute top-3 right-3 rounded-full bg-white/80 px-3 py-1 text-sm font-bold tabular-nums backdrop-blur">{sizeLabel(ml)}</span>
             {saving >= 0.05 && <span className="jw-badge absolute top-3 left-3 bg-jw-ground px-2.5 py-1 text-white">Save {Math.round(saving * 100)}% a litre</span>}
           </div>
@@ -72,7 +77,7 @@ export function ProductBuy({
 
       {/* Buy box */}
       <div className="jw-clay p-5 sm:p-7">
-        <h1 className="text-[length:var(--step-head)]">{product.name}</h1>
+        <h1 className="text-[length:var(--step-head)]">{nick(product.name)}</h1>
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-jw-soft">
           {rating ? (
             <span className="flex items-center gap-1.5">

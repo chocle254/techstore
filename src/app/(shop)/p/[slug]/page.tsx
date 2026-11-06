@@ -8,6 +8,7 @@ import { ShopFooter, ShopHeader } from "@/components/shop/chrome";
 import { ProductBuy } from "@/components/shop/product-buy";
 import { RelatedProducts } from "@/components/shop/related";
 import { Icon } from "@/components/shop/icons";
+import { nick } from "@/components/shop/tiles";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ const DEFAULT_PHOTO = { src: "/shop/kenol-murang-a-kenya-market.jpg", alt: "Mark
 export async function generateMetadata({ params }: PageProps<"/p/[slug]">) {
   const { slug } = await params;
   const p = (await getCatalog()).find((x) => x.slug === slug);
-  return p ? { title: p.name, description: p.description || `${p.name} from 500ml to 20 litres, delivered.` } : { title: "Not found" };
+  return p ? { title: nick(p.name), description: p.description || `${nick(p.name)} from 500ml to 20 litres, delivered.` } : { title: "Not found" };
 }
 
 export default async function ProductPage({ params, searchParams }: PageProps<"/p/[slug]">) {
@@ -55,12 +56,12 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
           </Link>
           <Icon name="chevron" className="h-3.5 w-3.5 -rotate-90" />
           <span className="truncate font-medium text-jw-ink" aria-current="page">
-            {product.name}
+            {nick(product.name)}
           </span>
         </nav>
 
         <ProductBuy
-          product={{ id: product.id, slug: product.slug, name: product.name, sizes: product.sizes }}
+          product={{ id: product.id, slug: product.slug, name: product.name, image: product.imageUrl, sizes: product.sizes }}
           initialSize={typeof size === "string" ? Number(size) : undefined}
           rating={ratings[product.id] ?? null}
           deliveryFrom={deliveryFrom}

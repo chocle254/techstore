@@ -13,6 +13,7 @@ export function toGridItems(catalog: CatalogProduct[], ratings: RatingSummary): 
       slug: p.slug,
       name: p.name,
       description: p.description,
+      image: p.imageUrl,
       variantId: s.variantId,
       sizeMl: s.sizeMl,
       price: s.price,
