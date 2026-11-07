@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/auth/guard";
 import { listOrders, type OrderView } from "@/lib/shop";
 import { fmtDateTime, ksh, sizeLabel } from "@/lib/format";
 import { formatPhone } from "@/lib/phone";
-import { AutoRefresh, DeliveredForm, HandBackForm, StartButton, TakeButton } from "./forms";
+import { AutoRefresh, DeliveredForm, HandBackForm, ReadyCard, StartButton } from "./forms";
 
 export const metadata = { title: "My deliveries" };
 export const dynamic = "force-dynamic";
@@ -39,7 +39,8 @@ export default async function RiderPage() {
 
   return (
     <div className="space-y-5">
-      <AutoRefresh />
+      {/* Often, so an order another rider took disappears quickly. */}
+      <AutoRefresh seconds={10} />
       <section className="grid grid-cols-3 gap-2" aria-label="Today">
         <div className="card p-3">
           <p className="text-xs text-muted">To deliver</p>
@@ -68,7 +69,7 @@ export default async function RiderPage() {
         {ready.map((o) => {
           const owed = Math.max(0, o.total - o.paid);
           return (
-            <article key={o.id} className="card space-y-2 border-brand-500">
+            <ReadyCard key={o.id} orderId={o.id}>
               <header className="flex items-baseline justify-between gap-2">
                 <h2 className="text-lg font-semibold">Order {o.orderNo}</h2>
                 <span className="text-sm text-muted">{fmtDateTime(o.createdAt)}</span>
@@ -80,8 +81,7 @@ export default async function RiderPage() {
                 {o.lines.map((l) => `${l.qty} × ${l.name.replace(/^JonWin\s+/, "")} ${sizeLabel(l.sizeMl)}`).join(", ")}
               </p>
               <p className="text-sm font-semibold">{o.payMethod === "cod" && owed > 0 ? `Collect ${ksh(owed)}` : "Already paid"}</p>
-              <TakeButton orderId={o.id} />
-            </article>
+            </ReadyCard>
           );
         })}
       </section>

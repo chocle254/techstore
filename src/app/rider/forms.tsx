@@ -5,16 +5,27 @@ import { useRouter } from "next/navigation";
 import { FormMessage, SubmitButton } from "@/components/form";
 import { deliveredAction, handBackAction, startDeliveryAction, takeOrderAction } from "./actions";
 
-export function TakeButton({ orderId }: { orderId: string }) {
-  const [state, action] = useActionState(takeOrderAction, undefined);
+/**
+ * A ready order a rider can take. Tapping hides it at once; if another rider took it first it just
+ * disappears too, and the list refreshes. Taken orders are never shown as takeable.
+ */
+export function ReadyCard({ orderId, children }: { orderId: string; children: React.ReactNode }) {
+  const router = useRouter();
+  const [state, action, pending] = useActionState(takeOrderAction, undefined);
+  useEffect(() => {
+    if (state) router.refresh();
+  }, [state, router]);
+  if (pending || state) return null;
   return (
-    <form action={action} className="space-y-2">
-      <input type="hidden" name="orderId" value={orderId} />
-      <SubmitButton className="btn-primary w-full" pendingText="Saving…">
-        🙋 I&apos;ll take it
-      </SubmitButton>
-      <FormMessage state={state} />
-    </form>
+    <article className="card space-y-2 border-brand-500">
+      {children}
+      <form action={action}>
+        <input type="hidden" name="orderId" value={orderId} />
+        <button type="submit" className="btn-primary w-full">
+          🙋 I&apos;ll take it
+        </button>
+      </form>
+    </article>
   );
 }
 

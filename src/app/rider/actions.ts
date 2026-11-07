@@ -16,16 +16,16 @@ function refresh(orderId: string) {
 
 const idOf = (form: FormData) => z.uuid().safeParse(form.get("orderId"));
 
-/** A rider takes a ready order for themselves. If another rider got it first, they're told. */
-export async function takeOrderAction(_: FormState, form: FormData): Promise<FormState> {
+/** A rider takes a ready order. If another rider got it first, it's simply gone from the list. */
+export async function takeOrderAction(_: TakeState, form: FormData): Promise<TakeState> {
   const me = await requireUser("rider");
   const id = idOf(form);
-  if (!id.success) return { error: "Order not found." };
+  if (!id.success) return { gone: true };
   const res = await assignRider(id.data, me.id, me);
-  if (!res.ok) return { error: res.error === "This order can't be given to a rider now." ? "Someone else already took this order." : res.error };
   refresh(id.data);
-  return { ok: "It's yours. It's now in your list below." };
+  return res.ok ? { taken: true } : { gone: true };
 }
+export type TakeState = { taken?: boolean; gone?: boolean } | undefined;
 
 /** The rider has left with the order. Only works on orders given to this rider. */
 export async function startDeliveryAction(_: FormState, form: FormData): Promise<FormState> {
