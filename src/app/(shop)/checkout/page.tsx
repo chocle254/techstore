@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { getAreas, getCatalog, pendingRatings } from "@/lib/shop";
 import { ShopFooter, ShopHeader, StepBar } from "@/components/shop/chrome";
 import { CheckoutForm } from "./checkout-form";
+import { stkEnabled } from "@/lib/upesipay";
 
 export const metadata = { title: "Checkout" };
 export const dynamic = "force-dynamic";
@@ -30,6 +31,7 @@ export default async function CheckoutPage() {
         <StepBar at={1} />
         <h1 className="mt-8 text-[length:var(--step-head)]">Checkout</h1>
         <CheckoutForm
+          stkEnabled={stkEnabled()}
           user={user ? { name: user.name, phone: user.phone, isTrusted: user.isTrusted } : null}
           areas={areas}
           saved={saved}

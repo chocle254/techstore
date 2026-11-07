@@ -317,6 +317,26 @@ export const orders = pgTable(
   (t) => [index("orders_customer_idx").on(t.customerId), index("orders_status_idx").on(t.status)],
 );
 
+// M-Pesa PIN prompts (STK push) sent through UpesiPay for an order. A successful one marks the order paid.
+export const stkRequests = pgTable(
+  "stk_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => orders.id),
+    checkoutRequestId: text("checkout_request_id").notNull().unique(),
+    merchantRequestId: text("merchant_request_id"),
+    phone: text("phone").notNull(),
+    amount: integer("amount").notNull(),
+    // sent, then success / failed / cancelled / timeout from UpesiPay.
+    status: text("status").notNull().default("sent"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("stk_requests_order_idx").on(t.orderId)],
+);
+
 // A customer's 1–5 rating of one product from one delivered order.
 export const ratings = pgTable(
   "ratings",

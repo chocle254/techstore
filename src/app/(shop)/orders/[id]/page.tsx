@@ -8,7 +8,8 @@ import { formatPhone } from "@/lib/phone";
 import { fmtDateTime, ksh, sizeLabel } from "@/lib/format";
 import { ShopFooter, ShopHeader, StepBar } from "@/components/shop/chrome";
 import { Icon } from "@/components/shop/icons";
-import { ClearCart, PayCodeForm } from "./order-bits";
+import { ClearCart, PayCodeForm, StkWaiting } from "./order-bits";
+import { latestStk, stkEnabled } from "@/lib/upesipay";
 import { nick } from "@/components/shop/tiles";
 
 export const metadata = { title: "Your order" };
@@ -19,7 +20,7 @@ const STEPS = ["pending", "paid", "ready", "out_for_delivery", "delivered"] as c
 export default async function OrderPage({ params, searchParams }: PageProps<"/orders/[id]">) {
   const user = await requireUser();
   const { id } = await params;
-  const { new: isNew, sent, payerr } = await searchParams;
+  const { new: isNew, sent, payerr, stk, why } = await searchParams;
   const PAY_ERRORS: Record<string, string> = {
     code: "An M-Pesa code has 10 letters and numbers, like SGL7XK2P9Q.",
     busy: "Too many tries. Wait a minute and try again.",
@@ -34,6 +35,10 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/or
   const balance = Math.max(0, order.total - order.paid);
   const pay = order.payMethod === "mpesa" ? getGateway().instructions(order.orderNo) : null;
   const cancelled = order.status === "cancelled";
+  // M-Pesa PIN prompt (UpesiPay), only when it's set up and the customer still owes money.
+  const canPrompt = stkEnabled() && order.customerId === user.id && order.status === "pending" && order.payMethod === "mpesa" && balance > 0;
+  const prompt = canPrompt ? await latestStk(order.id).catch(() => null) : null;
+  const promptWaiting = !!prompt?.waiting;
   const reached = order.status === "assigned" ? 2 : STEPS.indexOf(order.status as (typeof STEPS)[number]);
   const stepLabel = (s: (typeof STEPS)[number]) =>
     s === "pending" && order.payMethod === "cod" ? "Order received" : s === "pending" ? "Order placed" : s === "ready" ? "Made and packed" : STATUS_LABELS[s];
@@ -154,6 +159,42 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/or
             <p className="mt-6 text-base">Have {ksh(balance)} ready for the rider. We will call you before we come.</p>
           ) : (
             <>
+              {canPrompt && (
+                <div className="mt-6 rounded-2xl bg-black/15 p-4">
+                  {promptWaiting ? (
+                    <>
+                      <StkWaiting />
+                      <p className="font-semibold">Check your phone</p>
+                      <p className="mt-1 text-sm text-white/85">
+                        We sent an M-Pesa prompt for {ksh(balance)} to {formatPhone(order.contactPhone)}. Enter your M-Pesa PIN. This page updates by itself.
+                      </p>
+                      <form method="post" action={`/orders/${order.id}/stk/check`} className="mt-3">
+                        <button type="submit" className="inline-flex min-h-11 items-center rounded-full bg-white px-4 text-sm font-semibold text-[#16181d]">
+                          I&apos;ve entered my PIN, check now
+                        </button>
+                      </form>
+                    </>
+                  ) : (
+                    <>
+                      {stk === "failed" || (prompt && prompt.status !== "sent" && prompt.status !== "success") ? (
+                        <p className="mb-2 text-sm">The last prompt wasn&apos;t completed. You can send another.</p>
+                      ) : null}
+                      {stk === "error" && typeof why === "string" && (
+                        <p role="alert" className="mb-2 rounded-xl bg-black/20 px-3 py-2 text-sm">
+                          {why.slice(0, 200)}
+                        </p>
+                      )}
+                      {stk === "waiting" && <p className="mb-2 text-sm">Not confirmed yet. If you entered your PIN, give it a moment and check again.</p>}
+                      <form method="post" action={`/orders/${order.id}/stk`}>
+                        <button type="submit" className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-white px-5 font-semibold text-[#16181d] active:scale-95">
+                          Send M-Pesa prompt to {formatPhone(order.contactPhone)}
+                        </button>
+                      </form>
+                      <p className="mt-2 text-xs text-white/75">You&apos;ll get a request on your phone. Just enter your PIN. Or pay with the till below.</p>
+                    </>
+                  )}
+                </div>
+              )}
               {pay?.kind === "till" && (
                 <ol className="mt-8 list-inside list-decimal space-y-3 text-base marker:text-white/70">
                   <li>Open M-Pesa, then Lipa na M-Pesa, Buy Goods.</li>

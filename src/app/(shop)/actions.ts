@@ -11,6 +11,7 @@ import { createSession, getCurrentUser } from "@/lib/auth/session";
 import { normalizePhone } from "@/lib/phone";
 import { rateLimit } from "@/lib/ratelimit";
 import { pendingRatings } from "@/lib/shop";
+import { sendStk, stkEnabled } from "@/lib/upesipay";
 
 const { users, variants, products, deliveryAreas, sales, saleItems, stockMovements, orders, ratings } = schema;
 
@@ -34,7 +35,8 @@ const orderSchema = z.object({
   lng: coord,
   contactName: z.string().trim().min(2, "Enter your name.").max(80),
   contactPhone: z.string().trim().max(20),
-  payMethod: z.enum(["mpesa", "cod"]),
+  // "stk" = M-Pesa with a PIN prompt sent to the phone (UpesiPay); stored as an M-Pesa order.
+  payMethod: z.enum(["mpesa", "cod", "stk"]),
   note: z.string().trim().max(300).optional(),
   // Only when creating an account at checkout.
   password: z.string().max(200).optional(),
@@ -105,6 +107,8 @@ export async function placeOrderAction(_: ShopState, form: FormData): Promise<Sh
     };
   }
 
+  const wantsPrompt = input.payMethod === "stk" && stkEnabled();
+  const payMethod = input.payMethod === "cod" ? "cod" : "mpesa";
   if (input.payMethod === "cod" && !me.isTrusted) return { error: "Cash on delivery is for our regular customers. Please pay by M-Pesa." };
 
   const [area] = await db.select().from(deliveryAreas).where(and(eq(deliveryAreas.id, input.areaId), eq(deliveryAreas.isActive, true)));
@@ -141,7 +145,7 @@ export async function placeOrderAction(_: ShopState, form: FormData): Promise<Sh
       .values({
         channel: "online",
         customerId,
-        paymentMethod: input.payMethod,
+        paymentMethod: payMethod,
         subtotal,
         deliveryFee: area.fee,
         total,
@@ -157,7 +161,7 @@ export async function placeOrderAction(_: ShopState, form: FormData): Promise<Sh
       .values({
         saleId: sale.id,
         customerId,
-        payMethod: input.payMethod,
+        payMethod,
         areaId: area.id,
         areaName: area.name,
         deliveryFee: area.fee,
@@ -176,11 +180,15 @@ export async function placeOrderAction(_: ShopState, form: FormData): Promise<Sh
         .set({ areaId: area.id, locationLabel: input.address, locationLat: input.lat || null, locationLng: input.lng || null })
         .where(eq(users.id, customerId));
     }
-    await audit(customerId, "order_placed", "order", o.id, { orderNo: sale.receiptNo, total, payMethod: input.payMethod }, tx);
+    await audit(customerId, "order_placed", "order", o.id, { orderNo: sale.receiptNo, total, payMethod, prompt: wantsPrompt }, tx);
     return o;
   });
 
   revalidatePath("/admin/orders");
+  if (wantsPrompt) {
+    const res = await sendStk(order.id);
+    redirect(`/orders/${order.id}?new=1&stk=${res.ok ? "sent" : "error&why=" + encodeURIComponent(res.error)}`);
+  }
   redirect(`/orders/${order.id}?new=1`);
 }
 

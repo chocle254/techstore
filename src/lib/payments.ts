@@ -6,9 +6,8 @@ import "server-only";
  * Today: "manual M-Pesa". The customer pays to the business till or paybill on their phone,
  * types the M-Pesa confirmation code on their order page, and staff tick it off in Admin → Orders.
  *
- * To plug in an online gateway later, add another PaymentGateway below (for example one that
- * starts an STK push and confirms the order from a callback) and return it from getGateway().
- * Nothing else in the shop needs to change.
+ * Customers can also choose "Prompt me": an M-Pesa PIN prompt sent through UpesiPay, which marks the
+ * order paid from its callback. See lib/upesipay.ts. The till/paybill details below stay as the fallback.
  */
 export type PayInstructions =
   | { kind: "till"; till: string; businessName: string }

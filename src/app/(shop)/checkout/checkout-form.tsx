@@ -24,6 +24,8 @@ type Props = {
   areas: Area[];
   saved: { areaId: string | null; address: string | null; lat: string | null; lng: string | null } | null;
   images: Record<string, string>;
+  /** M-Pesa PIN prompts (UpesiPay) are set up. */
+  stkEnabled: boolean;
   toRate: { orderId: string; orderNo: number; products: { id: string; name: string }[] } | null;
 };
 
@@ -73,7 +75,7 @@ function Card({ n, title, id, children }: { n: number; title: string; id: string
   );
 }
 
-export function CheckoutForm({ user, areas, saved, toRate, images }: Props) {
+export function CheckoutForm({ user, areas, saved, toRate, images, stkEnabled }: Props) {
   const lines = useCart();
   const [state, action] = useActionState<ShopState, FormData>(placeOrderAction, undefined);
   const [areaId, setAreaId] = useState(saved?.areaId && areas.some((a) => a.id === saved.areaId) ? saved.areaId : "");
@@ -293,7 +295,7 @@ export function CheckoutForm({ user, areas, saved, toRate, images }: Props) {
         <Card n={3} title="Payment" id="pay-title">
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="relative flex cursor-pointer items-start gap-3 rounded-2xl bg-jw-well p-4 ring-2 ring-transparent transition has-[:checked]:bg-jw-paper has-[:checked]:ring-jw-mpesa has-[:focus-visible]:ring-jw-ground">
-              <input type="radio" name="payMethod" value="mpesa" defaultChecked className="mt-1 h-5 w-5 accent-jw-mpesa" />
+              <input type="radio" name="payMethod" value="mpesa" defaultChecked={!stkEnabled} className="mt-1 h-5 w-5 accent-jw-mpesa" />
               <span>
                 <span className="flex items-center gap-2 font-bold">
                   <span className="rounded-md bg-jw-mpesa px-1.5 py-0.5 text-[0.6875rem] text-white">M-PESA</span> Pay by M-Pesa
@@ -302,15 +304,16 @@ export function CheckoutForm({ user, areas, saved, toRate, images }: Props) {
               </span>
             </label>
             <label
-              aria-disabled="true"
-              className="relative flex cursor-not-allowed items-start gap-3 rounded-2xl bg-jw-well p-4 opacity-60"
-              title="Coming soon"
+              aria-disabled={!stkEnabled}
+              className={`relative flex items-start gap-3 rounded-2xl bg-jw-well p-4 ring-2 ring-transparent transition ${
+                stkEnabled ? "cursor-pointer has-[:checked]:bg-jw-paper has-[:checked]:ring-jw-mpesa has-[:focus-visible]:ring-jw-ground" : "cursor-not-allowed opacity-60"
+              }`}
             >
-              <input type="radio" name="payMethod" value="stk" disabled className="mt-1 h-5 w-5" />
+              <input type="radio" name="payMethod" value="stk" disabled={!stkEnabled} defaultChecked={stkEnabled} className="mt-1 h-5 w-5 accent-jw-mpesa" />
               <span>
                 <span className="flex flex-wrap items-center gap-2 font-bold">
                   <span className="rounded-md bg-jw-mpesa px-1.5 py-0.5 text-[0.6875rem] text-white">M-PESA</span> Prompt me
-                  <span className="jw-badge bg-night text-white">Coming soon</span>
+                  {!stkEnabled && <span className="jw-badge bg-night text-white">Coming soon</span>}
                 </span>
                 <span className="mt-1 block text-sm text-jw-soft">We send a payment request to your phone. Just enter your M-Pesa PIN.</span>
               </span>

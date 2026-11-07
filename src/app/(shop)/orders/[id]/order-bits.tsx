@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { cart } from "@/lib/cart";
 
 export function ClearCart() {
@@ -48,4 +49,18 @@ export function PayCodeForm({ orderId, error }: { orderId: string; error: string
       )}
     </form>
   );
+}
+
+/** While an M-Pesa prompt is open, reload the order every 5 seconds (for up to 2 minutes) to catch the payment. */
+export function StkWaiting() {
+  const router = useRouter();
+  useEffect(() => {
+    let n = 0;
+    const t = setInterval(() => {
+      if (++n > 24) return clearInterval(t);
+      if (document.visibilityState === "visible") router.refresh();
+    }, 5000);
+    return () => clearInterval(t);
+  }, [router]);
+  return null;
 }

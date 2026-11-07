@@ -36,6 +36,13 @@
       "when": 1794032651504,
       "tag": "0004_kitchen",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794054141619,
+      "tag": "0005_stk_requests",
+      "breakpoints": true
     }
   ]
 }
