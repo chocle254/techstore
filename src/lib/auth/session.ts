@@ -54,7 +54,8 @@ export async function destroySession() {
     const db = await getDb();
     await db.delete(sessions).where(eq(sessions.id, hashToken(token)));
   }
-  jar.delete(SESSION_COOKIE);
+  // Overwrite with the same attributes: browsers ignore a __Host- cookie delete that isn't Secure.
+  jar.set(SESSION_COOKIE, "", { httpOnly: true, secure: IS_PROD, sameSite: "lax", path: "/", maxAge: 0 });
 }
 
 /** Log a user out everywhere (after password change, suspension, or role change). */

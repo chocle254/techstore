@@ -1,5 +1,4 @@
 import { requireUser, hasRole } from "@/lib/auth/guard";
-import { logoutAction } from "@/lib/auth/actions";
 import { AdminNav, type NavItem } from "./nav";
 
 export const metadata = { title: { default: "Admin", template: "%s · JonWin Admin" } };
@@ -38,7 +37,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   ];
 
   const logout = (
-    <form action={logoutAction}>
+    <form action="/logout" method="post">
       <button type="submit" className="btn-secondary w-full md:min-h-0 md:justify-start md:border-0 md:px-3 md:py-2 md:text-sm md:font-normal">
         Log out
       </button>

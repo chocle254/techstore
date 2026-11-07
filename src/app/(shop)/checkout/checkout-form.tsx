@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useActionState, useState, useSyncExternalStore } from "react";
+import { useActionState, useRef, useState, useSyncExternalStore } from "react";
 import { useFormStatus } from "react-dom";
 import { cartTotal, useCart } from "@/lib/cart";
 import { formatPhone } from "@/lib/phone";
@@ -80,6 +80,11 @@ export function CheckoutForm({ user, areas, saved, toRate, images }: Props) {
   const [pin, setPin] = useState<[number, number] | null>(saved?.lat && saved?.lng ? [Number(saved.lat), Number(saved.lng)] : null);
   const [showMap, setShowMap] = useState(false);
   const [locating, setLocating] = useState(false);
+  // A place name looked up from the pin, put into the directions box unless the customer typed their own.
+  const [place, setPlace] = useState<string | null>(null);
+  const addressRef = useRef<HTMLTextAreaElement>(null);
+  const autoText = useRef("");
+  const [filled, setFilled] = useState(false);
   // The cart lives in the browser, so wait until we're there before showing it.
   const mounted = useSyncExternalStore(noop, () => true, () => false);
 
@@ -87,12 +92,40 @@ export function CheckoutForm({ user, areas, saved, toRate, images }: Props) {
   const subtotal = cartTotal(lines);
   const total = subtotal + fee;
 
+  const fillAddress = (text: string) => {
+    const el = addressRef.current;
+    if (!el) return;
+    el.value = text;
+    autoText.current = text;
+    setFilled(true);
+  };
+
+  /** Set the pin and look up a description of the spot for the directions box. */
+  const pick = (p: [number, number]) => {
+    setPin(p);
+    fetch(`/api/place?lat=${p[0]}&lng=${p[1]}`)
+      .then((r) => r.json())
+      .then(({ place: found }: { place: string | null }) => {
+        if (!found) return;
+        setPlace(found);
+        const el = addressRef.current;
+        if (el && (!el.value.trim() || el.value === autoText.current)) fillAddress(found);
+        else setFilled(false);
+        // Pick the delivery area too when its name appears in the place.
+        if (!areaId) {
+          const hit = areas.find((a) => found.toLowerCase().includes(a.name.toLowerCase()));
+          if (hit) setAreaId(hit.id);
+        }
+      })
+      .catch(() => {});
+  };
+
   const locate = () => {
     if (!navigator.geolocation) return;
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (p) => {
-        setPin([p.coords.latitude, p.coords.longitude]);
+        pick([p.coords.latitude, p.coords.longitude]);
         setShowMap(true);
         setLocating(false);
       },
@@ -157,6 +190,7 @@ export function CheckoutForm({ user, areas, saved, toRate, images }: Props) {
             <span className="jw-label">Directions for the rider</span>
             <textarea
               name="address"
+              ref={addressRef}
               required
               rows={3}
               maxLength={300}
@@ -182,9 +216,17 @@ export function CheckoutForm({ user, areas, saved, toRate, images }: Props) {
                 <Icon name="check" className="h-4 w-4" /> Pin set. The rider will see it on a map.
               </p>
             )}
+            {place && !filled && (
+              <p className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+                <span className="text-jw-soft">Near: {place}</span>
+                <button type="button" className="jw-link" onClick={() => fillAddress(place)}>
+                  Use this
+                </button>
+              </p>
+            )}
             {showMap && (
               <div className="mt-4 overflow-hidden rounded-2xl">
-                <MapPin value={pin} onChange={setPin} />
+                <MapPin value={pin} onChange={pick} />
                 <p className="mt-2 text-xs text-jw-soft">Tap the map where we should bring the bottles.</p>
               </div>
             )}
@@ -257,6 +299,20 @@ export function CheckoutForm({ user, areas, saved, toRate, images }: Props) {
                   <span className="rounded-md bg-jw-mpesa px-1.5 py-0.5 text-[0.6875rem] text-white">M-PESA</span> Pay by M-Pesa
                 </span>
                 <span className="mt-1 block text-sm text-jw-soft">After you order, we show our till number and where to type your M-Pesa code.</span>
+              </span>
+            </label>
+            <label
+              aria-disabled="true"
+              className="relative flex cursor-not-allowed items-start gap-3 rounded-2xl bg-jw-well p-4 opacity-60"
+              title="Coming soon"
+            >
+              <input type="radio" name="payMethod" value="stk" disabled className="mt-1 h-5 w-5" />
+              <span>
+                <span className="flex flex-wrap items-center gap-2 font-bold">
+                  <span className="rounded-md bg-jw-mpesa px-1.5 py-0.5 text-[0.6875rem] text-white">M-PESA</span> Prompt me
+                  <span className="jw-badge bg-night text-white">Coming soon</span>
+                </span>
+                <span className="mt-1 block text-sm text-jw-soft">We send a payment request to your phone. Just enter your M-Pesa PIN.</span>
               </span>
             </label>
             {user?.isTrusted && (

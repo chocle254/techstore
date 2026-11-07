@@ -2,7 +2,6 @@ import Link from "next/link";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { getDb, schema } from "@/db";
 import { hasRole, homeFor, requireUser } from "@/lib/auth/guard";
-import { logoutAction } from "@/lib/auth/actions";
 import { customerLedger, getAreas, listOrders, STATUS_LABELS } from "@/lib/shop";
 import { fmtDate, ksh, METHOD_LABELS } from "@/lib/format";
 import { formatPhone } from "@/lib/phone";
@@ -154,7 +153,7 @@ export default async function AccountPage() {
               <Link href="/account/password" className="jw-btn-quiet">
                 Change password
               </Link>
-              <form action={logoutAction}>
+              <form action="/logout" method="post">
                 <button type="submit" className="jw-btn-dark">
                   Log out
                 </button>

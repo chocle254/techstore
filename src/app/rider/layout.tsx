@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { hasRole, requireUser } from "@/lib/auth/guard";
-import { logoutAction } from "@/lib/auth/actions";
 
 export const metadata = { title: { default: "Deliveries", template: "%s · JonWin Deliveries" } };
 
@@ -21,7 +20,7 @@ export default async function RiderLayout({ children }: LayoutProps<"/rider">) {
           <Link href="/account/password" className="text-brand-700 underline">
             Password
           </Link>
-          <form action={logoutAction}>
+          <form action="/logout" method="post">
             <button type="submit" className="text-muted underline">
               Log out
             </button>

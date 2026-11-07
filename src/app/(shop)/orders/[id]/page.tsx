@@ -19,7 +19,13 @@ const STEPS = ["pending", "paid", "ready", "out_for_delivery", "delivered"] as c
 export default async function OrderPage({ params, searchParams }: PageProps<"/orders/[id]">) {
   const user = await requireUser();
   const { id } = await params;
-  const { new: isNew } = await searchParams;
+  const { new: isNew, sent, payerr } = await searchParams;
+  const PAY_ERRORS: Record<string, string> = {
+    code: "An M-Pesa code has 10 letters and numbers, like SGL7XK2P9Q.",
+    busy: "Too many tries. Wait a minute and try again.",
+    missing: "We couldn't find this order on your account.",
+  };
+  const payError = typeof payerr === "string" ? (PAY_ERRORS[payerr] ?? null) : null;
   if (!z.uuid().safeParse(id).success) notFound();
   const order = await getOrder(id);
   const canSee = order && (order.customerId === user.id || hasRole(user, "boss", "helper") || (hasRole(user, "rider") && order.riderId === user.id));
@@ -180,11 +186,11 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/or
                 <div className="mt-12">
                   {order.payRef ? (
                     <p>
-                      We received your code <strong>{order.payRef}</strong> and are checking it. This page updates when
+                      {sent ? "Thank you! " : ""}We received your code <strong>{order.payRef}</strong> and are checking it. This page updates when
                       it is confirmed.
                     </p>
                   ) : (
-                    <PayCodeForm orderId={order.id} />
+                    <PayCodeForm orderId={order.id} error={payError} />
                   )}
                 </div>
               )}

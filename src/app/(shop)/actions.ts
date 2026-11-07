@@ -10,7 +10,6 @@ import { hashPassword, passwordProblem } from "@/lib/auth/password";
 import { createSession, getCurrentUser } from "@/lib/auth/session";
 import { normalizePhone } from "@/lib/phone";
 import { rateLimit } from "@/lib/ratelimit";
-import { normalizeMpesaCode } from "@/lib/payments";
 import { pendingRatings } from "@/lib/shop";
 
 const { users, variants, products, deliveryAreas, sales, saleItems, stockMovements, orders, ratings } = schema;
@@ -186,26 +185,6 @@ export async function placeOrderAction(_: ShopState, form: FormData): Promise<Sh
 }
 
 /** The customer types the M-Pesa confirmation code after paying. Staff check it before marking the order paid. */
-export async function submitPayRefAction(_: ShopState, form: FormData): Promise<ShopState> {
-  const me = await getCurrentUser();
-  if (!me) redirect("/login");
-  const orderId = z.uuid().safeParse(form.get("orderId"));
-  if (!orderId.success) return { error: "Order not found." };
-  const code = normalizeMpesaCode(String(form.get("code") ?? ""));
-  if (!code) return { error: "An M-Pesa code has 10 letters and numbers, like SGL7XK2P9Q." };
-  if (!(await rateLimit("write", "payref:" + me.id))) return { error: "Too many tries. Wait a minute." };
-
-  const db = await getDb();
-  const [o] = await db.select().from(orders).where(and(eq(orders.id, orderId.data), eq(orders.customerId, me.id)));
-  if (!o) return { error: "Order not found." };
-  if (o.status !== "pending") return { error: "This order is already confirmed." };
-  await db.update(orders).set({ payRef: code, updatedAt: new Date() }).where(eq(orders.id, o.id));
-  await audit(me.id, "payment_code_sent", "order", o.id, { code });
-  revalidatePath(`/orders/${o.id}`);
-  revalidatePath("/admin/orders");
-  return { ok: "Thank you. We'll check the payment and confirm your order." };
-}
-
 const signupSchema = z.object({
   name: z.string().trim().min(2, "Enter your name.").max(80),
   phone: z.string().trim().max(20),
