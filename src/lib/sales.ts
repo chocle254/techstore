@@ -120,7 +120,8 @@ export async function saleBalance(saleId: string): Promise<{ total: number; paid
     .select({
       total: sales.total,
       voidedAt: sales.voidedAt,
-      paid: sql<number>`coalesce((select sum(${payments.amount}) from ${payments} where ${payments.saleId} = ${sales.id}), 0)`.mapWith(Number),
+      // Tables spelled out: inside sql`` Drizzle drops table names, which made "id" mean payments.id.
+      paid: sql<number>`coalesce((select sum(p.amount) from payments p where p.sale_id = "sales"."id"), 0)`.mapWith(Number),
     })
     .from(sales)
     .where(eq(sales.id, saleId));

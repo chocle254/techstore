@@ -5,8 +5,6 @@ import {
   BarChart,
   CartesianGrid,
   Legend,
-  Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -96,22 +94,22 @@ function Empty() {
 
 type TrendPoint = { label: string; revenue: number; profit: number; expenses: number };
 
-/** Sales and profit over time. Both in shillings, so one axis. */
+/** Sales and profit per period: grouped bars, both in shillings on one axis. */
 export function TrendChart({ data }: { data: TrendPoint[] }) {
   if (!data.length) return <Empty />;
   return (
     <>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -8 }}>
+          <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -8 }} barGap={2} barCategoryGap="25%">
             <CartesianGrid vertical={false} stroke={GRID} />
             <XAxis dataKey="label" {...axis} minTickGap={16} />
             <YAxis {...axis} tickFormatter={kshShort} width={48} />
-            <Tooltip content={<TipBox />} cursor={{ stroke: INK_2, strokeDasharray: "3 3" }} />
+            <Tooltip content={<TipBox />} cursor={{ fill: "rgba(0,0,0,0.04)" }} />
             <Legend iconType="circle" wrapperStyle={{ fontSize: 13, color: INK_2 }} />
-            <Line type="monotone" dataKey="revenue" name={SERIES.sales.label} stroke={SERIES.sales.color} strokeWidth={2} dot={data.length === 1 ? { r: 4 } : false} activeDot={{ r: 5, stroke: "#fff", strokeWidth: 2 }} />
-            <Line type="monotone" dataKey="profit" name={SERIES.profit.label} stroke={SERIES.profit.color} strokeWidth={2} dot={data.length === 1 ? { r: 4 } : false} activeDot={{ r: 5, stroke: "#fff", strokeWidth: 2 }} />
-          </LineChart>
+            <Bar dataKey="revenue" name={SERIES.sales.label} fill={SERIES.sales.color} radius={[4, 4, 0, 0]} maxBarSize={28} />
+            <Bar dataKey="profit" name={SERIES.profit.label} fill={SERIES.profit.color} radius={[4, 4, 0, 0]} maxBarSize={28} />
+          </BarChart>
         </ResponsiveContainer>
       </div>
       <TableView columns={["Period", "Sales", "Profit"]} rows={data.map((d) => [d.label, kshFull(d.revenue), kshFull(d.profit)])} />

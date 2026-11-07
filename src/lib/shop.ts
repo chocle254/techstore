@@ -157,7 +157,8 @@ const orderSelect = {
   subtotal: sales.subtotal,
   deliveryFee: sales.deliveryFee,
   total: sales.total,
-  paid: sql<number>`coalesce((select sum(${payments.amount}) from ${payments} where ${payments.saleId} = ${sales.id}), 0)`.mapWith(Number),
+  // Tables spelled out: inside sql`` Drizzle drops table names, which made "id" mean payments.id.
+  paid: sql<number>`coalesce((select sum(p.amount) from payments p where p.sale_id = "sales"."id"), 0)`.mapWith(Number),
   createdAt: orders.createdAt,
   updatedAt: orders.updatedAt,
   customerId: orders.customerId,

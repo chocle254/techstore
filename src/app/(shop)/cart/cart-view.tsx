@@ -34,7 +34,7 @@ export function CartView({
         </span>
         <p className="mt-5 text-xl font-bold">Your cart is empty</p>
         <p className="mt-1 text-jw-soft">Browse our products and add what you need.</p>
-        <Link href="/#shop" className="jw-btn mt-6">
+        <Link href="/products" className="jw-btn mt-6">
           Start shopping
         </Link>
       </div>
@@ -118,7 +118,7 @@ export function CartView({
         <Link href="/checkout" className="jw-btn mt-5 w-full">
           Checkout · {ksh(subtotal)} <Icon name="arrow" className="h-4 w-4" />
         </Link>
-        <Link href="/#shop" className="jw-btn-quiet mt-3 w-full">
+        <Link href="/products" className="jw-btn-quiet mt-3 w-full">
           Keep shopping
         </Link>
         <p className="mt-4 flex items-center justify-center gap-2 text-xs text-jw-soft">

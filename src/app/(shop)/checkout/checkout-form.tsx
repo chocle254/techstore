@@ -140,7 +140,7 @@ export function CheckoutForm({ user, areas, saved, toRate, images }: Props) {
       <div className="jw-clay mt-6 flex flex-col items-center px-6 py-14 text-center">
         <p className="text-xl font-bold">Your cart is empty</p>
         <p className="mt-1 text-jw-soft">Add some products first, then come back to check out.</p>
-        <Link href="/#shop" className="jw-btn mt-6">
+        <Link href="/products" className="jw-btn mt-6">
           Start shopping
         </Link>
       </div>

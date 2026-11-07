@@ -34,7 +34,7 @@ export async function ShopHeader({ q = "" }: { q?: string }) {
         </div>
         {catalog.length > 0 && (
           <nav aria-label="Products" className="jw-scroll-x -mx-1 mt-2 hidden gap-1 md:flex overflow-x-auto px-1 pb-0.5 text-sm">
-            <Link href="/#shop" className="rounded-full px-3 py-1.5 font-semibold whitespace-nowrap text-jw-deep hover:bg-jw-ground/10">
+            <Link href="/products" className="rounded-full px-3 py-1.5 font-semibold whitespace-nowrap text-jw-deep hover:bg-jw-ground/10">
               All products
             </Link>
             {catalog.map((p) => (
@@ -94,7 +94,7 @@ export function ShopFooter({ credits = false }: { credits?: boolean }) {
           </p>
           <p className="mt-3 max-w-[30ch] text-sm">Cleaning liquids made by our family in small batches, delivered to your door.</p>
         </div>
-        <FooterCol title="Shop" links={[["All products", "/#shop"], ["Your cart", "/cart"], ["Delivery fees", "/#delivery"]]} />
+        <FooterCol title="Shop" links={[["All products", "/products"], ["Your cart", "/cart"], ["Delivery fees", "/#delivery"]]} />
         <FooterCol title="Your account" links={[["My orders", "/account"], ["Create an account", "/signup"], ["Staff log in", "/login"]]} />
         <FooterCol title="Help" links={[["Questions", "/#help"], ["Delivery & refunds", "/delivery"], ["Terms", "/terms"], ["Privacy", "/privacy"]]} />
       </div>

@@ -79,7 +79,7 @@ export function BottomNav({ signedIn }: { signedIn: boolean }) {
   if (pathname.startsWith("/checkout")) return null;
   const tabs = [
     { href: "/", label: "Home", icon: "home" as const, on: pathname === "/" },
-    { href: "/#shop", label: "Products", icon: "grid" as const, on: pathname.startsWith("/p/") },
+    { href: "/products", label: "Products", icon: "grid" as const, on: pathname === "/products" || pathname.startsWith("/p/") },
     { href: "/cart", label: "Cart", icon: "cart" as const, on: pathname === "/cart", badge: cartCount(lines) },
     { href: signedIn ? "/account" : "/login", label: signedIn ? "Account" : "Log in", icon: "user" as const, on: pathname.startsWith("/account") || pathname === "/login" },
   ];
@@ -90,13 +90,6 @@ export function BottomNav({ signedIn }: { signedIn: boolean }) {
           <Link
             key={t.label}
             href={t.href}
-            onClick={(e) => {
-              // On the home page "/#shop" is the same address after the first tap, so the browser does nothing. Scroll ourselves.
-              if (t.href === "/#shop" && pathname === "/") {
-                e.preventDefault();
-                document.getElementById("shop")?.scrollIntoView({ behavior: "smooth", block: "start" });
-              }
-            }}
             aria-current={t.on ? "page" : undefined}
             className={`relative flex flex-col items-center gap-0.5 rounded-2xl py-1.5 text-[0.6875rem] font-semibold ${t.on ? "bg-jw-ground/10 text-jw-deep" : "text-jw-ink/70"}`}
           >

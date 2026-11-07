@@ -81,7 +81,7 @@ export default async function ShopHome({ searchParams }: PageProps<"/">) {
                       Liquid soap, bleach, antiseptic and pine disinfectant, from a 500ml bottle to a 20-litre jerrycan.
                     </p>
                     <div className="mt-6 flex flex-wrap gap-3">
-                      <a href="#shop" className="jw-btn-dark">
+                      <a href="/products" className="jw-btn-dark">
                         Shop now <Icon name="arrow" className="h-4 w-4" />
                       </a>
                       <a href="#delivery" className="inline-flex min-h-12 items-center rounded-full bg-white/20 px-5 font-semibold backdrop-blur hover:bg-white/30">
@@ -109,7 +109,7 @@ export default async function ShopHome({ searchParams }: PageProps<"/">) {
               </div>
 
               <div className="grid grid-cols-2 gap-3 lg:grid-cols-1 lg:gap-4">
-                <a href="#shop" className="jw-clay jw-clay-hover relative flex flex-col justify-between overflow-hidden p-4 sm:p-5" style={{ background: tileFor("bleach") }}>
+                <a href="/products" className="jw-clay jw-clay-hover relative flex flex-col justify-between overflow-hidden p-4 sm:p-5" style={{ background: tileFor("bleach") }}>
                   <div>
                     <p className="jw-badge bg-night text-white">Bulk saver</p>
                     <p className="mt-2 text-base leading-tight font-extrabold sm:text-xl">

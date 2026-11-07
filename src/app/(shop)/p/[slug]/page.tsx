@@ -51,7 +51,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
             Home
           </Link>
           <Icon name="chevron" className="h-3.5 w-3.5 -rotate-90" />
-          <Link href="/#shop" className="hover:text-jw-ink">
+          <Link href="/products" className="hover:text-jw-ink">
             Products
           </Link>
           <Icon name="chevron" className="h-3.5 w-3.5 -rotate-90" />
