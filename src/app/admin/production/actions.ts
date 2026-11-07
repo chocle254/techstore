@@ -11,10 +11,10 @@ import { rateLimit } from "@/lib/ratelimit";
 import { sizeLabel } from "@/lib/format";
 import type { FormState } from "@/lib/auth/actions";
 
-const { products, variants, stockMovements } = schema;
+const { products, variants, stockMovements, recipeItems, chemicalMovements } = schema;
 
 /**
- * A batch was mixed and bottled: add the filled bottles of each size to stock.
+ * A batch was cooked and bottled: add the filled bottles to stock and take the chemicals it used out of the store.
  * All lines of one batch share a ref id so they show as one batch in the history.
  */
 export async function recordBatchAction(_: FormState, form: FormData): Promise<FormState> {
@@ -22,6 +22,8 @@ export async function recordBatchAction(_: FormState, form: FormData): Promise<F
   const productId = z.uuid().safeParse(form.get("productId"));
   if (!productId.success) return { error: "Choose the product." };
   const note = String(form.get("note") ?? "").trim().slice(0, 200);
+  const batches = Number(form.get("batches") ?? 1);
+  if (!Number.isInteger(batches) || batches < 1 || batches > 20) return { error: "How many batches did you cook? (1 to 20)" };
   if (!(await rateLimit("write", "batch:" + user.id))) return { error: "Too many saves. Wait a moment." };
 
   const db = await getDb();
@@ -44,13 +46,29 @@ export async function recordBatchAction(_: FormState, form: FormData): Promise<F
 
   const batchId = randomUUID();
   const litres = lines.reduce((t, l) => t + l.qty * l.sizeMl, 0) / 1000;
+  const recipe = await db.select({ chemicalId: recipeItems.chemicalId, amount: recipeItems.amount }).from(recipeItems).where(eq(recipeItems.productId, productId.data));
   await db.transaction(async (tx) => {
+    if (recipe.length) {
+      await tx.insert(chemicalMovements).values(
+        recipe.map((r) => ({
+          chemicalId: r.chemicalId,
+          delta: String(-Number(r.amount) * batches),
+          reason: "batch" as const,
+          refId: batchId,
+          note: `${batches} batch${batches === 1 ? "" : "es"}`,
+          createdBy: user.id,
+        })),
+      );
+    }
     await tx.insert(stockMovements).values(
       lines.map((l) => ({ variantId: l.variantId, delta: l.qty, reason: "batch" as const, refId: batchId, note: note || null, createdBy: user.id })),
     );
-    await audit(user.id, "batch_recorded", "product", productId.data, { batchId, litres, lines: lines.map((l) => ({ size: l.sizeMl, qty: l.qty })), note }, tx);
+    await audit(user.id, "batch_recorded", "product", productId.data, { batchId, litres, batches, lines: lines.map((l) => ({ size: l.sizeMl, qty: l.qty })), note }, tx);
   });
   revalidatePath("/admin", "layout");
   const bottles = lines.reduce((t, l) => t + l.qty, 0);
-  return { ok: `Saved: ${bottles} bottles (${litres.toLocaleString("en-KE")} L) of ${sizes[0].product.replace(/^JonWin\s+/, "")} added to stock.` };
+  const name = sizes[0].product.replace(/^JonWin\s+/, "");
+  return {
+    ok: `Saved: ${bottles} bottles (${litres.toLocaleString("en-KE")} L) of ${name}.${recipe.length ? " Chemicals updated." : " No recipe set for this product, so no chemicals were taken off."}`,
+  };
 }

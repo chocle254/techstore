@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth/guard";
-import { completeDelivery, startDelivery, unassignRider } from "@/lib/delivery";
+import { assignRider, completeDelivery, startDelivery, unassignRider } from "@/lib/delivery";
 import { normalizeMpesaCode } from "@/lib/payments";
 import { rateLimit } from "@/lib/ratelimit";
 import type { FormState } from "@/lib/auth/actions";
@@ -15,6 +15,17 @@ function refresh(orderId: string) {
 }
 
 const idOf = (form: FormData) => z.uuid().safeParse(form.get("orderId"));
+
+/** A rider takes a ready order for themselves. If another rider got it first, they're told. */
+export async function takeOrderAction(_: FormState, form: FormData): Promise<FormState> {
+  const me = await requireUser("rider");
+  const id = idOf(form);
+  if (!id.success) return { error: "Order not found." };
+  const res = await assignRider(id.data, me.id, me);
+  if (!res.ok) return { error: res.error === "This order can't be given to a rider now." ? "Someone else already took this order." : res.error };
+  refresh(id.data);
+  return { ok: "It's yours. It's now in your list below." };
+}
 
 /** The rider has left with the order. Only works on orders given to this rider. */
 export async function startDeliveryAction(_: FormState, form: FormData): Promise<FormState> {

@@ -3,7 +3,20 @@
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FormMessage, SubmitButton } from "@/components/form";
-import { deliveredAction, handBackAction, startDeliveryAction } from "./actions";
+import { deliveredAction, handBackAction, startDeliveryAction, takeOrderAction } from "./actions";
+
+export function TakeButton({ orderId }: { orderId: string }) {
+  const [state, action] = useActionState(takeOrderAction, undefined);
+  return (
+    <form action={action} className="space-y-2">
+      <input type="hidden" name="orderId" value={orderId} />
+      <SubmitButton className="btn-primary w-full" pendingText="Saving…">
+        🙋 I&apos;ll take it
+      </SubmitButton>
+      <FormMessage state={state} />
+    </form>
+  );
+}
 
 export function StartButton({ orderId }: { orderId: string }) {
   const [state, action] = useActionState(startDeliveryAction, undefined);

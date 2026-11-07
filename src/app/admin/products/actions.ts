@@ -106,3 +106,25 @@ export async function saveProductPhotoAction(_: FormState, form: FormData): Prom
   updateTag(SHOP_TAG);
   return { ok: remove ? "Photo removed." : "Photo saved. It's on the shop now." };
 }
+
+/** Set every size of a product from one price per 500 ml (a 20 L jerrycan costs 40 times the 500 ml price). */
+export async function setRateAction(_: FormState, form: FormData): Promise<FormState> {
+  const user = await requireUser("boss");
+  const parsed = z.object({ productId: z.uuid(), rate: z.coerce.number().int().min(1).max(100_000) }).safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { error: "Enter the price of 500 ml in whole shillings." };
+  const { productId, rate } = parsed.data;
+  const db = await getDb();
+  const sizes = await db.select().from(variants).where(eq(variants.productId, productId));
+  if (!sizes.length) return { error: "This product has no sizes yet." };
+  await db.transaction(async (tx) => {
+    for (const v of sizes) {
+      const price = Math.round((rate * v.sizeMl) / 500);
+      if (price === v.price) continue;
+      await tx.update(variants).set({ price }).where(eq(variants.id, v.id));
+      await audit(user.id, "price_changed", "variant", v.id, { from: { price: v.price }, to: { price }, rate }, tx);
+    }
+  });
+  revalidatePath("/admin", "layout");
+  updateTag(SHOP_TAG);
+  return { ok: `All sizes set from KSh ${rate} per 500 ml.` };
+}

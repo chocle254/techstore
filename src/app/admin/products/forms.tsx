@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 import { FormMessage, SubmitButton } from "@/components/form";
 import { sizeLabel } from "@/lib/format";
-import { addSizeAction, saveProductAction, saveProductPhotoAction, updateVariantAction } from "./actions";
+import { addSizeAction, saveProductAction, saveProductPhotoAction, setRateAction, updateVariantAction } from "./actions";
 
 export function VariantRow({
   v,
@@ -172,6 +172,27 @@ export function ProductPhotoForm({ productId, name, current }: { productId: stri
         </div>
         {state && <p className={`text-sm ${state.error ? "text-red-700" : "text-brand-700"}`}>{state.error ?? state.ok}</p>}
       </div>
+    </form>
+  );
+}
+
+/** One box to price every size: the 500 ml price, scaled up by volume. */
+export function RateForm({ productId, current }: { productId: string; current: number | null }) {
+  const [state, action] = useActionState(setRateAction, undefined);
+  return (
+    <form action={action} className="flex flex-wrap items-end gap-2 rounded-xl bg-surface p-3">
+      <input type="hidden" name="productId" value={productId} />
+      <label className="block">
+        <span className="label">Price per 500 ml (KSh)</span>
+        <input className="input w-28" name="rate" inputMode="numeric" pattern="\d+" defaultValue={current ?? ""} required />
+      </label>
+      <SubmitButton className="btn-primary" pendingText="…">
+        Set all sizes
+      </SubmitButton>
+      <p className="w-full text-xs text-muted">
+        1 L = 2×, 5 L = 10×, 20 L = 40× this price. You can still change one size below.
+        {state && <span className={state.error ? "ml-2 text-red-700" : "ml-2 text-brand-700"}>{state.error ?? state.ok}</span>}
+      </p>
     </form>
   );
 }

@@ -212,15 +212,17 @@ export async function owedTotal(): Promise<number> {
 
 /** Live counts of online orders that need someone to act. Not tied to the date filter. */
 export async function orderQueue() {
-  const [r] = await rows<{ check_pay: string; need_rider: string; on_road: string; oldest: Date | null }>(sql`
+  const [r] = await rows<{ check_pay: string; to_make: string; ready: string; on_road: string; oldest: Date | null }>(sql`
     select count(*) filter (where status = 'pending' and pay_method = 'mpesa') as check_pay,
-           count(*) filter (where status = 'paid' or (status = 'pending' and pay_method = 'cod')) as need_rider,
+           count(*) filter (where status = 'paid' or (status = 'pending' and pay_method = 'cod')) as to_make,
+           count(*) filter (where status = 'ready') as ready,
            count(*) filter (where status in ('assigned', 'out_for_delivery')) as on_road,
-           min(created_at) filter (where status in ('pending', 'paid')) as oldest
+           min(created_at) filter (where status in ('pending', 'paid', 'ready')) as oldest
     from orders`);
   return {
     checkPay: Number(r.check_pay),
-    needRider: Number(r.need_rider),
+    toMake: Number(r.to_make),
+    ready: Number(r.ready),
     onRoad: Number(r.on_road),
     oldestWaiting: r.oldest ? new Date(r.oldest) : null,
   };

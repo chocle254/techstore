@@ -238,7 +238,8 @@ export async function customerLedger(customerId: string) {
 
 export const STATUS_LABELS: Record<OrderView["status"], string> = {
   pending: "Waiting for payment",
-  paid: "Paid, being packed",
+  paid: "Paid, being made",
+  ready: "Ready, waiting for a rider",
   assigned: "Rider assigned",
   out_for_delivery: "On the way",
   delivered: "Delivered",

@@ -10,6 +10,8 @@ import {
   uniqueIndex,
   jsonb,
   date,
+  numeric,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 
 // Money is stored as whole Kenyan shillings (integer). Volumes are stored in millilitres.
@@ -115,6 +117,52 @@ export const stockMovements = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("stock_variant_idx").on(t.variantId)],
+);
+
+// ---------- Chemicals ----------
+// What goes into a batch. Amounts are in each chemical's own unit (e.g. "1 L bottle", "packet"), and may be fractions.
+export const chemicalReasonEnum = pgEnum("chemical_reason", ["purchase", "batch", "adjustment"]);
+
+export const chemicals = pgTable("chemicals", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull().unique(),
+  unit: text("unit").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// How much of each chemical one batch of a product uses.
+export const recipeItems = pgTable(
+  "recipe_items",
+  {
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id),
+    chemicalId: uuid("chemical_id")
+      .notNull()
+      .references(() => chemicals.id),
+    amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.productId, t.chemicalId] })],
+);
+
+// Every change to the chemical store: bought (+), used by a batch (-), or counted and corrected. Never edited.
+export const chemicalMovements = pgTable(
+  "chemical_movements",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    chemicalId: uuid("chemical_id")
+      .notNull()
+      .references(() => chemicals.id),
+    delta: numeric("delta", { precision: 12, scale: 2 }).notNull(),
+    reason: chemicalReasonEnum("reason").notNull(),
+    // For batch use: the batch id shared with its stock_movements rows.
+    refId: uuid("ref_id"),
+    note: text("note"),
+    createdBy: uuid("created_by").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("chemical_movements_chemical_idx").on(t.chemicalId), index("chemical_movements_ref_idx").on(t.refId)],
 );
 
 export const sales = pgTable(
@@ -223,7 +271,8 @@ export const passwordResets = pgTable("password_resets", {
 
 // ---------- Shop ----------
 
-export const orderStatusEnum = pgEnum("order_status", ["pending", "paid", "assigned", "out_for_delivery", "delivered", "cancelled"]);
+// ready = made and packed by the kitchen; only ready orders show on the delivery dashboard.
+export const orderStatusEnum = pgEnum("order_status", ["pending", "paid", "ready", "assigned", "out_for_delivery", "delivered", "cancelled"]);
 export const orderPayEnum = pgEnum("order_pay", ["mpesa", "cod"]);
 
 // Places we deliver to, each with its own delivery fee.

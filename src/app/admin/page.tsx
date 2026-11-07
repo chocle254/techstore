@@ -96,9 +96,10 @@ export default async function Dashboard({ searchParams }: PageProps<"/admin">) {
           </h2>
           {queue.oldestWaiting && <p className="text-sm text-amber-800">Oldest has waited {waitedFor(queue.oldestWaiting)}</p>}
         </div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <QueueTile href="/admin/orders" label="Check M-Pesa code" n={queue.checkPay} urgent />
-          <QueueTile href="/admin/orders" label="Need a rider" n={queue.needRider} urgent />
+          <QueueTile href="/admin/orders" label="To make, then mark ready" n={queue.toMake} urgent />
+          <QueueTile href="/admin/orders" label="Ready, waiting for a rider" n={queue.ready} />
           <QueueTile href="/admin/orders" label="On the road" n={queue.onRoad} />
         </div>
       </section>

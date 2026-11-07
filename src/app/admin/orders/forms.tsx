@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { FormMessage, SubmitButton } from "@/components/form";
-import { assignRiderAction, cancelOrderAction, confirmPaidAction, setStatusAction, unassignRiderAction } from "./actions";
+import { assignRiderAction, cancelOrderAction, confirmPaidAction, markReadyAction, setStatusAction, unassignRiderAction } from "./actions";
 
 export function ConfirmPaidForm({ orderId, payRef }: { orderId: string; payRef: string | null }) {
   const [state, action] = useActionState(confirmPaidAction, undefined);
@@ -19,6 +19,19 @@ export function ConfirmPaidForm({ orderId, payRef }: { orderId: string; payRef: 
       <div className="w-full">
         <FormMessage state={state} />
       </div>
+    </form>
+  );
+}
+
+export function MarkReadyForm({ orderId }: { orderId: string }) {
+  const [state, action] = useActionState(markReadyAction, undefined);
+  return (
+    <form action={action} className="space-y-2">
+      <input type="hidden" name="orderId" value={orderId} />
+      <SubmitButton className="btn-primary w-full" pendingText="Saving…">
+        ✓ Mark ready for delivery
+      </SubmitButton>
+      <FormMessage state={state} />
     </form>
   );
 }

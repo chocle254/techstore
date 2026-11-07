@@ -20,13 +20,14 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
           { href: "/admin/sales", label: "Sales", icon: "📒" },
           { href: "/admin/products", label: "Products", icon: "🧴" },
           { href: "/admin/stock", label: "Stock", icon: "📦" },
-          ...(isCook ? [] : [{ href: "/admin/production", label: "Production", icon: "🧪" }]),
+          ...(isCook ? [] : [{ href: "/admin/production", label: "Kitchen", icon: "🧪" }]),
+          { href: "/admin/chemicals", label: "Chemicals", icon: "⚗️" },
           { href: "/admin/expenses", label: "Expenses", icon: "💸" },
           { href: "/admin/customers", label: "Customers", icon: "👥" },
           { href: "/admin/areas", label: "Delivery areas", icon: "📍" },
         ]
       : []),
-    ...(isCook ? [{ href: "/admin/production", label: "Production", icon: "🧪", primary: true }] : []),
+    ...(isCook ? [{ href: "/admin/production", label: "Kitchen", icon: "🧪", primary: true }] : []),
     ...(hasRole(user, "rider") ? [{ href: "/rider", label: "My deliveries", icon: "🛵", primary: !isOffice }] : []),
     ...(isBoss
       ? [

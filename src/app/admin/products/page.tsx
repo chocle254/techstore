@@ -2,7 +2,7 @@ import { asc } from "drizzle-orm";
 import { getDb, schema } from "@/db";
 import { hasRole, requireUser } from "@/lib/auth/guard";
 import { stockLevels } from "@/lib/queries";
-import { AddSizeForm, ProductForm, ProductPhotoForm, VariantRow } from "./forms";
+import { AddSizeForm, ProductForm, ProductPhotoForm, RateForm, VariantRow } from "./forms";
 
 export const metadata = { title: "Products" };
 
@@ -32,6 +32,15 @@ export default async function ProductsPage() {
             <h2 className="text-lg font-semibold">
               {p.name} {!p.isActive && <span className="badge bg-surface text-muted">Hidden</span>}
             </h2>
+            {canEdit && (
+              <RateForm
+                productId={p.id}
+                current={(() => {
+                  const half = sizes.find((s) => s.sizeMl === 500);
+                  return half && half.price > 0 ? half.price : null;
+                })()}
+              />
+            )}
             <table className="table">
               {!canEdit && (
                 <thead>

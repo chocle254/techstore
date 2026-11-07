@@ -10,9 +10,14 @@ const { orders, users } = schema;
 type Result = { ok: true } | { ok: false; error: string };
 export type OrderStatus = (typeof schema.orderStatusEnum.enumValues)[number];
 
-/** Statuses an order can be in when a rider is (re)assigned. COD orders can go out before any payment. */
+/** Riders only get orders the kitchen has marked ready (or that are already with a rider). */
 export function canAssign(o: { status: OrderStatus; payMethod: "mpesa" | "cod" }) {
-  return o.status === "paid" || o.status === "assigned" || (o.status === "pending" && o.payMethod === "cod");
+  return o.status === "ready" || o.status === "assigned";
+}
+
+/** An order can be marked ready once it's paid, or straight away when the customer pays cash on delivery. */
+export function canMarkReady(o: { status: OrderStatus; payMethod: "mpesa" | "cod" }) {
+  return o.status === "paid" || (o.status === "pending" && o.payMethod === "cod");
 }
 
 /** Give an order to a rider. Only someone with the rider role who isn't suspended. */
@@ -35,14 +40,13 @@ export async function assignRider(orderId: string, riderId: string, actor: Sessi
   return { ok: true };
 }
 
-/** Take the order back from its rider (e.g. couldn't reach the customer). It returns to the packing list. */
+/** Take the order back from its rider (e.g. couldn't reach the customer). It goes back to the ready list. */
 export async function unassignRider(orderId: string, reason: string, actor: SessionUser, onlyRiderId?: string): Promise<Result> {
   const db = await getDb();
   const [o] = await db.select().from(orders).where(eq(orders.id, orderId));
   if (!o || !o.riderId || (onlyRiderId && o.riderId !== onlyRiderId)) return { ok: false, error: "Order not found." };
   if (o.status !== "assigned" && o.status !== "out_for_delivery") return { ok: false, error: "This order is no longer with a rider." };
-  const bal = await saleBalance(o.saleId);
-  const back: OrderStatus = o.payMethod === "cod" && bal && bal.paid === 0 ? "pending" : "paid";
+  const back: OrderStatus = "ready";
   const [done] = await db
     .update(orders)
     .set({ riderId: null, status: back, updatedAt: new Date() })
@@ -79,7 +83,7 @@ export async function completeDelivery(
   const db = await getDb();
   const [o] = await db.select().from(orders).where(eq(orders.id, orderId));
   if (!o || (onlyRiderId && o.riderId !== onlyRiderId)) return { ok: false, error: "Order not found." };
-  const from: OrderStatus[] = o.payMethod === "cod" ? ["pending", "paid", "assigned", "out_for_delivery"] : ["paid", "assigned", "out_for_delivery"];
+  const from: OrderStatus[] = o.payMethod === "cod" ? ["pending", "paid", "ready", "assigned", "out_for_delivery"] : ["paid", "ready", "assigned", "out_for_delivery"];
   if (!from.includes(o.status)) return { ok: false, error: "This order can't be marked delivered." };
 
   // Claim the order first so two taps (or rider + office at once) can't record the cash twice.

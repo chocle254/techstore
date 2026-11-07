@@ -29,6 +29,13 @@
       "when": 1793919846427,
       "tag": "0003_shop",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794032651504,
+      "tag": "0004_kitchen",
+      "breakpoints": true
     }
   ]
 }

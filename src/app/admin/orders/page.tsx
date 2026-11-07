@@ -1,15 +1,15 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth/guard";
 import { listOrders, listRiders, STATUS_LABELS, type OrderView } from "@/lib/shop";
-import { canAssign } from "@/lib/delivery";
+import { canAssign, canMarkReady } from "@/lib/delivery";
 import { fmtDateTime, ksh, sizeLabel } from "@/lib/format";
 import { formatPhone } from "@/lib/phone";
-import { AssignRiderForm, CancelForm, ConfirmPaidForm, StatusButtons } from "./forms";
+import { AssignRiderForm, CancelForm, ConfirmPaidForm, MarkReadyForm, StatusButtons } from "./forms";
 
 export const metadata = { title: "Orders" };
 
 const TABS = {
-  open: { label: "To do", statuses: ["pending", "paid", "assigned", "out_for_delivery"] as OrderView["status"][] },
+  open: { label: "To do", statuses: ["pending", "paid", "ready", "assigned", "out_for_delivery"] as OrderView["status"][] },
   done: { label: "Delivered", statuses: ["delivered"] as OrderView["status"][] },
   cancelled: { label: "Cancelled", statuses: ["cancelled"] as OrderView["status"][] },
 };
@@ -17,13 +17,14 @@ const TABS = {
 function nextSteps(o: OrderView): string[] {
   const steps: string[] = [];
   if (o.status === "assigned") steps.push("out_for_delivery");
-  if (["paid", "assigned", "out_for_delivery"].includes(o.status) || (o.payMethod === "cod" && o.status === "pending")) steps.push("delivered");
+  if (["ready", "assigned", "out_for_delivery"].includes(o.status)) steps.push("delivered");
   return steps;
 }
 
 const BADGE: Record<string, string> = {
   pending: "bg-amber-100 text-amber-800",
-  paid: "bg-brand-50 text-brand-700",
+  paid: "bg-amber-100 text-amber-800",
+  ready: "bg-brand-50 text-brand-700",
   assigned: "bg-sky-100 text-sky-800",
   out_for_delivery: "bg-sky-100 text-sky-800",
   delivered: "bg-surface text-muted",
@@ -126,6 +127,12 @@ export default async function OrdersPage({ searchParams }: PageProps<"/admin/ord
                   )}
                 </p>
                 <ConfirmPaidForm orderId={o.id} payRef={o.payRef} />
+              </div>
+            )}
+            {canMarkReady(o) && (
+              <div className="rounded-xl bg-surface p-3">
+                <p className="mb-2 text-sm">Once it&apos;s made and packed, mark it ready. It then shows on the delivery dashboard for riders.</p>
+                <MarkReadyForm orderId={o.id} />
               </div>
             )}
             {canAssign(o) && <AssignRiderForm orderId={o.id} riders={riders} current={o.riderId} />}

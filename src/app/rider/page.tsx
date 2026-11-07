@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/auth/guard";
 import { listOrders, type OrderView } from "@/lib/shop";
 import { fmtDateTime, ksh, sizeLabel } from "@/lib/format";
 import { formatPhone } from "@/lib/phone";
-import { AutoRefresh, DeliveredForm, HandBackForm, StartButton } from "./forms";
+import { AutoRefresh, DeliveredForm, HandBackForm, StartButton, TakeButton } from "./forms";
 
 export const metadata = { title: "My deliveries" };
 export const dynamic = "force-dynamic";
@@ -19,7 +19,8 @@ function mapLink(o: OrderView) {
 export default async function RiderPage() {
   const me = await requireUser("rider");
   const db = await getDb();
-  const [open, recent, money] = await Promise.all([
+  const [ready, open, recent, money] = await Promise.all([
+    listOrders({ statuses: ["ready"], oldestFirst: true, limit: 50 }),
     listOrders({ riderId: me.id, statuses: ["assigned", "out_for_delivery"], oldestFirst: true, limit: 50 }),
     listOrders({ riderId: me.id, statuses: ["delivered"], limit: 30 }),
     db.execute(sql`
@@ -59,12 +60,38 @@ export default async function RiderPage() {
         </p>
       )}
 
-      <section aria-labelledby="todo" className="space-y-3">
-        <h1 id="todo" className="text-2xl font-bold">
-          To deliver
-          {toCollect > 0 && <span className="ml-2 text-base font-normal text-muted">collect {ksh(toCollect)} in total</span>}
+      <section aria-labelledby="ready-title" className="space-y-3">
+        <h1 id="ready-title" className="text-2xl font-bold">
+          Ready for pickup <span className="text-base font-normal text-muted">({ready.length})</span>
         </h1>
-        {open.length === 0 && <p className="card text-muted">Nothing to deliver right now. New orders appear here when the office gives them to you.</p>}
+        {ready.length === 0 && <p className="card text-muted">Nothing ready yet. Orders show up here when the office marks them ready.</p>}
+        {ready.map((o) => {
+          const owed = Math.max(0, o.total - o.paid);
+          return (
+            <article key={o.id} className="card space-y-2 border-brand-500">
+              <header className="flex items-baseline justify-between gap-2">
+                <h2 className="text-lg font-semibold">Order {o.orderNo}</h2>
+                <span className="text-sm text-muted">{fmtDateTime(o.createdAt)}</span>
+              </header>
+              <p className="text-sm">
+                <b>{o.areaName}</b>: {o.address}
+              </p>
+              <p className="text-sm text-muted">
+                {o.lines.map((l) => `${l.qty} × ${l.name.replace(/^JonWin\s+/, "")} ${sizeLabel(l.sizeMl)}`).join(", ")}
+              </p>
+              <p className="text-sm font-semibold">{o.payMethod === "cod" && owed > 0 ? `Collect ${ksh(owed)}` : "Already paid"}</p>
+              <TakeButton orderId={o.id} />
+            </article>
+          );
+        })}
+      </section>
+
+      <section aria-labelledby="todo" className="space-y-3">
+        <h2 id="todo" className="text-2xl font-bold">
+          My deliveries
+          {toCollect > 0 && <span className="ml-2 text-base font-normal text-muted">collect {ksh(toCollect)} in total</span>}
+        </h2>
+        {open.length === 0 && <p className="card text-muted">Nothing on you right now. Take an order from &ldquo;Ready for pickup&rdquo; above.</p>}
         {open.map((o) => {
           const owed = Math.max(0, o.total - o.paid);
           const collect = o.payMethod === "cod" && owed > 0 ? ksh(owed) : null;

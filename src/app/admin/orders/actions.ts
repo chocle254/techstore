@@ -1,13 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb, schema } from "@/db";
 import { audit } from "@/lib/audit";
 import { hasRole, requireUser } from "@/lib/auth/guard";
 import { recordPayment, saleBalance, voidSale } from "@/lib/sales";
-import { assignRider, completeDelivery, startDelivery, unassignRider } from "@/lib/delivery";
+import { assignRider, canMarkReady, completeDelivery, startDelivery, unassignRider } from "@/lib/delivery";
 import { normalizeMpesaCode } from "@/lib/payments";
 import type { FormState } from "@/lib/auth/actions";
 
@@ -46,6 +46,27 @@ export async function confirmPaidAction(_: FormState, form: FormData): Promise<F
   await audit(user.id, "order_paid", "order", o.id, { ref });
   refresh(o.id);
   return { ok: "Marked as paid." };
+}
+
+/** The kitchen has made and packed the order: it now shows on the delivery dashboard for riders. */
+export async function markReadyAction(_: FormState, form: FormData): Promise<FormState> {
+  const user = await requireUser("boss", "helper");
+  const id = z.uuid().safeParse(form.get("orderId"));
+  if (!id.success) return { error: "Order not found." };
+  const o = await loadOrder(id.data);
+  if (!o) return { error: "Order not found." };
+  if (o.status === "pending" && o.payMethod === "mpesa") return { error: "Confirm the M-Pesa payment first." };
+  if (!canMarkReady(o)) return { error: "This order can't be marked ready now." };
+  const db = await getDb();
+  const [done] = await db
+    .update(orders)
+    .set({ status: "ready", updatedAt: new Date() })
+    .where(and(eq(orders.id, o.id), eq(orders.status, o.status)))
+    .returning({ id: orders.id });
+  if (!done) return { error: "The order changed while you were working. Refresh and try again." };
+  await audit(user.id, "order_ready", "order", o.id, { from: o.status });
+  refresh(o.id);
+  return { ok: "Marked ready. Riders can see it now." };
 }
 
 /** Move an order along. Riders are given orders with assignRiderAction; delivering a COD order records the money. */

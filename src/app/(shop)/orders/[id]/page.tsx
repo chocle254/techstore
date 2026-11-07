@@ -14,7 +14,7 @@ import { nick } from "@/components/shop/tiles";
 export const metadata = { title: "Your order" };
 export const dynamic = "force-dynamic";
 
-const STEPS = ["pending", "paid", "out_for_delivery", "delivered"] as const;
+const STEPS = ["pending", "paid", "ready", "out_for_delivery", "delivered"] as const;
 
 export default async function OrderPage({ params, searchParams }: PageProps<"/orders/[id]">) {
   const user = await requireUser();
@@ -28,9 +28,9 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/or
   const balance = Math.max(0, order.total - order.paid);
   const pay = order.payMethod === "mpesa" ? getGateway().instructions(order.orderNo) : null;
   const cancelled = order.status === "cancelled";
-  const reached = order.status === "assigned" ? 1 : STEPS.indexOf(order.status as (typeof STEPS)[number]);
+  const reached = order.status === "assigned" ? 2 : STEPS.indexOf(order.status as (typeof STEPS)[number]);
   const stepLabel = (s: (typeof STEPS)[number]) =>
-    s === "pending" && order.payMethod === "cod" ? "Order received" : s === "pending" ? "Order placed" : STATUS_LABELS[s];
+    s === "pending" && order.payMethod === "cod" ? "Order received" : s === "pending" ? "Order placed" : s === "ready" ? "Made and packed" : STATUS_LABELS[s];
 
   return (
     <>
