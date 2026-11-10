@@ -1,7 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { isShopPath, SHOP_ON } from "@/lib/features";
 
 // Sets a per-request Content Security Policy with a nonce for Next.js scripts.
 export function proxy(request: NextRequest) {
+  // Shop switched off: its pages go to the records app (which sends logged-out people to login).
+  if (!SHOP_ON && isShopPath(request.nextUrl.pathname)) {
+    return NextResponse.redirect(new URL("/admin", request.url));
+  }
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
   const isDev = process.env.NODE_ENV === "development";
   const blobHost = process.env.BLOB_PUBLIC_HOST ?? "https://*.public.blob.vercel-storage.com";

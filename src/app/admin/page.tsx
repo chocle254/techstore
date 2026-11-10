@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth/guard";
-import { EXPENSE_LABELS, fmtDate, ksh, METHOD_LABELS, sizeLabel } from "@/lib/format";
+import { EXPENSE_LABELS, fmtDate, ksh, METHOD_LABELS, sizeLabel, ymdNairobi } from "@/lib/format";
+import { SHOP_ON } from "@/lib/features";
+import { scheduledCounts } from "@/lib/scheduled";
 import {
   channelSplit,
   expensesByCategory,
@@ -55,7 +57,7 @@ export default async function Dashboard({ searchParams }: PageProps<"/admin">) {
   const sp = await searchParams;
   const { range, preset, bucket } = resolveRange(sp);
 
-  const [s, series, products, sizes, expenses, methods, stock, queue, channels, areas, ratings] = await Promise.all([
+  const [s, series, products, sizes, expenses, methods, stock, queue, channels, areas, ratings, booked] = await Promise.all([
     summary(range),
     salesSeries(range, bucket),
     topProducts(range),
@@ -67,6 +69,7 @@ export default async function Dashboard({ searchParams }: PageProps<"/admin">) {
     channelSplit(range),
     ordersByArea(range),
     productRatings(),
+    scheduledCounts(ymdNairobi()),
   ]);
   const trend = series.map((p) => ({ ...p, label: bucketLabel(p.bucket, bucket) }));
   const low = stock.filter((v) => v.isActive && v.onHand <= v.lowStockAt);
@@ -78,9 +81,14 @@ export default async function Dashboard({ searchParams }: PageProps<"/admin">) {
     <div className="mx-auto max-w-6xl space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-bold">Hi {user.name.split(" ")[0]} 👋</h1>
-        <Link href="/admin/sell" className="btn-primary">
-          🧾 New sale
-        </Link>
+        <div className="flex gap-2">
+          <Link href="/admin/schedule" className="btn-secondary">
+            📅 Book order
+          </Link>
+          <Link href="/admin/sell" className="btn-primary">
+            🧾 New sale
+          </Link>
+        </div>
       </div>
 
       {noPrices > 0 && (
@@ -89,6 +97,18 @@ export default async function Dashboard({ searchParams }: PageProps<"/admin">) {
         </Link>
       )}
 
+      <section aria-labelledby="booked" className="space-y-2">
+        <h2 id="booked" className="font-semibold">
+          Booked orders
+        </h2>
+        <div className="grid grid-cols-3 gap-2">
+          <QueueTile href="/admin/schedule" label="Late" n={booked.late} urgent />
+          <QueueTile href="/admin/schedule" label="Due today" n={booked.today} urgent />
+          <QueueTile href="/admin/schedule" label="Next 7 days" n={booked.week} />
+        </div>
+      </section>
+
+      {SHOP_ON && (
       <section aria-labelledby="queue" className="space-y-2">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 id="queue" className="font-semibold">
@@ -103,6 +123,7 @@ export default async function Dashboard({ searchParams }: PageProps<"/admin">) {
           <QueueTile href="/admin/orders" label="On the road" n={queue.onRoad} />
         </div>
       </section>
+      )}
 
       {/* Filters: one row above the charts */}
       <div className="flex flex-wrap items-center gap-2">
@@ -167,6 +188,8 @@ export default async function Dashboard({ searchParams }: PageProps<"/admin">) {
         <ChartCard title="How customers paid">
           <RankBars data={methods.map((m) => ({ name: METHOD_LABELS[m.method], value: m.total }))} valueLabel="Sales" />
         </ChartCard>
+        {SHOP_ON && (
+        <>
         <ChartCard title="Shop counter vs online">
           <RankBars data={channels.map((c) => ({ name: CHANNEL_LABELS[c.channel], value: c.revenue }))} valueLabel="Sales (no delivery fees)" />
         </ChartCard>
@@ -180,6 +203,8 @@ export default async function Dashboard({ searchParams }: PageProps<"/admin">) {
             format="count"
           />
         </ChartCard>
+        </>
+        )}
       </div>
     </div>
   );

@@ -356,3 +356,45 @@ export const ratings = pgTable(
   },
   (t) => [uniqueIndex("ratings_order_product_idx").on(t.orderId, t.productId), index("ratings_product_idx").on(t.productId)],
 );
+
+// ---------- Scheduled orders ----------
+// Orders the boss books for a future day (phone call, WhatsApp, a regular customer).
+// Nothing leaves stock and no money is counted until it's marked done, which records a normal sale.
+export const scheduledStatusEnum = pgEnum("scheduled_status", ["scheduled", "done", "cancelled"]);
+
+export const scheduledOrders = pgTable(
+  "scheduled_orders",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    customerId: uuid("customer_id").references(() => users.id),
+    customerName: text("customer_name").notNull(),
+    customerPhone: text("customer_phone"),
+    dueDate: date("due_date").notNull(),
+    note: text("note"),
+    status: scheduledStatusEnum("status").notNull().default("scheduled"),
+    // The sale recorded when it was done.
+    saleId: uuid("sale_id")
+      .unique()
+      .references(() => sales.id),
+    cancelReason: text("cancel_reason"),
+    createdBy: uuid("created_by").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("scheduled_orders_due_idx").on(t.status, t.dueDate)],
+);
+
+export const scheduledOrderItems = pgTable(
+  "scheduled_order_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => scheduledOrders.id, { onDelete: "cascade" }),
+    variantId: uuid("variant_id")
+      .notNull()
+      .references(() => variants.id),
+    qty: integer("qty").notNull(),
+  },
+  (t) => [index("scheduled_order_items_order_idx").on(t.orderId)],
+);

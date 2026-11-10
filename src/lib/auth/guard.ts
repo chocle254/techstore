@@ -1,5 +1,6 @@
 import "server-only";
 import { redirect } from "next/navigation";
+import { SHOP_ON } from "@/lib/features";
 import { getCurrentUser, type Role, type SessionUser } from "./session";
 
 export const STAFF_ROLES: Role[] = ["boss", "helper", "cook", "rider"];
@@ -16,7 +17,8 @@ export async function requireUser(...allowed: Role[]): Promise<SessionUser> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (user.mustChangePassword) redirect("/account/password?first=1");
-  if (allowed.length && !hasRole(user, ...allowed)) redirect("/");
+  // With the shop off there is no public home page, so send them back to login instead.
+  if (allowed.length && !hasRole(user, ...allowed)) redirect(SHOP_ON ? "/" : "/login");
   return user;
 }
 
@@ -25,6 +27,11 @@ export async function requireLoggedIn(): Promise<SessionUser> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   return user;
+}
+
+/** Whether this person can use the app while the shop is off (the team, not buyers or riders). */
+export function canUseApp(user: Pick<SessionUser, "roles">): boolean {
+  return SHOP_ON || hasRole(user, "boss", "helper", "cook");
 }
 
 /** Where a user lands after login. */

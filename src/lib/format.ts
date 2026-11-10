@@ -49,3 +49,8 @@ export function ymdNairobi(d: Date = new Date()): string {
 export function daysBetween(fromYmd: string, toYmd: string): number {
   return Math.round((Date.parse(toYmd) - Date.parse(fromYmd)) / 86_400_000);
 }
+
+/** YYYY-MM-DD plus n days. */
+export function addDaysYmd(ymd: string, n: number): string {
+  return new Date(Date.parse(ymd) + n * 86_400_000).toISOString().slice(0, 10);
+}

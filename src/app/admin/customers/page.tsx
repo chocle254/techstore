@@ -3,6 +3,7 @@ import { getDb } from "@/db";
 import { hasRole, requireUser } from "@/lib/auth/guard";
 import { fmtDate, ksh } from "@/lib/format";
 import { formatPhone } from "@/lib/phone";
+import { SHOP_ON } from "@/lib/features";
 import { setTrustedAction } from "../staff/actions";
 import { AccountControls } from "../staff/forms";
 
@@ -56,7 +57,7 @@ export default async function CustomersPage({ searchParams }: PageProps<"/admin/
         <input className="input" name="q" defaultValue={q} placeholder="Search name or phone" aria-label="Search" />
         <button className="btn-secondary">Search</button>
       </form>
-      {isBoss && (
+      {isBoss && SHOP_ON && (
         <p className="text-sm text-muted">
           <b>Trusted</b> customers can choose cash on delivery in the online shop. Everyone else must pay first.
         </p>
@@ -88,6 +89,7 @@ export default async function CustomersPage({ searchParams }: PageProps<"/admin/
               <details>
                 <summary className="cursor-pointer text-sm text-brand-700 underline">Manage</summary>
                 <div className="mt-2 space-y-2">
+                  {SHOP_ON && (
                   <form action={setTrustedAction}>
                     <input type="hidden" name="userId" value={c.id} />
                     <input type="hidden" name="trusted" value={c.is_trusted ? "0" : "1"} />
@@ -95,6 +97,7 @@ export default async function CustomersPage({ searchParams }: PageProps<"/admin/
                       {c.is_trusted ? "Remove trusted" : "Mark as trusted (allow cash on delivery)"}
                     </button>
                   </form>
+                  )}
                   <AccountControls userId={c.id} suspended={!!c.suspended_at} hasPassword={c.has_password} />
                 </div>
               </details>

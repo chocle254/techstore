@@ -11,7 +11,7 @@ import { normalizePhone } from "@/lib/phone";
 import { rateLimit } from "@/lib/ratelimit";
 import { hashPassword, passwordProblem, verifyPassword } from "./password";
 import { createSession, destroyAllSessions, destroySession, getCurrentUser } from "./session";
-import { homeFor } from "./guard";
+import { canUseApp, homeFor } from "./guard";
 
 const { users, passwordResets } = schema;
 
@@ -66,6 +66,7 @@ export async function loginAction(_: FormState, form: FormData): Promise<FormSta
     return { error: GENERIC_LOGIN_ERROR };
   }
   if (user.suspendedAt) return { error: "This account is suspended. Contact JonWin Clean." };
+  if (!canUseApp(user)) return { error: "This app is only for the JonWin Clean team." };
 
   await db.update(users).set({ failedLogins: 0, lockedUntil: null }).where(eq(users.id, user.id));
   await createSession(user.id);
