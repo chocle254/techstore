@@ -257,3 +257,10 @@ body.lock { overflow: hidden; }
 .mini .row { width: 100%; border: 0; border-bottom: 1px solid var(--line); background: none; padding: 9px 0; font-size: 15px; text-align: left; }
 .sheet .total { border-top: 1px solid var(--line); margin-top: 4px; padding-bottom: 4px; }
 .sheet .paybtns { margin-top: 8px; }
+
+/* Price per bottle rows */
+.sizerow { display: grid; grid-template-columns: 1fr 1.3fr 44px; gap: 8px; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--line); }
+.sizerow > b { font-size: 17px; }
+.sizerow select { margin: 0; }
+.ksh { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--muted); font-weight: 600; }
+.ksh input { margin: 0; text-align: right; }

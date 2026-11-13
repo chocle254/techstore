@@ -167,7 +167,7 @@ function picker(target) {
   return `<div class="picker">${L.products()
     .map(
       (p) => `<div class="prow"><div class="pname">${dot(p)}${esc(p.short || p.name)}</div><div class="sizes">${(p.sizes || [])
-        .map((s) => `<button type="button" data-act="add" data-t="${target}" data-p="${attr(p.id)}" data-ml="${s.ml}">${L.size(s.ml)}${s.price ? `<small>${s.price}</small>` : ""}</button>`)
+        .map((s) => `<button type="button" data-act="add" data-t="${target}" data-p="${attr(p.id)}" data-ml="${s.ml}">${L.size(s.ml)}<small>${s.price ? "KSh " + s.price : "no price"}</small></button>`)
         .join("")}</div></div>`,
     )
     .join("")}</div>`;
@@ -675,7 +675,9 @@ ${form}`,
   product(id) {
     const p = id && id !== "new" ? S.get(id) : null;
     const dis = isBoss() ? "" : " disabled";
-    const sizes = [...(p?.sizes || []), { ml: "", price: "" }, { ml: "", price: "" }];
+    const COMMON = [250, 500, 750, 1000, 1500, 2000, 3000, 4000, 5000, 10000, 20000];
+    const have = (p?.sizes || []).map((s) => s.ml);
+    const addOpts = opts(COMMON.filter((ml) => !have.includes(ml)).map((ml) => ({ v: ml, t: L.size(ml) + " bottle" })), "", "Add a size…");
     return [
       p ? p.name : "New product",
       `<form data-form="product" class="card"><input type="hidden" name="id" value="${attr(p?.id || "")}">
@@ -683,8 +685,9 @@ ${form}`,
 <div class="two"><label>Short name<input name="short" value="${attr(p?.short || "")}" placeholder="e.g. Soap"${dis}></label><label>Colour<input name="color" type="color" value="${attr(p?.color || "#16a34a")}"${dis}></label></div>
 <div class="two"><label>Litres per batch<input name="batchL" type="number" inputmode="decimal" step="any" min="1" value="${attr(p?.batchL || 25)}"${dis}></label>
 <label>Extra litres to carry each route day<input name="carryL" type="number" inputmode="decimal" step="any" min="0" value="${attr(p?.carryL || "")}" placeholder="0"${dis}></label></div>
-<h3>Sizes and prices</h3><p class="muted small">Size in ml (500, 1000, 5000 …). Empty a size to remove it.</p>
-${sizes.map((s) => `<div class="two"><input name="ml" type="number" inputmode="numeric" placeholder="ml" value="${attr(s.ml)}"${dis}><input name="price" type="number" inputmode="numeric" placeholder="KSh" value="${attr(s.price)}"${dis}></div>`).join("")}
+<h3>Price per bottle</h3><p class="muted small">What a customer pays for one bottle of each size, e.g. 500ml = 70, 20L = 2800.</p>
+${(p?.sizes || []).map((s) => `<div class="sizerow"><input type="hidden" name="ml" value="${s.ml}"><b>${L.size(s.ml)}</b><label class="ksh">KSh<input name="price" type="number" inputmode="numeric" min="0" placeholder="0" value="${attr(s.price || "")}"${dis}></label>${isBoss() ? `<button type="button" class="x" data-act="rmrow" aria-label="Remove ${L.size(s.ml)}">✕</button>` : ""}</div>`).join("")}
+${isBoss() ? `<div class="sizerow"><select name="ml">${addOpts}</select><label class="ksh">KSh<input name="price" type="number" inputmode="numeric" min="0" placeholder="0"></label><span></span></div>` : ""}
 <label>Warn when chemicals are left for this many batches or fewer<input name="chemLow" type="number" inputmode="numeric" min="0" step="1" value="${attr(p?.chemLow ?? 1)}"${dis}></label>
 ${isBoss() ? `<label class="check"><input type="checkbox" name="off"${p?.off ? " checked" : ""}> Hide this product</label><button class="btn big">Save</button>` : ""}
 </form>`,
@@ -929,6 +932,10 @@ const ACTS = {
   openline(el) {
     st.sheet = { ...st.sheet, i: Number(el.dataset.i) };
     render();
+  },
+  rmrow(el) {
+    el.closest(".sizerow")?.remove();
+    toast("Press Save to keep this change");
   },
   closesheet() {
     st.sheet = null;
