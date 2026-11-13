@@ -1,6 +1,6 @@
 // Keeps the app on the phone so it opens with no network.
 // Change VERSION whenever a file in /public/app or index.html changes.
-const VERSION = "jw-2026-11-13-6";
+const VERSION = "jw-2026-11-13-8";
 const FILES = ["/", "/app/app.css", "/app/main.js", "/app/store.js", "/app/logic.js", "/app/pdf.js", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (e) => {

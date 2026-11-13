@@ -363,7 +363,7 @@ ${
           const low = c <= (p.chemLow ?? 1);
           return `<section class="card"><div class="row"><b>${dot(p)}${esc(p.name)}</b><b class="${(s[p.id] || 0) < 0 ? "red" : ""}">${L.litres(s[p.id])}</b></div>
 <a class="row link chemline${low ? " low" : ""}" href="#/chem/${attr(p.id)}"><span>🧪 Chemicals</span><span><b>${Math.max(0, c)}</b> batch${c === 1 ? "" : "es"} left${low ? " ⚠" : ""} ›</span></a>
-<div class="btnrow"><a class="btn sm" href="#/cook/${attr(p.id)}">Cooked</a><a class="btn sm ghost" href="#/chem/${attr(p.id)}">Bought chemicals</a><button class="btn sm ghost" data-act="countstock" data-p="${attr(p.id)}">Count litres</button></div></section>`;
+<div class="three"><a class="btn sm" href="#/cook/${attr(p.id)}">Cooked</a><a class="btn sm ghost" href="#/chem/${attr(p.id)}">Bought</a><button class="btn sm ghost" data-act="countstock" data-p="${attr(p.id)}">Count L</button></div></section>`;
         })
         .join("")}
 <section class="card"><h3>Recent cooking</h3>${
@@ -680,7 +680,8 @@ ${form}`,
 <label>Name<input name="name" value="${attr(p?.name || "")}" required${dis}></label>
 <div class="two"><label>Short name<input name="short" value="${attr(p?.short || "")}" placeholder="e.g. Soap"${dis}></label><label>Colour<input name="color" type="color" value="${attr(p?.color || "#16a34a")}"${dis}></label></div>
 <div class="two"><label>Litres per batch<input name="batchL" type="number" inputmode="decimal" step="any" min="1" value="${attr(p?.batchL || 25)}"${dis}></label>
-<label>Extra litres to carry each route day<input name="carryL" type="number" inputmode="decimal" step="any" min="0" value="${attr(p?.carryL || "")}" placeholder="0"${dis}></label></div>
+<label>Extra batches to sell<select name="extraBatches"${dis}>${opts([{ v: 0, t: "None" }, { v: 1, t: "1 batch" }, { v: 2, t: "2 batches" }, { v: 3, t: "3 batches" }, { v: "auto", t: "Auto (from her sales)" }], p?.extraBatches ?? 1)}</select></label></div>
+${p ? walkInNote(p) : ""}
 <h3>Price per bottle</h3><p class="muted small">What a customer pays for one bottle of each size, e.g. 500ml = 70, 20L = 2800.</p>
 ${(p?.sizes || []).map((s) => `<div class="sizerow"><input type="hidden" name="ml" value="${s.ml}"><b>${L.size(s.ml)}</b><label class="ksh">KSh<input name="price" type="number" inputmode="numeric" min="0" placeholder="0" value="${attr(s.price || "")}"${dis}></label>${isBoss() ? `<button type="button" class="x" data-act="rmrow" aria-label="Remove ${L.size(s.ml)}">✕</button>` : ""}</div>`).join("")}
 ${isBoss() ? `<div class="sizerow"><select name="ml">${addOpts}</select><label class="ksh">KSh<input name="price" type="number" inputmode="numeric" min="0" placeholder="0"></label><span></span></div>` : ""}
@@ -790,13 +791,23 @@ function batchText(d) {
   return b.length ? b.map((r) => esc(r.p.short || r.p.name) + " ×" + r.batches).join(", ") + " to cook" : "stock is enough";
 }
 
+/** What she sells herself (not orders): helps choose how many extra batches to cook. */
+function walkInNote(p) {
+  const w = L.walkIn(p);
+  if (!w.days) return `<p class="note">When there's an order, the plan adds the extra batches for her to sell. After a few days of selling, this shows how much she sells on her own.</p>`;
+  const bl = p.batchL || 25;
+  return `<p class="note">Her own sales (not orders), last 4 weeks: about <b>${L.litres(w.perDay)}</b> a day over ${w.days} day${w.days === 1 ? "" : "s"}${
+    w.bottlesPerDay.length ? " (" + w.bottlesPerDay.slice(0, 3).map((b) => (Math.round(b.q * 10) / 10) + " × " + L.size(b.ml)).join(", ") + ")" : ""
+  }. One batch is ${bl} L, so that's about <b>${L.num(w.perDay / bl)} batches</b> a day. Auto would cook <b>${L.extraBatches({ ...p, extraBatches: "auto" })}</b>.</p>`;
+}
+
 function planRow(d) {
   return `<div class="plan"><div class="row"><b>${esc(L.niceDate(d.date))}${d.stops.length ? " · " + esc(d.stops.map((s) => s.name).join(", ")) : ""}</b><span class="muted small">${d.orders.length} orders${d.orders.some(isSend) ? " · " + d.orders.filter(isSend).length + " to send" : ""}</span></div>${
     d.rows.length
       ? d.rows
           .map(
             (r) =>
-              `<div class="row small"><span>${dot(r.p)}${esc(r.p.short || r.p.name)} ${L.litres(r.need)}</span><span>${r.batches ? `<b>cook ${r.batches} batch${r.batches > 1 ? "es" : ""}</b>` : `<span class="green">from stock</span>`}</span></div>`,
+              `<div class="row small"><span>${dot(r.p)}${esc(r.p.short || r.p.name)} ${L.litres(r.need)}</span><span>${r.batches ? `<b>cook ${r.batches} batch${r.batches > 1 ? "es" : ""}</b>` : `<span class="green">from stock</span>`}</span></div>${r.batches ? `<div class="muted tiny">${r.forOrders ? r.forOrders + " for orders" : "orders from stock"}${r.extra ? " + " + r.extra + " to sell" : ""}</div>` : ""}`,
           )
           .join("")
       : `<div class="muted small">Nothing booked.</div>`
@@ -1279,7 +1290,7 @@ const FORMS = {
       short: String(fd.get("short")).trim(),
       color: fd.get("color"),
       batchL: num(fd.get("batchL")) || 25,
-      carryL: num(fd.get("carryL")),
+      extraBatches: fd.get("extraBatches") === "auto" ? "auto" : Math.max(0, Math.round(num(fd.get("extraBatches")))),
       sizes,
       chemLow: Math.max(0, Math.round(num(fd.get("chemLow")))),
       off: fd.get("off") === "on",
@@ -1328,7 +1339,7 @@ async function seedIfEmpty() {
   ];
   for (let i = 0; i < P.length; i++) {
     const [id, name, short, color] = P[i];
-    await S.save("product", { id, name, short, color, order: i + 1, batchL: 25, carryL: 0, sizes, chemLow: 1, off: false });
+    await S.save("product", { id, name, short, color, order: i + 1, batchL: 25, extraBatches: 1, sizes, chemLow: 1, off: false });
   }
   const R = ["Brooke", "Ainamoi", "Kipsitet", "Kapsuser", "Kapsoit"];
   for (let i = 0; i < R.length; i++) await S.save("place", { id: "pl-" + (i + 1), name: R[i], day: i + 1 });

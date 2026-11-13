@@ -129,7 +129,6 @@ export function plan(days = 8) {
     if (!stops.length && !orders.length) continue;
     const need = {};
     for (const o of orders) for (const it of o.items || []) need[it.p] = (need[it.p] || 0) + (it.qty * it.ml) / 1000;
-    if (stops.length) for (const p of products()) if (p.carryL) need[p.id] = (need[p.id] || 0) + p.carryL;
     const rows = [];
     for (const p of products()) {
       const n = need[p.id] || 0;
@@ -137,13 +136,53 @@ export function plan(days = 8) {
       const have = avail[p.id] || 0;
       const short = Math.max(0, n - have);
       const batchL = p.batchL || 25;
-      const batches = Math.ceil(short / batchL - 1e-9);
-      avail[p.id] = have + batches * batchL - n;
-      rows.push({ p, need: n, have, batches, extra: batches * batchL - short });
+      const forOrders = Math.ceil(short / batchL - 1e-9);
+      // On top of the orders, extra batches for her to sell along the way. Those litres get sold,
+      // so they are not counted as stock for later days.
+      const extra = extraBatches(p);
+      avail[p.id] = have + forOrders * batchL - n;
+      rows.push({ p, need: n, have, forOrders, extra, batches: forOrders + extra });
     }
     out.push({ date: d, stops, orders, rows, total: orders.reduce((s, o) => s + itemsTotal(o.items), 0) });
   }
   return out;
+}
+
+/**
+ * Her own sales (not booked orders) of a product over the last 4 weeks:
+ * litres per day she sold on, and the most common bottles.
+ */
+export function walkIn(p, weeks = 4) {
+  const from = addDays(today(), -7 * weeks);
+  const days = new Set();
+  let litres = 0;
+  const bottles = {};
+  for (const s of list("sale")) {
+    if (s.voided || s.order || s.date < from) continue;
+    days.add(s.date);
+    for (const i of s.items || []) {
+      if (i.p !== p.id) continue;
+      litres += (i.qty * i.ml) / 1000;
+      bottles[i.ml] = (bottles[i.ml] || 0) + i.qty;
+    }
+  }
+  const n = days.size;
+  return {
+    days: n,
+    perDay: n ? litres / n : 0,
+    bottlesPerDay: Object.entries(bottles)
+      .map(([ml, q]) => ({ ml: Number(ml), q: q / n }))
+      .sort((a, b) => b.q - a.q),
+  };
+}
+
+/** Extra batches to cook for her own selling: a fixed number, or worked out from her sales ("auto"). */
+export function extraBatches(p) {
+  const e = p.extraBatches ?? 1;
+  if (e !== "auto") return Number(e) || 0;
+  const w = walkIn(p);
+  if (w.days < 3) return 1; // not enough sales yet to tell
+  return Math.max(0, Math.ceil(w.perDay / (p.batchL || 25) - 0.15));
 }
 
 /** Products whose chemicals are not enough for the batches in a plan. */
