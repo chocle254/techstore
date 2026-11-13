@@ -294,7 +294,16 @@ ${past.length ? `<section class="card">${past.map(orderRow).join("")}</section>`
 <label>Phone <span class="muted">(optional)</span><input type="tel" inputmode="tel" data-bind="draft.phone" value="${attr(d.phone)}"></label>
 <div class="two"><label>Place<select data-bind="draft.place" data-change="ordplace">${placeOpts(d.place)}</select></label>
 <label>Day<input type="date" data-bind="draft.date" data-change="redraw" value="${attr(d.date)}"></label></div>
-<p class="muted small">${d.date ? esc(L.DAYS[L.weekday(d.date)]) : ""}${wrongDay ? ` — <b class="red">${esc(L.placeName(d.place))} is on ${L.DAYS[placeDay]}</b>` : ""}</p>
+<div class="daypick">${dayChoices(d)
+      .map((c) => `<button type="button" class="chip${c.date === d.date ? " on" : ""}" data-act="setdate" data-d="${c.date}">${esc(c.label)}</button>`)
+      .join("")}</div>
+${
+  wrongDay
+    ? `<p class="sendnote">📦 <b>Send order.</b> ${esc(L.niceDate(d.date))} is not ${esc(L.placeName(d.place))} day (${L.DAYS[placeDay]}), so you'll send it to them.</p>`
+    : d.date
+      ? `<p class="muted small">${esc(L.DAYS[L.weekday(d.date)])}${placeDay ? " — " + esc(L.placeName(d.place)) + " day, delivered on the route" : ""}</p>`
+      : ""
+}
 </div>
 ${picker("draft")}
 <div class="card">${lines("draft")}
@@ -731,7 +740,7 @@ function batchText(d) {
 }
 
 function planRow(d) {
-  return `<div class="plan"><div class="row"><b>${esc(L.niceDate(d.date))}${d.stops.length ? " · " + esc(d.stops.map((s) => s.name).join(", ")) : ""}</b><span class="muted small">${d.orders.length} orders</span></div>${
+  return `<div class="plan"><div class="row"><b>${esc(L.niceDate(d.date))}${d.stops.length ? " · " + esc(d.stops.map((s) => s.name).join(", ")) : ""}</b><span class="muted small">${d.orders.length} orders${d.orders.some(isSend) ? " · " + d.orders.filter(isSend).length + " to send" : ""}</span></div>${
     d.rows.length
       ? d.rows
           .map(
@@ -749,9 +758,31 @@ function planCard(d) {
 ${planRow(d)}${d.total ? `<p class="muted small">Orders worth ${L.money(d.total)}</p>` : ""}<a href="#/orders">See orders ›</a></section>`;
 }
 
+/** True when the order's day isn't its place's route day, so it has to be sent. */
+const isSend = (o) => {
+  const day = S.get(o.place)?.day;
+  return !!(day && o.date && L.weekday(o.date) !== day);
+};
+
+/** Quick picks for the order day: tomorrow, the day after, and the place's next route day. */
+function dayChoices(d) {
+  const t = L.today();
+  const list = [
+    { date: t, label: "Today" },
+    { date: L.addDays(t, 1), label: "Tomorrow" },
+    { date: L.addDays(t, 2), label: L.DAYS[L.weekday(L.addDays(t, 2))].slice(0, 3) },
+  ];
+  if (d.place && S.get(d.place)?.day) {
+    const nv = L.nextVisit(d.place);
+    if (!list.some((c) => c.date === nv)) list.push({ date: nv, label: L.placeName(d.place) + " day · " + L.niceDate(nv) });
+    else list.find((c) => c.date === nv).label += " (" + L.placeName(d.place) + " day)";
+  }
+  return list;
+}
+
 function orderRow(o) {
   const c = S.get(o.customer);
-  return `<a class="row link order" href="#/order/${attr(o.id)}"><span><b>${esc(c?.name || "?")}</b>${o.status !== "booked" ? ` <span class="badge ${o.status}">${o.status === "done" ? "delivered" : "cancelled"}</span>` : ""}<br><span class="muted small">${esc(L.itemsText(o.items))}${o.note ? " · " + esc(o.note) : ""}</span></span><span>${L.money(L.itemsTotal(o.items))} ›</span></a>`;
+  return `<a class="row link order" href="#/order/${attr(o.id)}"><span><b>${esc(c?.name || "?")}</b>${o.status === "booked" && isSend(o) ? ` <span class="badge send">📦 Send · ${esc(L.placeName(o.place))}</span>` : ""}${o.status !== "booked" ? ` <span class="badge ${o.status}">${o.status === "done" ? "delivered" : "cancelled"}</span>` : ""}<br><span class="muted small">${esc(L.itemsText(o.items))}${o.note ? " · " + esc(o.note) : ""}</span></span><span>${L.money(L.itemsTotal(o.items))} ›</span></a>`;
 }
 
 // ---------- Actions (buttons) ----------
@@ -770,6 +801,10 @@ const ACTS = {
     const i = Number(el.dataset.i);
     items[i].qty += Number(el.dataset.d);
     if (items[i].qty <= 0) items.splice(i, 1);
+    render();
+  },
+  setdate(el) {
+    st.draft.date = el.dataset.d;
     render();
   },
   clearcart() {
