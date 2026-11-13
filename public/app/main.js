@@ -11,7 +11,7 @@ const isBoss = () => !!me()?.roles?.includes("boss");
 const PAY = { cash: "Cash", mpesa: "M-Pesa", later: "Pay later" };
 
 // Screen state that must survive a redraw (cart, order being written, …).
-const st = { cart: [], cartPlace: null, cartCustomer: "", draft: null, showPast: false, people: null, peopleErr: "", tempPw: "" };
+const st = { cart: [], cartPlace: null, cartCustomer: "", draft: null, showPast: false, sheet: null, people: null, peopleErr: "", tempPw: "" };
 let editing = false;
 let installEvt = null;
 
@@ -97,7 +97,37 @@ function render() {
   }
   const v = VIEWS[r.name] || VIEWS.home;
   const [title, body, back] = v(r.arg, r.arg2);
-  app.innerHTML = shell(r.name, title, body, back);
+  app.innerHTML = shell(r.name, title, body, back) + sheet();
+  document.body.classList.toggle("lock", !!st.sheet);
+}
+
+// Pop-up card after tapping a size: amount, price and (for a sale) payment, without scrolling.
+function sheet() {
+  const s = st.sheet;
+  if (!s || !["sell", "order"].includes(route().name)) return (st.sheet = null), "";
+  const items = itemsOf(s.t);
+  const it = items[s.i];
+  if (!it) return (st.sheet = null), "";
+  const p = S.get(it.p);
+  const sell = s.t === "cart";
+  const others = items.map((x, i) => ({ x, i })).filter((o) => o.i !== s.i);
+  return `<div class="sheet-bg" data-act="closesheet"></div>
+<div class="sheet" role="dialog" aria-modal="true" aria-label="${attr((p?.name || "") + " " + L.size(it.ml))}">
+<div class="row"><h2>${dot(p)}${esc(p?.short || p?.name || "?")} ${L.size(it.ml)}</h2><button type="button" class="x close" data-act="closesheet" aria-label="Close">✕</button></div>
+<div class="bigqty"><button type="button" data-act="qty" data-t="${s.t}" data-i="${s.i}" data-d="-1" aria-label="One less">−</button><b>${it.qty}</b><button type="button" data-act="qty" data-t="${s.t}" data-i="${s.i}" data-d="1" aria-label="One more">+</button></div>
+<div class="daypick center-chips">${[1, 2, 3, 5, 10, 20].map((n) => `<button type="button" class="chip${it.qty === n ? " on" : ""}" data-act="setqty" data-n="${n}">${n}</button>`).join("")}</div>
+<div class="two"><label>Price each (KSh)<input inputmode="numeric" data-price="${s.t}:${s.i}" value="${it.price || ""}" placeholder="price"></label>
+<div class="linetot"><span class="muted small">This line</span><b data-linetot="${s.t}:${s.i}">${L.money(it.qty * (it.price || 0))}</b></div></div>
+${others.length ? `<div class="mini">${others.map((o) => `<button type="button" class="row" data-act="openline" data-i="${o.i}"><span>${o.x.qty}× ${esc(S.get(o.x.p)?.short || "?")} ${L.size(o.x.ml)}</span><span>${L.money(o.x.qty * (o.x.price || 0))} ›</span></button>`).join("")}</div>` : ""}
+<div class="total">${sell ? "Sale" : "Order"} total <b data-tot="${s.t}">${L.money(L.itemsTotal(items))}</b></div>
+<button type="button" class="btn ghost" data-act="closesheet">＋ Add another product</button>
+${
+  sell
+    ? `<label>Customer <span class="muted">(needed for pay later)</span><input list="custlist" data-bind="cartCustomer" value="${attr(st.cartCustomer)}" autocomplete="off" placeholder="Name"></label>
+<div class="paybtns"><button type="button" class="btn big cash" data-act="sell" data-pay="cash">Cash</button><button type="button" class="btn big mpesa" data-act="sell" data-pay="mpesa">M-Pesa</button><button type="button" class="btn big later" data-act="sell" data-pay="later">Pay later</button></div>`
+    : `${st.draft && !st.draft.name.trim() ? `<label>Customer<input list="custlist" data-bind="draft.name" data-change="ordcust" autocomplete="off" placeholder="Name"></label>` : ""}<button type="button" class="btn big" data-act="saveorder">${st.draft?.id ? "Save changes" : "Book order"}</button>`
+}
+</div>`;
 }
 
 function setupView() {
@@ -154,7 +184,7 @@ function lines(target) {
 <div class="qty"><button type="button" data-act="qty" data-t="${target}" data-i="${i}" data-d="-1">−</button><b>${it.qty}</b><button type="button" data-act="qty" data-t="${target}" data-i="${i}" data-d="1">+</button></div>
 <input class="price" inputmode="numeric" data-price="${target}:${i}" value="${it.price || ""}" placeholder="price" aria-label="Price each"></div>`;
     })
-    .join("")}<div class="total">Total <b id="tot-${target}">${L.money(L.itemsTotal(items))}</b></div></div>`;
+    .join("")}<div class="total">Total <b data-tot="${target}">${L.money(L.itemsTotal(items))}</b></div></div>`;
 }
 
 // ---------- Views ----------
@@ -878,13 +908,30 @@ const ACTS = {
     const line = items.find((i) => i.p === p && i.ml === ml);
     if (line) line.qty++;
     else items.push({ p, ml, qty: 1, price: L.priceOf(p, ml) });
+    st.sheet = { t: el.dataset.t, i: items.findIndex((i) => i.p === p && i.ml === ml) };
     render();
   },
   qty(el) {
     const items = itemsOf(el.dataset.t);
     const i = Number(el.dataset.i);
     items[i].qty += Number(el.dataset.d);
-    if (items[i].qty <= 0) items.splice(i, 1);
+    if (items[i].qty <= 0) {
+      items.splice(i, 1);
+      if (st.sheet) st.sheet = null;
+    }
+    render();
+  },
+  setqty(el) {
+    const it = st.sheet && itemsOf(st.sheet.t)[st.sheet.i];
+    if (it) it.qty = Number(el.dataset.n);
+    render();
+  },
+  openline(el) {
+    st.sheet = { ...st.sheet, i: Number(el.dataset.i) };
+    render();
+  },
+  closesheet() {
+    st.sheet = null;
     render();
   },
   setdate(el) {
@@ -930,6 +977,7 @@ const ACTS = {
     await S.save("sale", { date: L.today(), time: L.nowTime(), items, total, pay, customer: cust?.id || "", place: st.cartPlace || "" });
     st.cart = [];
     st.cartCustomer = "";
+    st.sheet = null;
     toast("Saved · " + L.money(total) + " · " + PAY[pay]);
     render();
   },
@@ -1288,8 +1336,9 @@ app.addEventListener("input", (e) => {
     const [t, i] = el.dataset.price.split(":");
     const items = itemsOf(t);
     if (items[i]) items[i].price = Math.round(num(el.value));
-    const tot = document.getElementById("tot-" + t);
-    if (tot) tot.textContent = L.money(L.itemsTotal(items));
+    for (const x of document.querySelectorAll(`[data-tot="${t}"]`)) x.textContent = L.money(L.itemsTotal(items));
+    const lt = document.querySelector(`[data-linetot="${t}:${i}"]`);
+    if (lt && items[i]) lt.textContent = L.money(items[i].qty * (items[i].price || 0));
   }
   if (el.dataset.search) {
     const q = el.value.trim().toLowerCase();
@@ -1323,6 +1372,7 @@ app.addEventListener("change", (e) => {
 });
 
 window.addEventListener("hashchange", () => {
+  st.sheet = null;
   render();
   window.scrollTo(0, 0);
 });

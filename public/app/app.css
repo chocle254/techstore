@@ -203,7 +203,7 @@ input:disabled, select:disabled { opacity: .7; }
 .logo { width: 72px; height: 72px; margin: 0 auto 12px; border-radius: 18px; background: var(--brand); color: #fff; font: 700 28px/72px system-ui, sans-serif; }
 
 .toast {
-  position: fixed; left: 12px; right: 12px; bottom: calc(76px + env(safe-area-inset-bottom)); z-index: 20;
+  position: fixed; left: 12px; right: 12px; bottom: calc(76px + env(safe-area-inset-bottom)); z-index: 40;
   max-width: 480px; margin: 0 auto; padding: 12px 14px; border-radius: 10px;
   background: #1f2a26; color: #fff; font-weight: 600; display: none; align-items: center; justify-content: space-between; gap: 10px;
 }
@@ -232,3 +232,28 @@ input:disabled, select:disabled { opacity: .7; }
 .period:last-child { border-bottom: 0; }
 .chemline { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin: 6px 0; padding: 10px 0; }
 .chemline.low { color: var(--red); }
+
+/* Pop-up card for a product size */
+body.lock { overflow: hidden; }
+.sheet-bg { position: fixed; inset: 0; z-index: 29; background: rgba(0, 0, 0, .45); }
+.sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+  max-width: 640px; margin: 0 auto; max-height: 88vh; overflow-y: auto; overscroll-behavior: contain;
+  background: var(--card); border-radius: 16px 16px 0 0; padding: 14px 14px calc(14px + env(safe-area-inset-bottom));
+  animation: up .16s ease-out;
+}
+@keyframes up { from { transform: translateY(40px); opacity: .6; } }
+@media (prefers-reduced-motion: reduce) { .sheet { animation: none; } }
+.sheet h2 { margin: 0; font-size: 20px; }
+.x.close { font-size: 20px; color: var(--muted); min-width: 44px; min-height: 44px; }
+.bigqty { display: flex; align-items: center; justify-content: center; gap: 18px; margin: 8px 0 10px; }
+.bigqty button { width: 64px; height: 64px; border-radius: 50%; border: 1px solid var(--line); background: var(--bg); font-size: 32px; line-height: 1; color: var(--ink); }
+.bigqty button:active { background: var(--soft); border-color: var(--brand); }
+.bigqty b { font-size: 40px; min-width: 64px; text-align: center; }
+.center-chips { justify-content: center; margin-bottom: 12px; }
+.linetot { display: flex; flex-direction: column; justify-content: center; align-items: flex-end; padding-bottom: 10px; }
+.linetot b { font-size: 20px; }
+.mini { border-top: 1px solid var(--line); margin-top: 2px; }
+.mini .row { width: 100%; border: 0; border-bottom: 1px solid var(--line); background: none; padding: 9px 0; font-size: 15px; text-align: left; }
+.sheet .total { border-top: 1px solid var(--line); margin-top: 4px; padding-bottom: 4px; }
+.sheet .paybtns { margin-top: 8px; }
