@@ -124,16 +124,40 @@ main { padding: 4px 16px calc(104px + env(safe-area-inset-bottom)); max-width: 6
 .card.ok { background: var(--brand-soft); }
 .card.list { padding: 2px 16px; }
 .card.row.link { padding: 16px; }
+/* Today card: deep, quiet green so the total stands out without glare */
 .hero {
-  background: linear-gradient(150deg, var(--brand-2), var(--brand) 60%, #0a6e54);
-  color: #fff; box-shadow: 0 12px 24px rgba(15, 138, 105, 0.3), inset 0 2px 1px rgba(255, 255, 255, 0.25);
+  display: block; margin: 0 0 14px; padding: 18px 18px 16px; border-radius: 26px;
+  background: linear-gradient(160deg, #1f4a3e 0%, #163a30 55%, #12302a 100%);
+  color: #eaf4ef;
+  box-shadow: 0 10px 22px rgba(18, 48, 40, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
-.hero .muted { color: rgba(255, 255, 255, 0.78); }
-.hero h2 { font-size: 26px; color: #fff; }
-.hero .btn { background: #fff; color: var(--brand); box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15), inset 0 -3px 0 rgba(0, 0, 0, 0.06); }
-.hero .stats div { background: rgba(255, 255, 255, 0.14); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18); }
-.hero .stats span { color: rgba(255, 255, 255, 0.8); }
-.hero .strip { background: rgba(255, 255, 255, 0.16); color: #fff; }
+.hero-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.hero-day { font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: rgba(234, 244, 239, 0.62); }
+.hero-sell {
+  padding: 9px 16px; border-radius: 14px; font-weight: 800; font-size: 15px;
+  background: #d9efe5; color: #12392f; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18), inset 0 -2px 0 rgba(0, 0, 0, 0.08);
+}
+.hero-sell:active { transform: scale(0.97); }
+.hero-amt { margin-top: 10px; font-size: 38px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; color: #fff; }
+.hero-sub { margin-top: 4px; font-size: 14px; color: rgba(234, 244, 239, 0.7); display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.delta { font-size: 12px; font-weight: 800; padding: 2px 8px; border-radius: 99px; }
+.delta.up { background: rgba(110, 220, 160, 0.16); color: #8fe3b4; }
+.delta.down { background: rgba(240, 150, 120, 0.16); color: #f3b39b; }
+.split { display: flex; gap: 3px; height: 8px; margin: 16px 0 10px; border-radius: 99px; overflow: hidden; }
+.split i { display: block; min-width: 6px; border-radius: 99px; }
+.split .none { flex: 1; background: rgba(255, 255, 255, 0.1); }
+.cash { --c: #5fcf95; }
+.mpesa { --c: #a6d86a; }
+.later { --c: #f0b450; }
+.split i.cash, .split i.mpesa, .split i.later, .legend i { background: var(--c); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: rgba(234, 244, 239, 0.7); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 8px; height: 8px; border-radius: 50%; }
+.legend b { color: #fff; font-weight: 700; }
+.hero-strip {
+  display: flex; justify-content: space-between; margin-top: 14px; padding: 11px 14px; border-radius: 14px;
+  background: rgba(255, 255, 255, 0.07); color: #eaf4ef; font-weight: 700; font-size: 14px;
+}
 .plancard { border: 2px solid var(--brand-soft); }
 
 .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 7px 0; color: inherit; }
@@ -221,7 +245,7 @@ input:disabled, select:disabled { opacity: 0.7; }
 .btn.ghost { background: var(--card); color: var(--brand); box-shadow: var(--clay-sm); display: flex; width: 100%; margin-top: 10px; }
 .btn.sm.ghost { display: inline-flex; width: auto; margin: 0; }
 .btn.ghost.red { color: var(--red); }
-.btn.install { display: flex; width: 100%; margin-bottom: 14px; background: linear-gradient(180deg, #3d8bfd, #1f66d6); box-shadow: 0 6px 14px rgba(31, 102, 214, 0.3), inset 0 2px 0 rgba(255, 255, 255, 0.25), inset 0 -3px 0 rgba(0, 0, 0, 0.12); }
+.btn.install { display: flex; width: 100%; margin-bottom: 14px; background: var(--card); color: var(--brand); box-shadow: var(--clay-sm); }
 .btn.cash { background: linear-gradient(180deg, var(--cash-1), var(--cash-2)); }
 .btn.mpesa { background: linear-gradient(180deg, var(--mpesa-1), var(--mpesa-2)); }
 .btn.later { background: linear-gradient(180deg, var(--later-1), var(--later-2)); box-shadow: 0 6px 14px rgba(224, 138, 11, 0.3), inset 0 2px 0 rgba(255, 255, 255, 0.3), inset 0 -3px 0 rgba(0, 0, 0, 0.12); }

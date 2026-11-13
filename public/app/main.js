@@ -210,11 +210,7 @@ const VIEWS = {
     return [
       "JonWin",
       `${installEvt ? `<button class="btn install" data-act="install">📲 Install the app on this phone</button>` : ""}
-<section class="card hero"><div class="row"><div><div class="muted">${esc(L.DAYS[L.weekday(t)])}</div><h2>${stops.length ? esc(stops.map((s) => s.name).join(" + ")) : "No route today"}</h2></div>
-<a class="btn" href="#/sell">＋ Sell</a></div>
-<div class="stats"><div><b>${L.money(sum.total)}</b><span>${sum.count} sales today</span></div><div><b>${L.money(sum.cash)}</b><span>Cash</span></div><div><b>${L.money(sum.mpesa)}</b><span>M-Pesa</span></div><div><b>${L.money(sum.later)}</b><span>Pay later</span></div></div>
-${todayPlan?.orders.length ? `<a class="strip" href="#/orders">📦 ${todayPlan.orders.length} order${todayPlan.orders.length > 1 ? "s" : ""} to deliver today${todayPlan.orders.some((o) => o.date < t) ? " (some late)" : ""} ›</a>` : ""}
-</section>
+${heroCard(t, stops, sum, todayPlan)}
 ${next ? planCard(next, true) : ""}
 ${short.length ? `<section class="card warn"><h3>⚠ Not enough chemicals for the plan</h3>${short.map((x) => `<a class="row" href="#/chem/${attr(x.p.id)}"><span>${dot(x.p)}${esc(x.p.name)}</span><span>need ${x.need} batches · have ${Math.max(0, x.have)} ›</span></a>`).join("")}</section>` : ""}
 ${(() => {
@@ -752,6 +748,28 @@ ${installEvt ? `<button class="btn install" data-act="install">📲 Install the 
     return ["Change password", passwordView(false), "#/account"];
   },
 };
+
+/** Today's card: place, the day's total, and how it was paid as one split bar. */
+function heroCard(t, stops, sum, todayPlan) {
+  const y = L.sumSales(L.salesOn(L.addDays(t, -1))).total;
+  const diff = y ? Math.round(((sum.total - y) / y) * 100) : null;
+  const parts = [
+    ["cash", "Cash", sum.cash],
+    ["mpesa", "M-Pesa", sum.mpesa],
+    ["later", "Pay later", sum.later],
+  ];
+  const late = todayPlan?.orders.some((o) => o.date < t);
+  return `<section class="hero">
+<div class="hero-top"><span class="hero-day">${esc(L.DAYS[L.weekday(t)])} · ${stops.length ? esc(stops.map((s) => s.name).join(" + ")) : "No route today"}</span><a class="hero-sell" href="#/sell">＋ Sell</a></div>
+<div class="hero-amt">${L.money(sum.total)}</div>
+<div class="hero-sub">${sum.count ? sum.count + " sale" + (sum.count === 1 ? "" : "s") + " today" : "No sales yet today"}${
+    diff == null ? "" : ` <span class="delta ${diff >= 0 ? "up" : "down"}">${diff >= 0 ? "▲" : "▼"} ${Math.abs(diff)}% vs yesterday</span>`
+  }</div>
+<div class="split">${sum.total ? parts.filter((p) => p[2] > 0).map((p) => `<i class="${p[0]}" style="flex:${p[2]}"></i>`).join("") : '<i class="none"></i>'}</div>
+<div class="legend">${parts.map((p) => `<span><i class="${p[0]}"></i>${p[1]} <b>${L.money(p[2])}</b></span>`).join("")}</div>
+${todayPlan?.orders.length ? `<a class="hero-strip" href="#/orders">📦 ${todayPlan.orders.length} order${todayPlan.orders.length > 1 ? "s" : ""} to deliver today${late ? " · some late" : ""}<span>›</span></a>` : ""}
+</section>`;
+}
 
 function custList() {
   return `<datalist id="custlist">${L.customers()
