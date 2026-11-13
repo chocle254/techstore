@@ -222,3 +222,13 @@ input:disabled, select:disabled { opacity: .7; }
 .chip.on { background: var(--brand); border-color: var(--brand); color: #fff; }
 .sendnote { background: var(--warn); border: 1px solid var(--warn-line); border-radius: 8px; padding: 8px 10px; font-size: 14px; }
 .badge.send { background: #dbe8ff; color: #123e8a; }
+
+/* Sales: Day / Month / Year */
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 3px; margin-bottom: 10px; }
+.seg a { text-align: center; padding: 9px 0; border-radius: 8px; color: var(--muted); font-weight: 700; }
+.seg a.on { background: var(--brand); color: #fff; }
+.btn.pdf { margin: 10px 0 0; background: #263238; }
+.period { border-bottom: 1px solid var(--line); padding: 10px 0; }
+.period:last-child { border-bottom: 0; }
+.chemline { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin: 6px 0; padding: 10px 0; }
+.chemline.low { color: var(--red); }

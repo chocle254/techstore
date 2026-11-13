@@ -167,8 +167,7 @@ const VIEWS = {
     const todayPlan = pl.find((d) => d.date === t);
     const next = pl.find((d) => d.date > t);
     const owed = Object.values(L.balances()).reduce((a, b) => a + Math.max(0, b), 0);
-    const onHand = L.chemOnHand();
-    const low = L.chemicals().filter((c) => c.low && (onHand[c.id] || 0) <= c.low);
+    const left = L.chemLeft();
     const short = L.chemShortfall(pl);
 
     // Last 14 days of sales as bars.
@@ -188,8 +187,11 @@ const VIEWS = {
 ${todayPlan?.orders.length ? `<a class="strip" href="#/orders">📦 ${todayPlan.orders.length} order${todayPlan.orders.length > 1 ? "s" : ""} to deliver today${todayPlan.orders.some((o) => o.date < t) ? " (some late)" : ""} ›</a>` : ""}
 </section>
 ${next ? planCard(next, true) : ""}
-${short.length ? `<section class="card warn"><h3>⚠ Not enough chemicals for the plan</h3>${short.map((x) => `<div class="row"><span>${esc(x.c.name)}</span><span>need ${L.num(x.need)} · have ${L.num(x.have)} ${esc(x.c.unit || "")}</span></div>`).join("")}<a href="#/stock">Stock ›</a></section>` : ""}
-${low.length ? `<section class="card warn"><h3>Chemicals running low</h3>${low.map((c) => `<a class="row" href="#/chem/${attr(c.id)}"><span>${esc(c.name)}</span><span>${L.num(onHand[c.id])} ${esc(c.unit || "")} left</span></a>`).join("")}</section>` : ""}
+${short.length ? `<section class="card warn"><h3>⚠ Not enough chemicals for the plan</h3>${short.map((x) => `<a class="row" href="#/chem/${attr(x.p.id)}"><span>${dot(x.p)}${esc(x.p.name)}</span><span>need ${x.need} batches · have ${Math.max(0, x.have)} ›</span></a>`).join("")}</section>` : ""}
+${(() => {
+  const low = L.chemLow(left).filter((p) => !short.some((x) => x.p.id === p.id));
+  return low.length ? `<section class="card warn"><h3>Chemicals running low</h3>${low.map((p) => `<a class="row" href="#/chem/${attr(p.id)}"><span>${dot(p)}${esc(p.name)}</span><span>${Math.max(0, left[p.id] || 0)} batch${left[p.id] === 1 ? "" : "es"} left ›</span></a>`).join("")}</section>` : "";
+})()}
 <a class="card row link" href="#/owed"><span>Money owed to you</span><b>${L.money(owed)} ›</b></a>
 <section class="card"><h3>Sales, last 14 days</h3><div class="bars">${days
         .map((x) => `<div title="${attr(L.niceDate(x.d) + ": " + L.money(x.v))}"><i style="height:${Math.round((x.v / max) * 100)}%"></i><span>${L.parse(x.d).getDate()}</span></div>`)
@@ -322,29 +324,21 @@ ${
 
   stock() {
     const s = L.stock();
-    const onHand = L.chemOnHand();
+    const left = L.chemLeft();
     const batches = S.list("batch")
       .sort((a, b) => b.date.localeCompare(a.date) || b.u - a.u)
       .slice(0, 12);
     return [
       "Stock",
-      `<section class="card"><h3>Made product</h3>${L.products()
+      `${L.products()
         .map((p) => {
-          const can = L.batchesPossible(p, onHand);
-          return `<div class="stockrow"><div>${dot(p)}<b>${esc(p.name)}</b><div class="muted small">${can == null ? "No recipe set" : "Chemicals for " + can + " more batch" + (can === 1 ? "" : "es")}</div></div>
-<div class="right"><b class="${(s[p.id] || 0) < 0 ? "red" : ""}">${L.litres(s[p.id])}</b><div class="btnrow"><a class="btn sm" href="#/cook/${attr(p.id)}">Cooked</a><button class="btn sm ghost" data-act="countstock" data-p="${attr(p.id)}">Count</button></div></div></div>`;
+          const c = left[p.id] || 0;
+          const low = c <= (p.chemLow ?? 1);
+          return `<section class="card"><div class="row"><b>${dot(p)}${esc(p.name)}</b><b class="${(s[p.id] || 0) < 0 ? "red" : ""}">${L.litres(s[p.id])}</b></div>
+<a class="row link chemline${low ? " low" : ""}" href="#/chem/${attr(p.id)}"><span>🧪 Chemicals</span><span><b>${Math.max(0, c)}</b> batch${c === 1 ? "" : "es"} left${low ? " ⚠" : ""} ›</span></a>
+<div class="btnrow"><a class="btn sm" href="#/cook/${attr(p.id)}">Cooked</a><a class="btn sm ghost" href="#/chem/${attr(p.id)}">Bought chemicals</a><button class="btn sm ghost" data-act="countstock" data-p="${attr(p.id)}">Count litres</button></div></section>`;
         })
-        .join("")}</section>
-<section class="card"><h3>Chemicals</h3>${
-        L.chemicals()
-          .map((c) => {
-            const v = onHand[c.id] || 0;
-            const low = c.low && v <= c.low;
-            return `<a class="row link" href="#/chem/${attr(c.id)}"><span>${esc(c.name)}</span><span class="${low ? "red" : ""}">${L.num(v)} ${esc(c.unit || "")}${low ? " ⚠" : ""} ›</span></a>`;
-          })
-          .join("") || `<p class="muted">No chemicals yet. Add what you use to cook.</p>`
-      }
-<form data-form="newchem" class="inline"><input name="name" placeholder="New chemical, e.g. Texapon" required><input name="unit" placeholder="unit (kg, L)" class="short"><button class="btn sm">Add</button></form></section>
+        .join("")}
 <section class="card"><h3>Recent cooking</h3>${
         batches
           .map(
@@ -357,8 +351,8 @@ ${
 
   cook(pid) {
     const p = S.get(pid) || L.products()[0];
-    const onHand = L.chemOnHand();
     const bl = p.batchL || 25;
+    const left = L.chemLeft()[p.id] || 0;
     return [
       "Cooked",
       `<form data-form="cook" class="card">
@@ -367,45 +361,33 @@ ${
 <label>Litres made<input name="litres" type="number" inputmode="decimal" min="0" step="0.5" value="${bl}" required></label></div>
 <label>Day<input name="date" type="date" value="${L.today()}" required></label>
 <label>Note<input name="note" placeholder="optional"></label>
-${
-  p.recipe?.length
-    ? `<h3>Chemicals used per batch</h3>${p.recipe
-        .map((r) => {
-          const c = S.get(r.c);
-          return c ? `<div class="row"><span>${esc(c.name)}</span><span>${L.num(r.qty)} ${esc(c.unit || "")} · have ${L.num(onHand[c.id])}</span></div>` : "";
-        })
-        .join("")}`
-    : `<p class="muted small">No recipe for this product, so no chemicals will be taken off. ${isBoss() ? `<a href="#/product/${attr(p.id)}">Set recipe</a>` : ""}</p>`
-}
+<p class="${left < 1 ? "sendnote" : "muted small"}">🧪 Chemicals for ${Math.max(0, left)} batch${left === 1 ? "" : "es"} left. Cooking takes them off.</p>
 <button class="btn big">Save</button></form>`,
       "#/stock",
     ];
   },
 
-  chem(id) {
-    const c = S.get(id);
-    if (!c) return ["Chemical", `<p class="card">Not found.</p>`, "#/stock"];
-    const have = L.chemOnHand()[id] || 0;
+  chem(pid) {
+    const p = S.get(pid);
+    if (!p) return ["Chemicals", `<p class="card">Not found.</p>`, "#/stock"];
+    const left = L.chemLeft()[p.id] || 0;
     const hist = [
       ...S.list("chemmove")
-        .filter((m) => m.c === id)
+        .filter((m) => m.p === p.id)
         .map((m) => ({ d: m.date, t: m.type === "buy" ? "Bought" + (m.cost ? " · " + L.money(m.cost) : "") : "Counted", q: m.qty })),
-      ...S.list("batch").flatMap((b) =>
-        (b.used || []).filter((u) => u.c === id).map((u) => ({ d: b.date, t: "Cooked " + L.productName(b.p), q: -u.qty })),
-      ),
+      ...S.list("batch")
+        .filter((b) => b.p === p.id)
+        .map((b) => ({ d: b.date, t: "Cooked", q: -(b.n || 0) })),
     ]
       .sort((a, b) => b.d.localeCompare(a.d))
       .slice(0, 30);
     return [
-      c.name,
-      `<section class="card"><div class="big">${L.num(have)} <small>${esc(c.unit || "")}</small></div><div class="muted">on hand</div></section>
-<form data-form="chembuy" class="card"><h3>Bought more</h3><div class="two"><label>Amount (${esc(c.unit || "units")})<input name="qty" type="number" inputmode="decimal" step="any" min="0" required></label>
+      p.short || p.name,
+      `<section class="card"><div class="muted">${dot(p)}${esc(p.name)} chemicals</div><div class="big ${left <= (p.chemLow ?? 1) ? "red" : ""}">${Math.max(0, left)} <small>batch${left === 1 ? "" : "es"} left</small></div></section>
+<form data-form="chembuy" class="card"><h3>Bought chemicals</h3><div class="two"><label>Enough for how many batches<input name="qty" type="number" inputmode="numeric" min="1" step="1" required></label>
 <label>Cost KSh<input name="cost" type="number" inputmode="numeric" min="0"></label></div><button class="btn">Add</button></form>
-<form data-form="chemcount" class="card"><h3>Count what's left</h3><div class="inline"><input name="qty" type="number" inputmode="decimal" step="any" min="0" placeholder="${attr(L.num(have))}" required><button class="btn sm">Save count</button></div></form>
-<form data-form="chemedit" class="card"><h3>Details</h3><label>Name<input name="name" value="${attr(c.name)}" required></label>
-<div class="two"><label>Unit<input name="unit" value="${attr(c.unit || "")}"></label><label>Warn when below<input name="low" type="number" inputmode="decimal" step="any" min="0" value="${attr(c.low || "")}"></label></div>
-<button class="btn ghost">Save details</button>${isBoss() ? `<button type="button" class="btn ghost red" data-act="delchem">Delete chemical</button>` : ""}</form>
-<section class="card"><h3>History</h3>${hist.map((h) => `<div class="row"><span>${esc(L.niceDate(h.d))} · ${esc(h.t)}</span><span class="${h.q < 0 ? "red" : "green"}">${h.q > 0 ? "+" : ""}${L.num(h.q)}</span></div>`).join("") || `<p class="muted">Nothing yet.</p>`}</section>`,
+<form data-form="chemcount" class="card"><h3>Count what's left</h3><p class="muted small">If the number above is wrong, enter how many batches the chemicals at home are enough for.</p><div class="inline"><input name="qty" type="number" inputmode="numeric" min="0" step="1" placeholder="${Math.max(0, left)}" required><button class="btn sm">Save</button></div></form>
+<section class="card"><h3>History</h3>${hist.map((h) => `<div class="row"><span>${esc(L.niceDate(h.d))} · ${esc(h.t)}</span><span class="${h.q < 0 ? "red" : "green"}">${h.q > 0 ? "+" : ""}${h.q}</span></div>`).join("") || `<p class="muted">Nothing yet.</p>`}</section>`,
       "#/stock",
     ];
   },
@@ -420,24 +402,41 @@ ${
     ];
   },
 
-  sales(date) {
-    const d = date || L.today();
-    const list = L.salesOn(d);
+  sales(mode, key) {
+    ({ mode, key } = salesPeriod(mode, key));
+    const list = salesIn(key);
     const sum = L.sumSales(list);
+    const t = L.today();
+    const prev = shiftPeriod(mode, key, -1);
+    const next = shiftPeriod(mode, key, 1);
+    const hasNext = next <= t.slice(0, next.length);
+    const tab = (m, label, k) => `<a class="${m === mode ? "on" : ""}" href="#/sales/${m}/${k}">${label}</a>`;
+    // Keep the same day/month/year in view when switching tabs.
+    const day = mode === "day" ? key : key.length === 7 ? (t.startsWith(key) ? t : key + "-01") : t.startsWith(key) ? t : key + "-01-01";
+    let body = "";
+    if (mode === "day") {
+      body = list
+        .map(
+          (s) => `<div class="sale${s.voided ? " void" : ""}"><div class="row"><b>${esc(s.time || "")} ${s.customer ? esc(S.get(s.customer)?.name || "") : ""}</b><b>${L.money(s.total)}</b></div>
+<div class="muted small">${esc(L.itemsText(s.items))}</div><div class="row small"><span><span class="badge ${s.pay}">${PAY[s.pay] || s.pay}</span> ${esc(L.placeName(s.place))} ${esc(s.by ? "· " + s.by : "")}</span>${
+            s.voided ? `<span class="red">Cancelled: ${esc(s.voidWhy || "")}</span>` : isBoss() ? `<button class="x" data-act="voidsale" data-id="${attr(s.id)}">Cancel sale</button>` : ""
+          }</div></div>`,
+        )
+        .join("");
+    } else {
+      body = groupSales(list, mode === "month" ? 10 : 7)
+        .map(
+          (g) => `<a class="row link period" href="#/sales/${mode === "month" ? "day" : "month"}/${g.key}"><span><b>${esc(mode === "month" ? L.niceDate(g.key) : monthName(g.key))}</b><br><span class="muted small">${g.sum.count} sales · Cash ${L.money(g.sum.cash)} · M-Pesa ${L.money(g.sum.mpesa)} · Later ${L.money(g.sum.later)}</span></span><b>${L.money(g.sum.total)} ›</b></a>`,
+        )
+        .join("");
+    }
     return [
       "Sales",
-      `<div class="daynav"><a class="btn sm ghost" href="#/sales/${L.addDays(d, -1)}">‹</a><b>${esc(L.niceDate(d))}</b>${d < L.today() ? `<a class="btn sm ghost" href="#/sales/${L.addDays(d, 1)}">›</a>` : "<span></span>"}</div>
-<section class="card"><div class="stats"><div><b>${L.money(sum.total)}</b><span>${sum.count} sales</span></div><div><b>${L.money(sum.cash)}</b><span>Cash</span></div><div><b>${L.money(sum.mpesa)}</b><span>M-Pesa</span></div><div><b>${L.money(sum.later)}</b><span>Later</span></div></div></section>
-<section class="card">${
-        list
-          .map(
-            (s) => `<div class="sale${s.voided ? " void" : ""}"><div class="row"><b>${esc(s.time || "")} ${s.customer ? esc(S.get(s.customer)?.name || "") : ""}</b><b>${L.money(s.total)}</b></div>
-<div class="muted small">${esc(L.itemsText(s.items))}</div><div class="row small"><span><span class="badge ${s.pay}">${PAY[s.pay] || s.pay}</span> ${esc(L.placeName(s.place))} ${esc(s.by ? "· " + s.by : "")}</span>${
-              s.voided ? `<span class="red">Cancelled: ${esc(s.voidWhy || "")}</span>` : isBoss() ? `<button class="x" data-act="voidsale" data-id="${attr(s.id)}">Cancel sale</button>` : ""
-            }</div></div>`,
-          )
-          .join("") || `<p class="muted">No sales this day.</p>`
-      }</section>`,
+      `<div class="seg">${tab("day", "Day", day)}${tab("month", "Month", day.slice(0, 7))}${tab("year", "Year", day.slice(0, 4))}</div>
+<div class="daynav"><a class="btn sm ghost" href="#/sales/${mode}/${prev}">‹</a><b>${esc(periodName(mode, key))}</b>${hasNext ? `<a class="btn sm ghost" href="#/sales/${mode}/${next}">›</a>` : "<span></span>"}</div>
+<section class="card"><div class="stats"><div><b>${L.money(sum.total)}</b><span>${sum.count} sales</span></div><div><b>${L.money(sum.cash)}</b><span>Cash</span></div><div><b>${L.money(sum.mpesa)}</b><span>M-Pesa</span></div><div><b>${L.money(sum.later)}</b><span>Pay later</span></div></div>
+<button class="btn big pdf" data-act="pdf" data-mode="${mode}" data-key="${key}">⬇ Download PDF</button></section>
+<section class="card">${body || `<p class="muted">No sales ${mode === "day" ? "this day" : mode === "month" ? "this month" : "this year"}.</p>`}</section>`,
       "#/more",
     ];
   },
@@ -636,7 +635,7 @@ ${form}`,
         .map(
           (p) => `<a class="card link" href="#/product/${attr(p.id)}"><div class="row"><b>${dot(p)}${esc(p.name)}</b><span>›</span></div>
 <div class="muted small">${(p.sizes || []).map((s) => L.size(s.ml) + " " + (s.price ? L.money(s.price) : "no price")).join(" · ")}</div>
-<div class="muted small">Batch ${p.batchL || 25} L${p.recipe?.length ? " · " + p.recipe.length + " chemicals" : " · no recipe"}</div></a>`,
+<div class="muted small">Batch ${p.batchL || 25} L</div></a>`,
         )
         .join("")}${isBoss() ? `<a class="btn" href="#/product/new">＋ New product</a>` : `<p class="muted center">Only the boss can change prices.</p>`}`,
       "#/more",
@@ -647,8 +646,6 @@ ${form}`,
     const p = id && id !== "new" ? S.get(id) : null;
     const dis = isBoss() ? "" : " disabled";
     const sizes = [...(p?.sizes || []), { ml: "", price: "" }, { ml: "", price: "" }];
-    const recipe = [...(p?.recipe || []), { c: "", qty: "" }, { c: "", qty: "" }];
-    const chemOpts = (v) => opts(L.chemicals().map((c) => ({ v: c.id, t: c.name + (c.unit ? " (" + c.unit + ")" : "") })), v, "—");
     return [
       p ? p.name : "New product",
       `<form data-form="product" class="card"><input type="hidden" name="id" value="${attr(p?.id || "")}">
@@ -658,9 +655,7 @@ ${form}`,
 <label>Extra litres to carry each route day<input name="carryL" type="number" inputmode="decimal" step="any" min="0" value="${attr(p?.carryL || "")}" placeholder="0"${dis}></label></div>
 <h3>Sizes and prices</h3><p class="muted small">Size in ml (500, 1000, 5000 …). Empty a size to remove it.</p>
 ${sizes.map((s) => `<div class="two"><input name="ml" type="number" inputmode="numeric" placeholder="ml" value="${attr(s.ml)}"${dis}><input name="price" type="number" inputmode="numeric" placeholder="KSh" value="${attr(s.price)}"${dis}></div>`).join("")}
-<h3>Recipe: chemicals for one batch</h3>
-${recipe.map((r) => `<div class="two"><select name="rc"${dis}>${chemOpts(r.c)}</select><input name="rq" type="number" inputmode="decimal" step="any" min="0" placeholder="amount" value="${attr(r.qty)}"${dis}></div>`).join("")}
-${L.chemicals().length ? "" : `<p class="muted small">Add chemicals in Stock first.</p>`}
+<label>Warn when chemicals are left for this many batches or fewer<input name="chemLow" type="number" inputmode="numeric" min="0" step="1" value="${attr(p?.chemLow ?? 1)}"${dis}></label>
 ${isBoss() ? `<label class="check"><input type="checkbox" name="off"${p?.off ? " checked" : ""}> Hide this product</label><button class="btn big">Save</button>` : ""}
 </form>`,
       "#/products",
@@ -758,6 +753,95 @@ function planCard(d) {
 ${planRow(d)}${d.total ? `<p class="muted small">Orders worth ${L.money(d.total)}</p>` : ""}<a href="#/orders">See orders ›</a></section>`;
 }
 
+// ---------- Sales periods ----------
+function salesPeriod(mode, key) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(mode || "")) return { mode: "day", key: mode };
+  const t = L.today();
+  if (mode === "month") return { mode, key: /^\d{4}-\d{2}$/.test(key) ? key : t.slice(0, 7) };
+  if (mode === "year") return { mode, key: /^\d{4}$/.test(key) ? key : t.slice(0, 4) };
+  return { mode: "day", key: /^\d{4}-\d{2}-\d{2}$/.test(key || "") ? key : t };
+}
+function shiftPeriod(mode, key, n) {
+  if (mode === "day") return L.addDays(key, n);
+  if (mode === "year") return String(Number(key) + n);
+  const [y, m] = key.split("-").map(Number);
+  const d = new Date(y, m - 1 + n, 1);
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+}
+const monthName = (k) => L.MONTHS[Number(k.slice(5, 7)) - 1] + " " + k.slice(0, 4);
+function periodName(mode, key) {
+  if (mode === "day") return L.DAYS[L.weekday(key)] + " " + Number(key.slice(8)) + " " + monthName(key.slice(0, 7));
+  return mode === "month" ? monthName(key) : "Year " + key;
+}
+/** Sales whose date starts with the key (a day, "YYYY-MM" or "YYYY"), newest first. */
+const salesIn = (key) =>
+  S.list("sale")
+    .filter((s) => s.date.startsWith(key))
+    .sort((a, b) => b.date.localeCompare(a.date) || (b.time || "").localeCompare(a.time || ""));
+/** Totals per day (len 10) or per month (len 7), newest first. */
+function groupSales(list, len) {
+  const g = new Map();
+  for (const s of list) {
+    const k = s.date.slice(0, len);
+    if (!g.has(k)) g.set(k, []);
+    g.get(k).push(s);
+  }
+  return [...g.entries()].map(([key, l]) => ({ key, sum: L.sumSales(l) }));
+}
+
+/** The PDF contents for a day, month or year of sales. */
+function salesStatement(mode, key) {
+  const list = salesIn(key);
+  const live = list.filter((s) => !s.voided);
+  const sum = L.sumSales(list);
+  const t = L.today();
+  const custName = (s) => (s.customer ? S.get(s.customer)?.name || "" : "Walk-in");
+  const detail = (withDate) => ({
+    title: mode === "day" ? "Sales" : "All sales",
+    cols: [
+      withDate ? { h: "Date", w: 52 } : { h: "Time", w: 40 },
+      { h: "Customer", w: 92 },
+      { h: "Items" },
+      { h: "Place", w: 58 },
+      { h: "Paid by", w: 52 },
+      { h: "Amount", w: 86, align: "right" },
+    ],
+    rows: [...list].reverse().map((s) => ({
+      cells: [withDate ? s.date.slice(8) + "/" + s.date.slice(5, 7) : s.time || "", custName(s), L.itemsText(s.items), L.placeName(s.place), PAY[s.pay] || s.pay, L.money(s.total)],
+      struck: !!s.voided,
+    })),
+    total: ["", "", live.length + " sales", "", "TOTAL", L.money(sum.total)],
+  });
+  const byPeriod = (len, label) => {
+    const groups = groupSales(list, len).reverse();
+    return {
+      title: label,
+      cols: [{ h: len === 10 ? "Date" : "Month", w: 120 }, { h: "Sales", w: 42, align: "right" }, { h: "Cash", align: "right" }, { h: "M-Pesa", align: "right" }, { h: "Pay later", align: "right" }, { h: "Total", align: "right" }],
+      rows: groups.map((g) => ({
+        cells: [len === 10 ? L.DAYS[L.weekday(g.key)].slice(0, 3) + " " + Number(g.key.slice(8)) + " " + monthName(g.key.slice(0, 7)) : monthName(g.key), String(g.sum.count), L.money(g.sum.cash), L.money(g.sum.mpesa), L.money(g.sum.later), L.money(g.sum.total)],
+      })),
+      total: ["TOTAL", String(sum.count), L.money(sum.cash), L.money(sum.mpesa), L.money(sum.later), L.money(sum.total)],
+    };
+  };
+  const tables = mode === "day" ? [detail(false)] : mode === "month" ? [byPeriod(10, "Day by day"), detail(true)] : [byPeriod(7, "Month by month")];
+  return {
+    title: mode === "day" ? "DAILY SALES" : mode === "month" ? "MONTHLY SALES" : "YEARLY SALES",
+    number: "JW-" + key.replace(/-/g, ""),
+    period: periodName(mode, key),
+    issued: periodName("day", t),
+    by: me()?.name || "",
+    summary: [
+      ["Total sales", L.money(sum.total)],
+      ["Cash", L.money(sum.cash)],
+      ["M-Pesa", L.money(sum.mpesa)],
+      ["Pay later", L.money(sum.later)],
+      ["Litres sold", L.litres(sum.litres)],
+    ],
+    tables,
+    note: list.some((s) => s.voided) ? "Cancelled sales are crossed out and not counted in the totals." : "",
+  };
+}
+
 /** True when the order's day isn't its place's route day, so it has to be sent. */
 const isSend = (o) => {
   const day = S.get(o.place)?.day;
@@ -806,6 +890,28 @@ const ACTS = {
   setdate(el) {
     st.draft.date = el.dataset.d;
     render();
+  },
+  async pdf(el) {
+    const { mode, key } = salesPeriod(el.dataset.mode, el.dataset.key);
+    el.disabled = true;
+    el.textContent = "Making PDF…";
+    try {
+      const { statement } = await import("./pdf.js");
+      const blob = statement(salesStatement(mode, key));
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "JonWin-sales-" + key + ".pdf";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+      toast("PDF saved to Downloads");
+    } finally {
+      if (el.isConnected) {
+        el.disabled = false;
+        el.textContent = "⬇ Download PDF";
+      }
+    }
   },
   clearcart() {
     st.cart = [];
@@ -884,13 +990,8 @@ const ACTS = {
     toast("Stock set to " + L.litres(n));
   },
   async delbatch(el) {
-    if (!confirm("Delete this cooking record? Its chemicals go back to stock.")) return;
+    if (!confirm("Delete this cooking record? Its litres and chemicals are put back.")) return;
     await S.remove(el.dataset.id);
-  },
-  async delchem() {
-    if (!confirm("Delete this chemical?")) return;
-    await S.remove(route().arg);
-    go("#/stock");
   },
   async voidsale(el) {
     const why = prompt("Why cancel this sale? (It stays in the records, crossed out.)");
@@ -1030,40 +1131,27 @@ const FORMS = {
       toast(e.message, true);
     }
   },
-  async newchem(fd) {
-    const name = String(fd.get("name")).trim();
-    if (!name) return;
-    if (L.chemicals().some((c) => c.name.toLowerCase() === name.toLowerCase())) return toast("That chemical is already there.", true);
-    await S.save("chemical", { name, unit: String(fd.get("unit")).trim(), low: 0 });
-    render();
-  },
   async cook(fd) {
     const p = S.get(fd.get("p"));
     const n = Math.max(1, Math.round(num(fd.get("n"))));
     const litres = num(fd.get("litres"));
-    const used = (p.recipe || []).filter((r) => r.c && r.qty > 0).map((r) => ({ c: r.c, qty: r.qty * n }));
-    await S.save("batch", { date: fd.get("date"), p: p.id, n, litres, used, note: String(fd.get("note")).trim() });
+    await S.save("batch", { date: fd.get("date"), p: p.id, n, litres, note: String(fd.get("note")).trim() });
     toast(`Saved · ${p.name} +${L.litres(litres)}`);
     go("#/stock");
   },
   async chembuy(fd) {
-    const qty = num(fd.get("qty"));
+    const qty = Math.round(num(fd.get("qty")));
     if (qty <= 0) return;
-    await S.save("chemmove", { c: route().arg, qty, cost: Math.round(num(fd.get("cost"))), type: "buy", date: L.today() });
+    await S.save("chemmove", { p: route().arg, qty, cost: Math.round(num(fd.get("cost"))), type: "buy", date: L.today() });
     toast("Added");
     render();
   },
   async chemcount(fd) {
     const id = route().arg;
-    const have = L.chemOnHand()[id] || 0;
-    const n = num(fd.get("qty"));
-    await S.save("chemmove", { c: id, qty: n - have, cost: 0, type: "count", date: L.today() });
+    const have = L.chemLeft()[id] || 0;
+    const n = Math.round(num(fd.get("qty")));
+    await S.save("chemmove", { p: id, qty: n - have, cost: 0, type: "count", date: L.today() });
     toast("Count saved");
-    render();
-  },
-  async chemedit(fd) {
-    await S.save("chemical", { id: route().arg, name: String(fd.get("name")).trim(), unit: String(fd.get("unit")).trim(), low: num(fd.get("low")) });
-    toast("Saved");
     render();
   },
   async customer(fd) {
@@ -1100,13 +1188,6 @@ const FORMS = {
       if (v > 0 && !sizes.some((s) => s.ml === v)) sizes.push({ ml: v, price: Math.round(num(price[i])) });
     });
     sizes.sort((a, b) => a.ml - b.ml);
-    const rc = fd.getAll("rc");
-    const rq = fd.getAll("rq");
-    const recipe = [];
-    rc.forEach((c, i) => {
-      const q = num(rq[i]);
-      if (c && q > 0 && !recipe.some((r) => r.c === c)) recipe.push({ c, qty: q });
-    });
     const id = fd.get("id") || undefined;
     await S.save("product", {
       ...(id ? { id } : { order: L.products().length + 1 }),
@@ -1116,7 +1197,7 @@ const FORMS = {
       batchL: num(fd.get("batchL")) || 25,
       carryL: num(fd.get("carryL")),
       sizes,
-      recipe,
+      chemLow: Math.max(0, Math.round(num(fd.get("chemLow")))),
       off: fd.get("off") === "on",
     });
     toast("Saved");
@@ -1163,7 +1244,7 @@ async function seedIfEmpty() {
   ];
   for (let i = 0; i < P.length; i++) {
     const [id, name, short, color] = P[i];
-    await S.save("product", { id, name, short, color, order: i + 1, batchL: 25, carryL: 0, sizes, recipe: [], off: false });
+    await S.save("product", { id, name, short, color, order: i + 1, batchL: 25, carryL: 0, sizes, chemLow: 1, off: false });
   }
   const R = ["Brooke", "Ainamoi", "Kipsitet", "Kapsuser", "Kapsoit"];
   for (let i = 0; i < R.length; i++) await S.save("place", { id: "pl-" + (i + 1), name: R[i], day: i + 1 });

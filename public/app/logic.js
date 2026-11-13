@@ -79,20 +79,18 @@ export function stock() {
 }
 
 // ---------- Chemicals ----------
-export const chemicals = () => list("chemical").sort((a, b) => a.name.localeCompare(b.name));
-export function chemOnHand() {
+// Counted per product in batches: "Liquid soap chemicals: enough for 3 batches".
+// Buying adds batches (chemmove { p, qty }), cooking takes off the batches cooked.
+export function chemLeft() {
   const s = {};
-  for (const c of list("chemical")) s[c.id] = 0;
-  for (const m of list("chemmove")) s[m.c] = (s[m.c] || 0) + (m.qty || 0);
-  for (const b of list("batch")) for (const u of b.used || []) s[u.c] = (s[u.c] || 0) - u.qty;
+  for (const p of list("product")) s[p.id] = 0;
+  for (const m of list("chemmove")) if (m.p) s[m.p] = (s[m.p] || 0) + (m.qty || 0);
+  for (const b of list("batch")) s[b.p] = (s[b.p] || 0) - (b.n || 0);
   return s;
 }
-/** How many batches of a product the chemicals on hand allow. null when the product has no recipe. */
-export function batchesPossible(p, onHand = chemOnHand()) {
-  if (!p.recipe?.length) return null;
-  let n = Infinity;
-  for (const r of p.recipe) if (r.qty > 0) n = Math.min(n, Math.floor((onHand[r.c] || 0) / r.qty));
-  return n === Infinity ? null : Math.max(0, n);
+/** Products whose chemicals are at or below their warning level (default 1 batch). */
+export function chemLow(left = chemLeft()) {
+  return products().filter((p) => (left[p.id] || 0) <= (p.chemLow ?? 1));
 }
 
 // ---------- Money owed ----------
@@ -148,15 +146,15 @@ export function plan(days = 8) {
   return out;
 }
 
-/** Chemicals short for the batches in a plan. */
+/** Products whose chemicals are not enough for the batches in a plan. */
 export function chemShortfall(planDays) {
   const need = {};
-  for (const d of planDays)
-    for (const r of d.rows) for (const x of r.p.recipe || []) need[x.c] = (need[x.c] || 0) + x.qty * r.batches;
-  const have = chemOnHand();
-  const out = [];
-  for (const c in need) if (need[c] > (have[c] || 0) + 1e-9) out.push({ c: get(c), need: need[c], have: have[c] || 0 });
-  return out.filter((x) => x.c);
+  for (const d of planDays) for (const r of d.rows) need[r.p.id] = (need[r.p.id] || 0) + r.batches;
+  const left = chemLeft();
+  return Object.keys(need)
+    .filter((id) => need[id] > (left[id] || 0))
+    .map((id) => ({ p: get(id), need: need[id], have: left[id] || 0 }))
+    .filter((x) => x.p);
 }
 
 // ---------- Sales summaries ----------
