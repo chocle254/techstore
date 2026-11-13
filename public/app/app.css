@@ -119,12 +119,6 @@ main { padding: 12px 12px calc(84px + env(safe-area-inset-bottom)); max-width: 6
 .plan:last-child { border-bottom: 0; }
 .plancard { border-color: var(--brand); }
 
-/* Bars (no chart library) */
-.bars { display: flex; align-items: flex-end; gap: 3px; height: 110px; padding-top: 6px; }
-.bars div { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
-.bars i { display: block; width: 100%; min-height: 1px; background: var(--brand); border-radius: 3px 3px 0 0; }
-.bars span { font-size: 10px; color: var(--muted); height: 14px; }
-.bars.month { gap: 1px; }
 
 /* Forms */
 label { display: block; margin: 0 0 10px; font-size: 14px; color: var(--muted); }
@@ -264,3 +258,20 @@ body.lock { overflow: hidden; }
 .sizerow select { margin: 0; }
 .ksh { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--muted); font-weight: 600; }
 .ksh input { margin: 0; text-align: right; }
+
+/* Tappable bar chart */
+.chart { margin-top: 4px; }
+.readout { min-height: 46px; padding: 6px 10px; margin-bottom: 20px; border-radius: 8px; background: var(--soft); }
+.readout b { font-size: 20px; }
+.plot { position: relative; display: flex; align-items: flex-end; gap: 3px; height: 116px; border-bottom: 1px solid var(--line); }
+.bar { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding: 0; border: 0; background: none; min-width: 0; }
+.bar i { display: block; width: 100%; border-radius: 4px 4px 0 0; background: var(--brand); opacity: .55; }
+.bar em { font-style: normal; font-size: 9px; color: var(--muted); margin-bottom: 2px; white-space: nowrap; }
+.bar.today i { opacity: .8; }
+.bar.on i { opacity: 1; background: #f59e0b; }
+.bar.on em { color: var(--ink); font-weight: 700; }
+.maxlab { position: absolute; top: -14px; left: 0; font-size: 10px; color: var(--muted); }
+.avg { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--muted); opacity: .7; pointer-events: none; }
+.avg em { position: absolute; right: 0; top: -14px; font-style: normal; font-size: 10px; color: var(--muted); background: var(--card); padding: 0 3px; }
+.xlab { display: flex; gap: 3px; }
+.xlab span { flex: 1; min-width: 0; text-align: center; font-size: 10px; color: var(--muted); padding-top: 3px; }

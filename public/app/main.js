@@ -204,9 +204,8 @@ const VIEWS = {
     const days = [];
     for (let i = 13; i >= 0; i--) {
       const d = L.addDays(t, -i);
-      days.push({ d, v: L.sumSales(L.salesOn(d)).total });
+      days.push({ d, s: L.sumSales(L.salesOn(d)) });
     }
-    const max = Math.max(1, ...days.map((x) => x.v));
 
     return [
       "JonWin",
@@ -223,9 +222,7 @@ ${(() => {
   return low.length ? `<section class="card warn"><h3>Chemicals running low</h3>${low.map((p) => `<a class="row" href="#/chem/${attr(p.id)}"><span>${dot(p)}${esc(p.name)}</span><span>${Math.max(0, left[p.id] || 0)} batch${left[p.id] === 1 ? "" : "es"} left ›</span></a>`).join("")}</section>` : "";
 })()}
 <a class="card row link" href="#/owed"><span>Money owed to you</span><b>${L.money(owed)} ›</b></a>
-<section class="card"><h3>Sales, last 14 days</h3><div class="bars">${days
-        .map((x) => `<div title="${attr(L.niceDate(x.d) + ": " + L.money(x.v))}"><i style="height:${Math.round((x.v / max) * 100)}%"></i><span>${L.parse(x.d).getDate()}</span></div>`)
-        .join("")}</div></section>
+<section class="card"><h3>Sales, last 14 days</h3>${barChart(days, { labels: true, tick: (d) => L.parse(d).getDate() })}</section>
 <section class="card"><div class="row"><h3>Coming days</h3><a href="#/orders">All orders ›</a></div>${pl
         .filter((d) => d.date > t)
         .map((d) => `<div class="row"><span>${esc(L.niceDate(d.date))} · ${esc(d.stops.map((s) => s.name).join(", ") || "—")}</span><span>${d.orders.length} orders · ${batchText(d)}</span></div>`)
@@ -637,16 +634,15 @@ ${form}`,
     const daily = [];
     for (let i = 1; i <= days; i++) {
       const d = m + "-" + String(i).padStart(2, "0");
-      daily.push(sales.filter((s) => s.date === d).reduce((a, s) => a + s.total, 0));
+      daily.push({ d, s: L.sumSales(sales.filter((x) => x.date === d)) });
     }
-    const max = Math.max(1, ...daily);
     return [
       "Reports",
       `<div class="daynav"><a class="btn sm ghost" href="#/reports/${prev}">‹</a><b>${L.MONTHS[mo - 1]} ${y}</b><a class="btn sm ghost" href="#/reports/${next}">›</a></div>
 <section class="card"><div class="stats"><div><b>${L.money(sum.total)}</b><span>Sales (${sum.count})</span></div><div><b>${L.money(moneyIn)}</b><span>Money in</span></div><div><b>${L.money(out)}</b><span>Money out</span></div><div><b class="${moneyIn - out < 0 ? "red" : "green"}">${L.money(moneyIn - out)}</b><span>In − out</span></div></div>
 <div class="row small"><span>Cash ${L.money(sum.cash)} · M-Pesa ${L.money(sum.mpesa)} · Later ${L.money(sum.later)}</span></div>
 <div class="row small"><span>Owed money paid back ${L.money(paidBack)} · Chemicals bought ${L.money(chem)} · Other expenses ${L.money(exp)}</span></div></section>
-<section class="card"><h3>Sales per day</h3><div class="bars month">${daily.map((v, i) => `<div title="${attr(i + 1 + ": " + L.money(v))}"><i style="height:${Math.round((v / max) * 100)}%"></i><span>${(i + 1) % 5 === 0 || i === 0 ? i + 1 : ""}</span></div>`).join("")}</div></section>
+<section class="card"><h3>Sales per day</h3>${barChart(daily, { tick: (d) => { const n = Number(d.slice(8)); return n === 1 || n % 5 === 0 ? n : ""; } })}</section>
 <section class="card"><h3>Litres sold · batches cooked</h3>${L.products()
         .map((p) => `<div class="row"><span>${dot(p)}${esc(p.name)}</span><span>${L.litres(byP[p.id])} · ${cooked[p.id] || 0} batches</span></div>`)
         .join("")}</section>
@@ -760,6 +756,33 @@ function custList() {
   return `<datalist id="custlist">${L.customers()
     .map((c) => `<option value="${attr(c.name)}">${esc(L.placeName(c.place))}</option>`)
     .join("")}</datalist>`;
+}
+
+// ---------- Bar chart (tap a bar to see its numbers) ----------
+const kshort = (v) => (v >= 1000 ? (v / 1000).toFixed(v < 10000 ? 1 : 0).replace(/\.0$/, "") + "k" : String(Math.round(v)));
+
+function barChart(points, { labels = false, tick = () => "" } = {}) {
+  const t = L.today();
+  const max = Math.max(1, ...points.map((p) => p.s.total));
+  const withSales = points.filter((p) => p.s.total > 0);
+  const avg = withSales.length ? withSales.reduce((a, p) => a + p.s.total, 0) / withSales.length : 0;
+  // Start on today, or the last day with sales.
+  const start = points.find((p) => p.d === t) || [...withSales].pop() || points[points.length - 1];
+  return `<div class="chart">
+<div class="readout" aria-live="polite">${readout(start)}</div>
+<div class="plot">${max > 1 ? `<span class="maxlab">${kshort(max)}</span>` : ""}${avg ? `<i class="avg" style="bottom:${((avg / max) * 100).toFixed(1)}%"><em>avg ${kshort(avg)}</em></i>` : ""}${points
+    .map(
+      (p) =>
+        `<button type="button" class="bar${p === start ? " on" : ""}${p.d === t ? " today" : ""}" data-act="bar" data-d="${p.d}" aria-label="${attr(L.niceDate(p.d) + ": " + L.money(p.s.total))}">${labels && p.s.total ? `<em>${kshort(p.s.total)}</em>` : ""}<i style="height:${p.s.total ? Math.max(2, Math.round((p.s.total / max) * 100)) : 0}%"></i></button>`,
+    )
+    .join("")}</div>
+<div class="xlab">${points.map((p) => `<span>${tick(p.d)}</span>`).join("")}</div></div>`;
+}
+
+function readout(p) {
+  const s = p.s || L.sumSales(L.salesOn(p.d));
+  return `<div><b>${L.money(s.total)}</b> <span class="muted small">${esc(L.niceDate(p.d))} · ${s.count} sale${s.count === 1 ? "" : "s"}</span></div>
+<div class="muted small">${s.count ? `Cash ${L.money(s.cash)} · M-Pesa ${L.money(s.mpesa)} · Later ${L.money(s.later)}` : "No sales this day"} · <a href="#/sales/day/${p.d}">Open ›</a></div>`;
 }
 
 function batchText(d) {
@@ -936,6 +959,12 @@ const ACTS = {
   rmrow(el) {
     el.closest(".sizerow")?.remove();
     toast("Press Save to keep this change");
+  },
+  bar(el) {
+    const chart = el.closest(".chart");
+    for (const b of chart.querySelectorAll(".bar.on")) b.classList.remove("on");
+    el.classList.add("on");
+    chart.querySelector(".readout").innerHTML = readout({ d: el.dataset.d });
   },
   closesheet() {
     st.sheet = null;
