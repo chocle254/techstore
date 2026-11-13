@@ -1,95 +1,69 @@
 # JonWin Clean
 
-Shop and business manager for JonWin Clean: sales, stock, owed money, expenses and charts.
-Full feature plan: [SPEC.md](SPEC.md).
+The family's records app, replacing the notebook. It covers sales, orders booked for each route day, the cooking
+plan, chemicals left, money owed, and expenses.
 
-**Built so far (stage 1 of 4):** admin core (logins and roles, products and prices, stock, walk-in sales,
-owed money, expenses, customers, staff, activity log, dashboard charts).
-**Coming next:** production (stage 2), online shop (stage 3), deliveries (stage 4).
+**It works offline and installs like an app.** It's plain JavaScript with no framework, so it stays quick on a
+cheap phone. Records are saved on the phone first and sent to the server whenever there's network. Every
+team phone sees the same records.
 
-## Run it locally
+## Her week
 
-Needs Node.js 20+. No database account needed: locally it uses an embedded Postgres stored in `./.data`.
+| Day | Place |
+|---|---|
+| Monday | Brooke |
+| Tuesday | Ainamoi |
+| Wednesday | Kipsitet |
+| Thursday | Kapsuser |
+| Friday | Kapsoit |
+
+(Change these in More → Route days.)
+
+- **Orders**: book a customer's order for a day. The app picks the next visit to their place.
+- **Cooking plan** (Home and Orders): for each coming day it adds up the litres booked, takes off what's in stock,
+  and says how many batches to cook the day before. It warns when chemicals won't be enough.
+- **Sell**: tap product and size, then Cash, M-Pesa or Pay later. The day's place is chosen automatically. Good for the
+  500 ml bottles she sells along the way.
+- **Stock**: litres of each product (cooking adds, sales take off) and chemicals left (buying adds, cooking takes off by
+  the recipe).
+- **More**: sales by day, money owed, customers, expenses, monthly report, products & prices, route days, team logins.
+
+## Install on the phone
+
+1. Open the site in **Chrome** with network and log in (phone number + password).
+2. Tap **📲 Install the app** on Home, or Chrome menu ⋮ → **Add to Home screen / Install app**.
+3. From now on open it from the home screen icon. No network is needed. The pill at the top shows whether records
+   are sent ("Saved online") or waiting on the phone.
+
+The phone stays logged in for a year. Only logging in needs network.
+
+## How it's built
+
+```
+public/index.html, public/app/   the app (store.js = phone storage + sync, logic.js = sums, main.js = screens)
+public/sw.js                     keeps the app on the phone for offline use. Bump VERSION when app files change.
+src/app/api/sync                 phones send their changes and get everyone else's (newest change wins)
+src/app/api/login|logout|me|password|people   logins (same accounts table as before)
+src/lib/server                   session + sync table (created automatically on first sync)
+```
+
+Each record (sale, order, customer…) is one row in the `sync_records` table, so new kinds of record need no
+database change.
+
+Who can do what: everyone on the team can sell, book orders, record cooking, chemicals and expenses. Only the
+boss can change prices, products and route days (the server refuses these from others), cancel sales, delete
+records, and add or block helpers.
+
+## Setup
+
+Needs Node.js 20+. Locally it uses an embedded Postgres stored in `./.data`. On Vercel it uses `DATABASE_URL` (Neon).
 
 ```bash
 npm install
-npm run setup                                      # create tables + add the 4 products in 6 sizes
+npm run db:migrate                                  # accounts tables
 npm run create-boss -- "Full Name" 0712345678      # prints a one-time temporary password
-npm run dev                                        # http://localhost:3000
+npm run dev                                         # http://localhost:3000
 ```
 
-Log in with the phone number and temporary password. You'll be asked to choose your own password.
-
-On Termux (Android), `npm run …` scripts call `node` directly because Termux has no `/usr/bin/env`.
-
-Only one program can open the local database at a time: stop `npm run dev` before running
-`setup` or `create-boss`.
-
-## Deploy to Vercel
-
-1. Push this folder to a GitHub repository and import it in Vercel.
-2. In the Vercel project → **Storage**, add **Neon Postgres**. This sets `DATABASE_URL`.
-3. Optional but recommended → **Storage**: add **Upstash Redis** for rate limiting across servers
-   (sets `KV_REST_API_URL` / `KV_REST_API_TOKEN`). Without it, limits only apply per server instance.
-4. Add the other environment variables from [.env.example](.env.example).
-5. Create the tables and the boss account against the live database, from your computer:
-   ```bash
-   DATABASE_URL="postgres://…" npm run setup
-   DATABASE_URL="postgres://…" npm run create-boss -- "Full Name" 0712345678 email@example.com
-   ```
-6. Deploy. Free address: `https://<project>.vercel.app`. A custom domain can be added later under
-   **Settings → Domains**.
-
-## How the records stay safe
-
-- **Money records can't be changed.** Database triggers block editing or deleting payments, sale lines,
-  stock movements and the activity log. Sales and expenses can only be *voided* (once, by the boss, with
-  a reason). Voiding a sale returns its bottles to stock and records a refund.
-- **Every change is logged** in Admin → Activity log: who, what, and when.
-- **Walk-in sales survive bad network.** If the phone is offline, the sale is kept on the phone and sent
-  automatically when the network is back. Each sale has a unique id, so a retry is never saved twice.
-
-## Security
-
-Following the OWASP Top 10:
-
-| Risk | What the app does |
-|---|---|
-| Broken access control | Every page and every server action checks the user's role on the server (`requireUser`). Suspended users are logged out everywhere. |
-| Cryptographic failures | Passwords hashed with scrypt (N=2¹⁷). Session tokens and reset tokens are random 256-bit values; only their SHA-256 is stored. HTTPS forced with HSTS. |
-| Injection | All database access goes through Drizzle with parameters; all input is validated with zod. |
-| Insecure design | Append-only money records, void-not-delete, idempotent sales, boss can't suspend or demote themselves. |
-| Security misconfiguration | Strict Content Security Policy with per-request nonce, `X-Frame-Options: DENY`, `nosniff`, no `X-Powered-By`, minimal permissions policy. |
-| Vulnerable components | Small dependency set; run `npm audit` regularly. |
-| Authentication failures | Rate-limited login (5 per 15 min), account lock after 5 wrong passwords, generic error messages, temporary passwords must be changed, password reset links expire in 30 min and work once. |
-| Integrity failures | Server actions are origin-checked by Next.js; cookies are `HttpOnly`, `Secure`, `SameSite=Lax`, `__Host-` prefixed. |
-| Logging & monitoring | Activity log of logins, lockouts, sales, voids, price changes and account changes. |
-| SSRF | The server makes no requests to user-supplied URLs. |
-
-The site is **not listed on search engines** on purpose (`noindex` on every page). Anyone with the link can
-still open it.
-
-## Commands
-
-| Command | What it does |
-|---|---|
-| `npm run dev` | Start the app for development |
-| `npm run build` / `npm start` | Production build / run |
-| `npm run typecheck` / `npm run lint` | Check the code |
-| `npm run db:generate` | Create a migration after changing `src/db/schema.ts` |
-| `npm run db:migrate` | Apply migrations |
-| `npm run db:seed` | Add the starting products (safe to repeat) |
-| `npm run create-boss` | Create or reset the boss account |
-
-## Project layout
-
-```
-src/app/(auth)        login, forgot/reset password
-src/app/account       change password
-src/app/admin         dashboard, sell, sales, owed, products, stock, expenses, customers, staff, activity log
-src/components        forms, charts
-src/db                schema and connection
-src/lib               auth, sales logic, reports, rate limiting, audit log
-drizzle/              database migrations (incl. append-only triggers)
-scripts/              setup, seed, create-boss
-```
+The first time the boss logs in, the app adds the 4 products (prices 0, set them in More → Products & prices) and
+the 5 route days. Add helpers in More → Team logins. Each helper gets a temporary password and chooses their own.
