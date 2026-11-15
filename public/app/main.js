@@ -8,6 +8,43 @@ const esc = (v) =>
 const attr = esc;
 const me = () => S.getMeta().me;
 const isBoss = () => !!me()?.roles?.includes("boss");
+// ---------- Icons ----------
+// One drawn set: 24px grid, 1.9 stroke, round ends, coloured by the text around them.
+const ICONS = {
+  home: '<path d="M3.5 10.5 12 3.5l8.5 7"/><path d="M5.5 9v11h13V9"/><path d="M10 20v-5.5h4V20"/>',
+  cart: '<circle cx="9.5" cy="19.5" r="1.4"/><circle cx="17.5" cy="19.5" r="1.4"/><path d="M2.5 3.5h2.8l2.3 11.5h11l2-8.5H6.3"/>',
+  calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+  flask: '<path d="M9 3.5h6M10 3.5v6L4.8 18a2 2 0 0 0 1.7 3h11a2 2 0 0 0 1.7-3L14 9.5v-6"/><path d="M7.3 15h9.4"/>',
+  layers: '<path d="m12 3.5 8.5 4.5-8.5 4.5L3.5 8 12 3.5Z"/><path d="m3.5 12.5 8.5 4.5 8.5-4.5"/><path d="m3.5 16.5 8.5 4.5 8.5-4.5"/>',
+  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  user: '<circle cx="12" cy="8" r="4"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/>',
+  users: '<circle cx="9" cy="8.5" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M15.5 5.3a3.5 3.5 0 0 1 0 6.4M18 14.3a6.5 6.5 0 0 1 3.5 5.7"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  x: '<path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/>',
+  chev: '<path d="m9.5 6 6 6-6 6"/>',
+  back: '<path d="m14.5 6-6 6 6 6"/>',
+  up: '<path d="M12 19V5M6.5 10.5 12 5l5.5 5.5"/>',
+  down: '<path d="M12 5v14M6.5 13.5 12 19l5.5-5.5"/>',
+  phone: '<path d="M5.2 3.5h3l1.6 4.3-2 1.3a11 11 0 0 0 5.6 5.6l1.3-2 4.3 1.6v3a2.3 2.3 0 0 1-2.5 2.3A16.5 16.5 0 0 1 2.9 6a2.3 2.3 0 0 1 2.3-2.5Z"/>',
+  message: '<path d="M4 5h16v11H9.5L4 20V5Z"/><path d="M8 9.5h8M8 12.5h5"/>',
+  file: '<path d="M14 3H6.5A1.5 1.5 0 0 0 5 4.5v15A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5V8l-5-5Z"/><path d="M14 3v5h5M8.5 13h7M8.5 17h5"/>',
+  download: '<path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/>',
+  bell: '<path d="M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15L6 16Z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>',
+  truck: '<path d="M3 6h11v10H3V6ZM14 9.5h4l3 3.5V16h-7"/><circle cx="7" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/>',
+  receipt: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z"/><path d="M9 8h6M9 12h6"/>',
+  wallet: '<path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H19v14H6.5A2.5 2.5 0 0 1 4 16.5v-9Z"/><path d="M15 12h4"/>',
+  out: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v9M8.8 13.3 12 16.5l3.2-3.2"/>',
+  chart: '<path d="M4 4v16h16"/><path d="M8.5 16v-4M12.5 16V8M16.5 16v-6"/>',
+  bottle: '<path d="M10 2.5h4M10.5 2.5v3L8 9v10.5A1.5 1.5 0 0 0 9.5 21h5a1.5 1.5 0 0 0 1.5-1.5V9l-2.5-3.5v-3"/><path d="M8 13.5h8"/>',
+  pin: '<path d="M12 21s-6.5-6-6.5-11a6.5 6.5 0 0 1 13 0c0 5-6.5 11-6.5 11Z"/><circle cx="12" cy="10" r="2.3"/>',
+  key: '<circle cx="8" cy="15.5" r="4"/><path d="m11 12.5 8.5-8.5M16 7.5l2.5 2.5"/>',
+  install: '<rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M12 7v7M9.3 11.5 12 14.2l2.7-2.7"/>',
+};
+const ic = (name, cls = "") => `<svg class="i${cls ? " " + cls : ""}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
+const CHEV = ic("chev", "chev");
+/** Coloured or no-colour batch: a filled or empty swatch. */
+const sw = (col) => `<i class="sw ${col ? "col" : "plain"}" aria-hidden="true"></i>`;
+
 const PAY = { cash: "Cash", mpesa: "M-Pesa", later: "Pay later" };
 // "cook" is stored on the server; it is shown as Production.
 const ROLE_NAME = { boss: "Boss", helper: "Helper", cook: "Production" };
@@ -60,16 +97,16 @@ async function api(path, body) {
 
 // ---------- Layout ----------
 const NAV = [
-  ["home", "🏠", "Home"],
-  ["sell", "🛒", "Sell"],
-  ["orders", "📅", "Orders"],
-  ["chems", "⚗️", "Chemicals"],
-  ["more", "☰", "More"],
+  ["home", "home", "Home"],
+  ["sell", "cart", "Sell"],
+  ["orders", "calendar", "Orders"],
+  ["chems", "flask", "Chemicals"],
+  ["more", "menu", "More"],
 ];
 const PROD_NAV = [
-  ["make", "🧪", "Batches"],
-  ["chems", "⚗️", "Chemicals"],
-  ["account", "👤", "Account"],
+  ["make", "layers", "Batches"],
+  ["chems", "flask", "Chemicals"],
+  ["account", "user", "Account"],
 ];
 const SUB = { sales: "more", owed: "more", customers: "more", customer: "more", expenses: "more", reports: "more", products: "more", product: "more", places: "more", team: "more", account: "more", order: "orders", chem: "chems", password: "account" };
 
@@ -91,9 +128,9 @@ function syncPill() {
 
 function shell(name, title, body, back) {
   const active = SUB[name] || name;
-  return `<header class="top">${back ? `<a class="back" href="${attr(back)}" aria-label="Back">‹</a>` : ""}<h1>${esc(title)}</h1>${syncPill()}</header>
+  return `<header class="top">${back ? `<a class="back" href="${attr(back)}" aria-label="Back">${ic("back")}</a>` : ""}<h1>${esc(title)}</h1>${syncPill()}</header>
 <main>${body}</main>
-<nav class="tabs">${(isProd() ? PROD_NAV : NAV).map(([k, i, t]) => `<a href="#/${k}" class="${k === active ? "on" : ""}"><span>${i}</span>${t}</a>`).join("")}</nav>`;
+<nav class="tabs">${(isProd() ? PROD_NAV : NAV).map(([k, i, t]) => `<a href="#/${k}" class="${k === active ? "on" : ""}">${ic(i)}<span>${t}</span></a>`).join("")}</nav>`;
 }
 
 function render() {
@@ -125,15 +162,15 @@ function sheet() {
   const others = items.map((x, i) => ({ x, i })).filter((o) => o.i !== s.i);
   return `<div class="sheet-bg" data-act="closesheet"></div>
 <div class="sheet" role="dialog" aria-modal="true" aria-label="${attr((p?.name || "") + " " + L.size(it.ml))}">
-<div class="row"><h2>${dot(p)}${esc(p?.short || p?.name || "?")} ${L.size(it.ml)}</h2><button type="button" class="x close" data-act="closesheet" aria-label="Close">✕</button></div>
+<div class="row"><h2>${dot(p)}${esc(p?.short || p?.name || "?")} ${L.size(it.ml)}</h2><button type="button" class="x close" data-act="closesheet" aria-label="Close">${ic("x")}</button></div>
 <div class="bigqty"><button type="button" data-act="qty" data-t="${s.t}" data-i="${s.i}" data-d="-1" aria-label="One less">−</button><b>${it.qty}</b><button type="button" data-act="qty" data-t="${s.t}" data-i="${s.i}" data-d="1" aria-label="One more">+</button></div>
 <div class="daypick center-chips">${[1, 2, 3, 5, 10, 20].map((n) => `<button type="button" class="chip${it.qty === n ? " on" : ""}" data-act="setqty" data-n="${n}">${n}</button>`).join("")}</div>
 <div class="two"><label>Price each (KSh) <span class="muted tiny">change it for this customer</span><input inputmode="numeric" data-price="${s.t}:${s.i}" value="${it.price || ""}" placeholder="price"></label>
 <div class="linetot"><span class="muted small">This line</span><b data-linetot="${s.t}:${s.i}">${L.money(it.qty * (it.price || 0))}</b></div></div>
-${sell ? "" : `<div class="daypick center-chips"><button type="button" class="chip${it.col === false ? "" : " on"}" data-act="setcol" data-v="1">🎨 Coloured</button><button type="button" class="chip${it.col === false ? " on" : ""}" data-act="setcol" data-v="0">⚪ No colour</button></div>`}
-${others.length ? `<div class="mini">${others.map((o) => `<button type="button" class="row" data-act="openline" data-i="${o.i}"><span>${o.x.qty}× ${esc(S.get(o.x.p)?.short || "?")} ${L.size(o.x.ml)}</span><span>${L.money(o.x.qty * (o.x.price || 0))} ›</span></button>`).join("")}</div>` : ""}
+${sell ? "" : `<div class="daypick center-chips"><button type="button" class="chip${it.col === false ? "" : " on"}" data-act="setcol" data-v="1">${sw(true)}Coloured</button><button type="button" class="chip${it.col === false ? " on" : ""}" data-act="setcol" data-v="0">${sw(false)}No colour</button></div>`}
+${others.length ? `<div class="mini">${others.map((o) => `<button type="button" class="row" data-act="openline" data-i="${o.i}"><span>${o.x.qty}× ${esc(S.get(o.x.p)?.short || "?")} ${L.size(o.x.ml)}</span><span>${L.money(o.x.qty * (o.x.price || 0))}${CHEV}</span></button>`).join("")}</div>` : ""}
 <div class="total">${sell ? "Sale" : "Order"} total <b data-tot="${s.t}">${L.money(L.itemsTotal(items))}</b></div>
-<button type="button" class="btn ghost" data-act="closesheet">＋ Add another product</button>
+<button type="button" class="btn ghost" data-act="closesheet">${ic("plus")}Add another product</button>
 ${
   sell
     ? `<label>Customer <span class="muted">(needed for pay later)</span><input list="custlist" data-bind="cartCustomer" value="${attr(st.cartCustomer)}" autocomplete="off" placeholder="Name"></label>
@@ -156,7 +193,7 @@ function dueSheet() {
   ];
   return `<div class="sheet-bg" data-act="closedue"></div>
 <div class="sheet" role="dialog" aria-modal="true" aria-label="When will they pay">
-<div class="row"><h2>When will ${esc(a.name)} pay?</h2><button type="button" class="x close" data-act="closedue" aria-label="Close">✕</button></div>
+<div class="row"><h2>When will ${esc(a.name)} pay?</h2><button type="button" class="x close" data-act="closedue" aria-label="Close">${ic("x")}</button></div>
 <p class="muted small">${L.money(a.total)} on pay later. You get a reminder on this day.</p>
 <div class="daypick center-chips">${chips.map(([n, l]) => `<button type="button" class="chip${a.date === L.addDays(t, n) ? " on" : ""}" data-act="duepick" data-n="${n}">${l}</button>`).join("")}</div>
 <label>Pay by<input type="date" data-bind="askDue.date" data-change="redraw" min="${t}" value="${attr(a.date)}"></label>
@@ -230,7 +267,7 @@ function lines(target) {
       return `<div class="line">${dot(p)}<div class="lname">${esc(p?.short || p?.name || "?")} ${L.size(it.ml)}</div>
 <div class="qty"><button type="button" data-act="qty" data-t="${target}" data-i="${i}" data-d="-1">−</button><b>${it.qty}</b><button type="button" data-act="qty" data-t="${target}" data-i="${i}" data-d="1">+</button></div>
 <input class="price" inputmode="numeric" data-price="${target}:${i}" value="${it.price || ""}" placeholder="price" aria-label="Price each">${
-        target === "draft" ? `<button type="button" class="chip colchip${it.col === false ? "" : " on"}" data-act="togglecol" data-i="${i}">${it.col === false ? "⚪ No colour" : "🎨 Coloured"}</button>` : ""
+        target === "draft" ? `<button type="button" class="chip colchip${it.col === false ? "" : " on"}" data-act="togglecol" data-i="${i}">${it.col === false ? sw(false) + "No colour" : sw(true) + "Coloured"}</button>` : ""
       }</div>`;
     })
     .join("")}<div class="total">Total <b data-tot="${target}">${L.money(L.itemsTotal(items))}</b></div></div>`;
@@ -255,16 +292,16 @@ const VIEWS = {
 
     return [
       "JonWin",
-      `${installEvt ? `<button class="btn install" data-act="install">📲 Install the app on this phone</button>` : ""}
+      `${installEvt ? `<button class="btn install" data-act="install">${ic("install")}Install the app on this phone</button>` : ""}
 ${heroCard(t, stops, sum, todayPlan)}
 ${dueCard(t)}
 ${profitCard(t)}
 ${chemCard(true)}
-<a class="card row link" href="#/owed"><span>Money owed to you</span><b>${L.money(owed)} ›</b></a>
+<a class="card row link" href="#/owed"><span>Money owed to you</span><b>${L.money(owed)}${CHEV}</b></a>
 <section class="card"><h3>Sales, last 14 days</h3>${barChart(days, { labels: true, tick: (d) => L.parse(d).getDate() })}</section>
-<section class="card"><div class="row"><h3>Coming days</h3><a href="#/orders">All orders ›</a></div>${pl
+<section class="card"><div class="row"><h3>Coming days</h3><a href="#/orders">All orders${CHEV}</a></div>${pl
         .filter((d) => d.date > t && d.orders.length)
-        .map((d) => `<a class="row link" href="#/orders"><span>${esc(L.niceDate(d.date))} · ${esc(d.orders.map((o) => S.get(o.customer)?.name || "?").join(", "))}</span><span>${L.money(d.total)} ›</span></a>`)
+        .map((d) => `<a class="row link" href="#/orders"><span>${esc(L.niceDate(d.date))} · ${esc(d.orders.map((o) => S.get(o.customer)?.name || "?").join(", "))}</span><span>${L.money(d.total)}${CHEV}</span></a>`)
         .join("") || `<p class="muted">No orders booked.</p>`}</section>`,
     ];
   },
@@ -282,7 +319,7 @@ ${custList()}
 <div class="paybtns"><button class="btn big cash" data-act="sell" data-pay="cash">Cash</button><button class="btn big mpesa" data-act="sell" data-pay="mpesa">M-Pesa</button><button class="btn big later" data-act="sell" data-pay="later">Pay later</button></div>
 ${st.cart.length ? `<button class="btn ghost" data-act="clearcart">Clear</button>` : ""}
 </div>
-<a class="card row link" href="#/sales">Today's sales · ${L.money(L.sumSales(L.salesOn(t)).total)} ›</a>`,
+<a class="card row link" href="#/sales">Today's sales · ${L.money(L.sumSales(L.salesOn(t)).total)}${CHEV}</a>`,
     ];
   },
 
@@ -303,7 +340,7 @@ ${st.cart.length ? `<button class="btn ghost" data-act="clearcart">Clear</button
       : [];
     return [
       "Orders",
-      `<a class="btn big" href="#/order/new">＋ Book an order</a>
+      `<a class="btn big" href="#/order/new">${ic("plus")}Book an order</a>
 ${open.length ? "" : `<p class="card muted">No orders booked.</p>`}
 ${[...groups.entries()]
   .map(([k, list]) => {
@@ -364,7 +401,7 @@ ${past.length ? `<section class="card">${past.map(orderRow).join("")}</section>`
       .join("")}</div>
 ${
   wrongDay
-    ? `<p class="sendnote">📦 <b>Send order.</b> ${esc(L.niceDate(d.date))} is not ${esc(L.placeName(d.place))} day (${L.DAYS[placeDay]}), so you'll send it to them.</p>`
+    ? `<p class="sendnote">${ic("truck")}<b>Send order.</b> ${esc(L.niceDate(d.date))} is not ${esc(L.placeName(d.place))} day (${L.DAYS[placeDay]}), so you'll send it to them.</p>`
     : d.date
       ? `<p class="muted small">${esc(L.DAYS[L.weekday(d.date)])}${placeDay ? " — " + esc(L.placeName(d.place)) + " day, delivered on the route" : ""}</p>`
       : ""
@@ -398,14 +435,14 @@ ${
           const c = left[p.id] || 0;
           const low = c <= (p.chemLow ?? 1);
           return `<section class="card"><div class="row"><b>${dot(p)}${esc(p.name)}</b><b>${L.litres(Math.max(0, s[p.id] || 0))}</b></div>${(s[p.id] || 0) < 0 ? `<p class="muted small">Sold ${L.litres(-s[p.id])} more than the cooking recorded. Tap <b>Cooked</b> to add the missing cooking, or <b>Count L</b> to set what's there.</p>` : ""}
-<a class="row link chemline${low ? " low" : ""}" href="#/chem/${attr(p.id)}"><span>🧪 Chemicals</span><span><b>${Math.max(0, c)}</b> batch${c === 1 ? "" : "es"} left${low ? " ⚠" : ""} ›</span></a>
+<a class="row link chemline${low ? " low" : ""}" href="#/chem/${attr(p.id)}"><span>Chemicals</span><span><b>${Math.max(0, c)}</b> batch${c === 1 ? "" : "es"} left${CHEV}</span></a>
 <div class="three"><a class="btn sm" href="#/cook/${attr(p.id)}">Cooked</a><a class="btn sm ghost" href="#/chem/${attr(p.id)}">Bought</a><button class="btn sm ghost" data-act="countstock" data-p="${attr(p.id)}">Count L</button></div></section>`;
         })
         .join("")}
 <section class="card"><h3>Recent cooking</h3>${
         batches
           .map(
-            (b) => `<div class="row"><span>${esc(L.niceDate(b.date))} · ${dot(S.get(b.p))}${esc(L.productName(b.p))} ×${b.n}</span><span>${L.litres(b.litres)} ${esc(b.by ? "· " + b.by : "")}${isBoss() ? ` <button class="x" data-act="delbatch" data-id="${attr(b.id)}" aria-label="Delete">✕</button>` : ""}</span></div>`,
+            (b) => `<div class="row"><span>${esc(L.niceDate(b.date))} · ${dot(S.get(b.p))}${esc(L.productName(b.p))} ×${b.n}</span><span>${L.litres(b.litres)} ${esc(b.by ? "· " + b.by : "")}${isBoss() ? ` <button class="x" data-act="delbatch" data-id="${attr(b.id)}" aria-label="Delete">${ic("x")}</button>` : ""}</span></div>`,
           )
           .join("") || `<p class="muted">Nothing cooked yet.</p>`
       }</section>`,
@@ -418,7 +455,7 @@ ${
     const low = L.chemLasts().filter((x) => x.left <= 1 || x.out);
     return [
       "Batches to make",
-      `${low.length ? `<a class="card warn link" href="#/chems"><b>⚗️ Chemicals:</b> ${low.map((x) => esc(x.p.short || x.p.name) + " " + x.left + " left").join(" · ")} ›</a>` : ""}
+      `${low.length ? `<a class="card warn link" href="#/chems"><b>Chemicals low:</b> ${low.map((x) => esc(x.p.short || x.p.name) + " " + x.left + " left").join(" · ")}${CHEV}</a>` : ""}
 ${
   pl
     .map((d) => {
@@ -429,7 +466,7 @@ ${
 ${d.rows
   .filter((r) => r.batches)
   .map(
-    (r) => `<div class="mk"><span>${dot(r.p)}<b>${esc(r.p.short || r.p.name)}</b></span><span>${r.col ? `<span class="tag col">🎨 ${r.col} coloured</span>` : ""}${r.plain ? `<span class="tag plain">⚪ ${r.plain} no colour</span>` : ""}</span></div>
+    (r) => `<div class="mk"><span>${dot(r.p)}<b>${esc(r.p.short || r.p.name)}</b></span><span>${r.col ? `<span class="tag col">${sw(true)}${r.col} coloured</span>` : ""}${r.plain ? `<span class="tag plain">${sw(false)}${r.plain} no colour</span>` : ""}</span></div>
 <div class="muted tiny">${[r.forOrders ? r.forOrders + " for orders" : "", r.extra ? r.extra + " to sell" : ""].filter(Boolean).join(" + ")}</div>`,
   )
   .join("")}</section>`;
@@ -446,7 +483,7 @@ ${d.rows
       `<p class="muted small">${prod ? "Tap a product to set how many batches its chemicals are enough for." : "Tap a product to add chemicals you bought."}</p>
 ${L.chemLasts()
   .map(
-    (x) => `<a class="card link${x.left <= 1 ? " warn" : ""}" href="#/chem/${attr(x.p.id)}"><div class="row"><b>${dot(x.p)}${esc(x.p.name)}</b><b>${x.left} <small class="muted">batch${x.left === 1 ? "" : "es"}</small> ›</b></div>
+    (x) => `<a class="card link${x.left <= 1 ? " warn" : ""}" href="#/chem/${attr(x.p.id)}"><div class="row"><b>${dot(x.p)}${esc(x.p.name)}</b><b>${x.left} <small class="muted">batch${x.left === 1 ? "" : "es"}</small>${CHEV}</b></div>
 <div class="small">${lastsText(x)}</div></a>`,
   )
   .join("")}`,
@@ -465,7 +502,7 @@ ${L.chemLasts()
 <label>Litres made<input name="litres" type="number" inputmode="decimal" min="0" step="0.5" value="${bl}" required></label></div>
 <label>Day<input name="date" type="date" value="${L.today()}" required></label>
 <label>Note<input name="note" placeholder="optional"></label>
-<p class="${left < 1 ? "sendnote" : "muted small"}">🧪 Chemicals for ${Math.max(0, left)} batch${left === 1 ? "" : "es"} left. Cooking takes them off.</p>
+<p class="${left < 1 ? "sendnote" : "muted small"}">Chemicals for ${Math.max(0, left)} batch${left === 1 ? "" : "es"} left. Cooking takes them off.</p>
 <button class="btn big">Save</button></form>`,
       "#/stock",
     ];
@@ -501,12 +538,12 @@ ${
   },
 
   more() {
-    const link = (h, i, t, sub) => `<a class="row link" href="#/${h}"><span>${i} ${t}</span><span class="muted">${sub || ""} ›</span></a>`;
+    const link = (h, i, t, sub) => `<a class="row link" href="#/${h}"><span class="rowlabel">${ic(i)}${t}</span><span class="muted">${sub || ""}${CHEV}</span></a>`;
     const owed = Object.values(L.balances()).reduce((a, b) => a + Math.max(0, b), 0);
     return [
       "More",
-      `<section class="card list">${link("sales", "🧾", "Sales")}${link("owed", "💰", "Money owed", L.money(owed))}${link("customers", "👥", "Customers")}${link("expenses", "💸", "Expenses")}${link("reports", "📊", "Reports")}</section>
-<section class="card list">${isBoss() ? link("products", "🧴", "Products & prices") + link("places", "📍", "Route days") + link("team", "🔑", "Team logins") : ""}${link("account", "👤", "My account & sync", esc(me()?.name))}</section>`,
+      `<section class="card list">${link("sales", "receipt", "Sales")}${link("owed", "wallet", "Money owed", L.money(owed))}${link("customers", "users", "Customers")}${link("expenses", "out", "Expenses")}${link("reports", "chart", "Reports")}</section>
+<section class="card list">${isBoss() ? link("products", "bottle", "Products & prices") + link("places", "pin", "Route days") + link("team", "key", "Team logins") : ""}${link("account", "user", "My account & sync", esc(me()?.name))}</section>`,
     ];
   },
 
@@ -534,16 +571,16 @@ ${
     } else {
       body = groupSales(list, mode === "month" ? 10 : 7)
         .map(
-          (g) => `<a class="row link period" href="#/sales/${mode === "month" ? "day" : "month"}/${g.key}"><span><b>${esc(mode === "month" ? L.niceDate(g.key) : monthName(g.key))}</b><br><span class="muted small">${g.sum.count} sales · Cash ${L.money(g.sum.cash)} · M-Pesa ${L.money(g.sum.mpesa)} · Later ${L.money(g.sum.later)}</span></span><b>${L.money(g.sum.total)} ›</b></a>`,
+          (g) => `<a class="row link period" href="#/sales/${mode === "month" ? "day" : "month"}/${g.key}"><span><b>${esc(mode === "month" ? L.niceDate(g.key) : monthName(g.key))}</b><br><span class="muted small">${g.sum.count} sales · Cash ${L.money(g.sum.cash)} · M-Pesa ${L.money(g.sum.mpesa)} · Later ${L.money(g.sum.later)}</span></span><b>${L.money(g.sum.total)}${CHEV}</b></a>`,
         )
         .join("");
     }
     return [
       "Sales",
       `<div class="seg">${tab("day", "Day", day)}${tab("month", "Month", day.slice(0, 7))}${tab("year", "Year", day.slice(0, 4))}</div>
-<div class="daynav"><a class="btn sm ghost" href="#/sales/${mode}/${prev}">‹</a><b>${esc(periodName(mode, key))}</b>${hasNext ? `<a class="btn sm ghost" href="#/sales/${mode}/${next}">›</a>` : "<span></span>"}</div>
+<div class="daynav"><a class="btn sm ghost" href="#/sales/${mode}/${prev}" aria-label="Earlier">${ic("back")}</a><b>${esc(periodName(mode, key))}</b>${hasNext ? `<a class="btn sm ghost" href="#/sales/${mode}/${next}" aria-label="Later">${CHEV}</a>` : "<span></span>"}</div>
 <section class="card"><div class="stats"><div><b>${L.money(sum.total)}</b><span>${sum.count} sales</span></div><div><b>${L.money(sum.cash)}</b><span>Cash</span></div><div><b>${L.money(sum.mpesa)}</b><span>M-Pesa</span></div><div><b>${L.money(sum.later)}</b><span>Pay later</span></div></div>
-<button class="btn big pdf" data-act="pdf" data-mode="${mode}" data-key="${key}">⬇ Download PDF</button></section>
+<button class="btn big pdf" data-act="pdf" data-mode="${mode}" data-key="${key}">${ic("download")}Download PDF</button></section>
 <section class="card">${body || `<p class="muted">No sales ${mode === "day" ? "this day" : mode === "month" ? "this month" : "this year"}.</p>`}</section>`,
       "#/more",
     ];
@@ -566,9 +603,9 @@ ${
 <section class="card">${
         rows
           .map(
-            (r) => `<a class="row link" href="#/customer/${attr(r.c.id)}"><span><b>${esc(r.c.name)}</b><br><span class="muted small">${esc(L.placeName(r.c.place))}${lastLater[r.c.id] ? " · last took " + daysAgo(lastLater[r.c.id]) + " days ago" : ""}</span></span><b>${L.money(r.v)} ›</b></a>`,
+            (r) => `<a class="row link" href="#/customer/${attr(r.c.id)}"><span><b>${esc(r.c.name)}</b><br><span class="muted small">${esc(L.placeName(r.c.place))}${lastLater[r.c.id] ? " · last took " + daysAgo(lastLater[r.c.id]) + " days ago" : ""}</span></span><b>${L.money(r.v)}${CHEV}</b></a>`,
           )
-          .join("") || `<p class="muted">Nobody owes you. 🎉</p>`
+          .join("") || `<p class="muted">Nobody owes you.</p>`
       }</section>`,
       "#/more",
     ];
@@ -585,7 +622,7 @@ ${
     const order = [...L.places().map((p) => p.id), ""];
     return [
       "Customers",
-      `<a class="btn big" href="#/customer/new">＋ New customer</a>
+      `<a class="btn big" href="#/customer/new">${ic("plus")}New customer</a>
 <input class="search" type="search" placeholder="Search name or phone" data-search=".crow">
 ${order
   .filter((k) => byPlace.has(k))
@@ -593,7 +630,7 @@ ${order
     (k) => `<section class="card"><h3>${esc(L.placeName(k) || "No place")}</h3>${byPlace
       .get(k)
       .map(
-        (c) => `<a class="row link crow" data-s="${attr((c.name + " " + (c.phone || "")).toLowerCase())}" href="#/customer/${attr(c.id)}"><span>${esc(c.name)}</span><span class="muted">${bal[c.id] > 0 ? `<b class="red">owes ${L.money(bal[c.id])}</b>` : esc(c.phone || "")} ›</span></a>`,
+        (c) => `<a class="row link crow" data-s="${attr((c.name + " " + (c.phone || "")).toLowerCase())}" href="#/customer/${attr(c.id)}"><span>${esc(c.name)}</span><span class="muted">${bal[c.id] > 0 ? `<b class="red">owes ${L.money(bal[c.id])}</b>` : esc(c.phone || "")}${CHEV}</span></a>`,
       )
       .join("")}</section>`,
   )
@@ -628,8 +665,8 @@ ${order
     return [
       c.name,
       `<section class="card"><div class="row"><div><div class="big ${bal > 0 ? "red" : ""}">${L.money(bal)}</div><div class="muted">${bal > 0 ? "owes you" : "owes nothing"}</div></div>
-${c.phone ? `<a class="btn" href="tel:${attr(c.phone)}">📞 Call</a>` : ""}</div>
-<div class="two"><a class="btn" href="#/order/new/${attr(c.id)}">＋ Book order</a><button class="btn ghost" data-act="invoice" data-id="${attr(c.id)}">🧾 Invoice PDF</button></div></section>
+${c.phone ? `<a class="btn" href="tel:${attr(c.phone)}">${ic("phone")}Call</a>` : ""}</div>
+<div class="two"><a class="btn" href="#/order/new/${attr(c.id)}">${ic("plus")}Book order</a><button class="btn ghost" data-act="invoice" data-id="${attr(c.id)}">${ic("file")}Invoice PDF</button></div></section>
 ${(() => {
   const u = bal > 0 ? L.unpaid().find((x) => x.c.id === c.id) : null;
   return u
@@ -647,8 +684,8 @@ ${
         hist
           .map(
             (h) =>
-              `<${h.link ? `a href="#/order/${attr(h.link)}"` : "div"} class="row${h.x ? " void" : ""}"><span>${esc(L.niceDate(h.d))} · ${h.h}</span><span>${h.v == null ? "›" : L.money(Math.abs(h.v))}${
-                h.id && !h.x && isBoss() ? ` <button class="x" data-act="voidpay" data-id="${attr(h.id)}" aria-label="Cancel payment">✕</button>` : ""
+              `<${h.link ? `a href="#/order/${attr(h.link)}"` : "div"} class="row${h.x ? " void" : ""}"><span>${esc(L.niceDate(h.d))} · ${h.h}</span><span>${h.v == null ? CHEV : L.money(Math.abs(h.v))}${
+                h.id && !h.x && isBoss() ? ` <button class="x" data-act="voidpay" data-id="${attr(h.id)}" aria-label="Cancel payment">${ic("x")}</button>` : ""
               }</span></${h.link ? "a" : "div"}>`,
           )
           .join("") || `<p class="muted">Nothing yet.</p>`
@@ -675,7 +712,7 @@ ${form}`,
 <label>Note<input name="note" placeholder="optional"></label><label>Day<input name="date" type="date" value="${L.today()}" required></label>
 <p class="muted small">Chemicals bought in Stock are counted already. Don't add them here too.</p>
 <button class="btn">Add expense</button></form>
-<div class="daynav"><a class="btn sm ghost" href="#/expenses/${prev}">‹</a><b>${L.MONTHS[mo - 1]} ${y}</b><a class="btn sm ghost" href="#/expenses/${next}">›</a></div>
+<div class="daynav"><a class="btn sm ghost" href="#/expenses/${prev}" aria-label="Earlier">${ic("back")}</a><b>${L.MONTHS[mo - 1]} ${y}</b><a class="btn sm ghost" href="#/expenses/${next}" aria-label="Later">${CHEV}</a></div>
 <section class="card"><div class="row"><b>Total</b><b>${L.money(list.reduce((a, e) => a + e.amount, 0))}</b></div>${Object.entries(byCat)
         .map(([k, v]) => `<div class="row small"><span>${esc(k)}</span><span>${L.money(v)}</span></div>`)
         .join("")}</section>
@@ -683,7 +720,7 @@ ${form}`,
         list
           .map(
             (e) => `<div class="row"><span>${esc(L.niceDate(e.date))} · ${esc(e.cat)}${e.note ? " · " + esc(e.note) : ""}</span><span>${L.money(e.amount)}${
-              isBoss() ? ` <button class="x" data-act="delexp" data-id="${attr(e.id)}" aria-label="Delete">✕</button>` : ""
+              isBoss() ? ` <button class="x" data-act="delexp" data-id="${attr(e.id)}" aria-label="Delete">${ic("x")}</button>` : ""
             }</span></div>`,
           )
           .join("") || `<p class="muted">No expenses this month.</p>`
@@ -726,7 +763,7 @@ ${form}`,
     }
     return [
       "Reports",
-      `<div class="daynav"><a class="btn sm ghost" href="#/reports/${prev}">‹</a><b>${L.MONTHS[mo - 1]} ${y}</b><a class="btn sm ghost" href="#/reports/${next}">›</a></div>
+      `<div class="daynav"><a class="btn sm ghost" href="#/reports/${prev}" aria-label="Earlier">${ic("back")}</a><b>${L.MONTHS[mo - 1]} ${y}</b><a class="btn sm ghost" href="#/reports/${next}" aria-label="Later">${CHEV}</a></div>
 <section class="card"><div class="stats"><div><b>${L.money(sum.total)}</b><span>Sales (${sum.count})</span></div><div><b>${L.money(moneyIn)}</b><span>Money in</span></div><div><b>${L.money(out)}</b><span>Money out</span></div><div><b class="${moneyIn - out < 0 ? "red" : "green"}">${L.money(moneyIn - out)}</b><span>In − out</span></div></div>
 <div class="row small"><span>Cash ${L.money(sum.cash)} · M-Pesa ${L.money(sum.mpesa)} · Later ${L.money(sum.later)}</span></div>
 <div class="row small"><span>Owed money paid back ${L.money(paidBack)} · Chemicals bought ${L.money(chem)} · Other expenses ${L.money(exp)}</span></div></section>
@@ -747,11 +784,11 @@ ${form}`,
       "Products & prices",
       `${L.products()
         .map(
-          (p) => `<a class="card link" href="#/product/${attr(p.id)}"><div class="row"><b>${dot(p)}${esc(p.name)}</b><span>›</span></div>
+          (p) => `<a class="card link" href="#/product/${attr(p.id)}"><div class="row"><b>${dot(p)}${esc(p.name)}</b><span>${CHEV}</span></div>
 <div class="muted small">${(p.sizes || []).map((s) => L.size(s.ml) + " " + (s.price ? L.money(s.price) : "no price")).join(" · ")}</div>
 <div class="muted small">Batch ${p.batchL || 25} L</div></a>`,
         )
-        .join("")}${isBoss() ? `<a class="btn" href="#/product/new">＋ New product</a>` : `<p class="muted center">Only the boss can change prices.</p>`}`,
+        .join("")}${isBoss() ? `<a class="btn" href="#/product/new">${ic("plus")}New product</a>` : `<p class="muted center">Only the boss can change prices.</p>`}`,
       "#/more",
     ];
   },
@@ -771,7 +808,7 @@ ${form}`,
 ${L.isSoap(p) ? `<label>Batches to sell each route day<select name="extraBatches"${dis}>${opts([{ v: 0, t: "None" }, { v: 1, t: "1 batch" }, { v: 2, t: "2 batches" }, { v: 3, t: "3 batches" }, { v: "auto", t: "Auto (from her sales)" }], p?.extraBatches ?? 1)}</select></label>` : `<input type="hidden" name="extraBatches" value="0"><p class="muted small">Made only when ordered.</p>`}</div>
 ${L.isSoap(p) ? walkInNote(p) : ""}
 <h3>Price per bottle</h3><p class="muted small">What a customer pays for one bottle of each size, e.g. 500ml = 70, 20L = 2800.</p>
-${(p?.sizes || []).map((s) => `<div class="sizerow"><input type="hidden" name="ml" value="${s.ml}"><b>${L.size(s.ml)}</b><label class="ksh">KSh<input name="price" type="number" inputmode="numeric" min="0" placeholder="0" value="${attr(s.price || "")}"${dis}></label>${isBoss() ? `<button type="button" class="x" data-act="rmrow" aria-label="Remove ${L.size(s.ml)}">✕</button>` : ""}</div>`).join("")}
+${(p?.sizes || []).map((s) => `<div class="sizerow"><input type="hidden" name="ml" value="${s.ml}"><b>${L.size(s.ml)}</b><label class="ksh">KSh<input name="price" type="number" inputmode="numeric" min="0" placeholder="0" value="${attr(s.price || "")}"${dis}></label>${isBoss() ? `<button type="button" class="x" data-act="rmrow" aria-label="Remove ${L.size(s.ml)}">${ic("x")}</button>` : ""}</div>`).join("")}
 ${isBoss() ? `<div class="sizerow"><select name="ml">${addOpts}</select><label class="ksh">KSh<input name="price" type="number" inputmode="numeric" min="0" placeholder="0"></label><span></span></div>` : ""}
 <input type="hidden" name="chemLow" value="1">
 ${isBoss() ? `<label class="check"><input type="checkbox" name="off"${p?.off ? " checked" : ""}> Hide this product</label><button class="btn big">Save</button>` : ""}
@@ -830,10 +867,10 @@ ${
 <section class="card"><h3>Sync</h3><p>${w ? `<b>${w}</b> record${w > 1 ? "s" : ""} on this phone not sent yet.` : "Everything on this phone is saved online."}</p>
 <p class="muted small">Last sent: ${m.lastSync ? new Date(m.lastSync).toLocaleString() : "never"}</p>
 <button class="btn" data-act="syncnow">Sync now</button></section>
-${"Notification" in window ? `<section class="card"><h3>Reminders</h3><p class="muted small">${isProd() ? "A phone notification when a product's chemicals are down to 1 batch." : "A phone notification on the day money is due (and every day after until it's paid), and when a product's chemicals are down to 1 batch."}</p>${Notification.permission === "granted" ? `<p class="green">🔔 On</p>` : Notification.permission === "denied" ? `<p class="muted small">Blocked. Allow notifications for this app in the phone's settings.</p>` : `<button class="btn" data-act="notifyon">🔔 Turn on reminders</button>`}</section>` : ""}
-${installEvt ? `<button class="btn install" data-act="install">📲 Install the app on this phone</button>` : ""}
-<section class="card list"><a class="row link" href="#/password"><span>Change password</span><span>›</span></a>
-<a class="row link" href="#" data-act="backup"><span>Save a backup file</span><span>›</span></a></section>
+${"Notification" in window ? `<section class="card"><h3>Reminders</h3><p class="muted small">${isProd() ? "A phone notification when a product's chemicals are down to 1 batch." : "A phone notification on the day money is due (and every day after until it's paid), and when a product's chemicals are down to 1 batch."}</p>${Notification.permission === "granted" ? `<p class="green">Reminders are on.</p>` : Notification.permission === "denied" ? `<p class="muted small">Blocked. Allow notifications for this app in the phone's settings.</p>` : `<button class="btn" data-act="notifyon">${ic("bell")}Turn on reminders</button>`}</section>` : ""}
+${installEvt ? `<button class="btn install" data-act="install">${ic("install")}Install the app on this phone</button>` : ""}
+<section class="card list"><a class="row link" href="#/password"><span>Change password</span><span>${CHEV}</span></a>
+<a class="row link" href="#" data-act="backup"><span>Save a backup file</span><span>${CHEV}</span></a></section>
 <button class="btn ghost red" data-act="logout">Log out</button>
 ${isBoss() ? `<section class="card warn"><h3>Start fresh</h3><p class="muted small">Clears all sales, orders, customers, money owed, expenses, cooking, stock and chemicals on every phone. Products, prices, route days and team logins stay. This can't be undone, so save a backup file first.</p><button class="btn danger" data-act="reset">Reset all records</button></section>` : ""}`,
     ];
@@ -849,21 +886,21 @@ function dueCard(t) {
   const soon = L.unpaid().filter((u) => u.due <= L.addDays(t, 1));
   const canAsk = "Notification" in window && Notification.permission === "default";
   if (!soon.length) return "";
-  return `<section class="card warn"><h3>💰 Payments due</h3>${soon
+  return `<section class="card warn"><h3>Payments due</h3>${soon
     .map((u) => {
       const late = u.due < t;
       const when = late ? Math.round((L.parse(t) - L.parse(u.due)) / 864e5) + " day" + (u.due === L.addDays(t, -1) ? "" : "s") + " late" : u.due === t ? "due today" : "due tomorrow";
       return `<div class="person"><a class="link" href="#/customer/${attr(u.c.id)}"><b>${esc(u.c.name)}</b> <b class="${late ? "red" : ""}">${L.money(u.owed)}</b><div class="small">${when}</div></a>${remindBtn(u)}</div>`;
     })
-    .join("")}${canAsk ? `<button class="btn sm ghost" data-act="notifyon">🔔 Turn on phone reminders</button>` : ""}</section>`;
+    .join("")}${canAsk ? `<button class="btn sm ghost" data-act="notifyon">${ic("bell")}Turn on phone reminders</button>` : ""}</section>`;
 }
 
 /** SMS button with a ready reminder (or a link to add their phone number). */
 function remindBtn(u) {
-  if (!u.c.phone) return `<a class="btn sm ghost" href="#/customer/${attr(u.c.id)}">Add phone ›</a>`;
+  if (!u.c.phone) return `<a class="btn sm ghost" href="#/customer/${attr(u.c.id)}">Add phone${CHEV}</a>`;
   const t = L.today();
   const msg = `Hello ${u.c.name}, this is JonWin. A reminder that KSh ${Math.round(u.owed).toLocaleString("en")} ${u.due < t ? "was due on " + L.niceDate(u.due) : u.due === t ? "is due today" : "is due " + L.niceDate(u.due).toLowerCase()}. Thank you!`;
-  return `<a class="btn sm" href="sms:${attr(u.c.phone)}?body=${attr(encodeURIComponent(msg))}">✉ Remind</a>`;
+  return `<a class="btn sm" href="sms:${attr(u.c.phone)}?body=${attr(encodeURIComponent(msg))}">${ic("message")}Remind</a>`;
 }
 
 /** "Enough until Thursday" for one product's chemicals. */
@@ -879,8 +916,8 @@ function lastsText(x) {
 function chemCard() {
   const bad = L.chemLasts().filter((x) => x.left <= 1 || x.out);
   if (!bad.length) return "";
-  return `<section class="card warn"><div class="row"><h3>⚗️ Buy chemicals</h3><a href="#/chems">All ›</a></div>${bad
-    .map((x) => `<a class="row link" href="#/chem/${attr(x.p.id)}"><span>${dot(x.p)}${esc(x.p.short || x.p.name)} · <b>${x.left}</b> left</span><span class="small">${x.out ? "runs out " + esc(L.niceDate(x.out)) : x.left ? "1 batch left" : "none left"} ›</span></a>`)
+  return `<section class="card warn"><div class="row"><h3>Buy chemicals</h3><a href="#/chems">All${CHEV}</a></div>${bad
+    .map((x) => `<a class="row link" href="#/chem/${attr(x.p.id)}"><span>${dot(x.p)}${esc(x.p.short || x.p.name)} · <b>${x.left}</b> left</span><span class="small">${x.out ? "runs out " + esc(L.niceDate(x.out)) : x.left ? "1 batch left" : "none left"}${CHEV}</span></a>`)
     .join("")}</section>`;
 }
 
@@ -943,7 +980,7 @@ function profitCard(t) {
   const d = L.profit(t);
   const all = L.profit("");
   const cls = (n) => (n < 0 ? "red" : "green");
-  return `<a class="card link" href="#/reports"><div class="row"><h3>Profit this month</h3><span>›</span></div>
+  return `<a class="card link" href="#/reports"><div class="row"><h3>Profit this month</h3><span>${CHEV}</span></div>
 <div class="big ${cls(m.profit)}">${L.money(m.profit)}</div>
 <div class="muted small">Sales ${L.money(m.sales)} − expenses ${L.money(m.costs)}</div>
 <div class="row small"><span>Today <b class="${cls(d.profit)}">${L.money(d.profit)}</b></span><span>Since start <b class="${cls(all.profit)}">${L.money(all.profit)}</b></span></div></a>`;
@@ -963,14 +1000,14 @@ function heroCard(t, stops, raw, todayPlan) {
   ];
   const late = todayPlan?.orders.some((o) => o.date < t);
   return `<section class="hero">
-<div class="hero-top"><span class="hero-day">${esc(L.DAYS[L.weekday(t)])} · ${stops.length ? esc(stops.map((s) => s.name).join(" + ")) : "No route today"}</span><a class="hero-sell" href="#/sell">＋ Sell</a></div>
+<div class="hero-top"><span class="hero-day">${esc(L.DAYS[L.weekday(t)])} · ${stops.length ? esc(stops.map((s) => s.name).join(" + ")) : "No route today"}</span><a class="hero-sell" href="#/sell">${ic("plus")}Sell</a></div>
 <div class="hero-amt">${L.money(sum.total)}</div>
 <div class="hero-sub">${sum.count ? sum.count + " sale" + (sum.count === 1 ? "" : "s") + " today" : "No sales yet today"}${
-    diff == null ? "" : ` <span class="delta ${diff >= 0 ? "up" : "down"}">${diff >= 0 ? "▲" : "▼"} ${Math.abs(diff)}% vs yesterday</span>`
+    diff == null ? "" : ` <span class="delta ${diff >= 0 ? "up" : "down"}">${ic(diff >= 0 ? "up" : "down")}${Math.abs(diff)}% vs yesterday</span>`
   }</div>
 <div class="split">${sum.total ? parts.filter((p) => p[2] > 0).map((p) => `<i class="${p[0]}" style="flex:${p[2]}"></i>`).join("") : '<i class="none"></i>'}</div>
 <div class="legend">${(sum.total ? parts.filter((p) => p[2] > 0) : parts).map((p) => `<span><i class="${p[0]}"></i>${p[1]} <b>${L.money(p[2])}</b></span>`).join("")}</div>
-${todayPlan?.orders.length ? `<a class="hero-strip" href="#/orders">📦 ${todayPlan.orders.length} order${todayPlan.orders.length > 1 ? "s" : ""} to deliver today${late ? " · some late" : ""}<span>›</span></a>` : ""}
+${todayPlan?.orders.length ? `<a class="hero-strip" href="#/orders">${ic("truck")}${todayPlan.orders.length} order${todayPlan.orders.length > 1 ? "s" : ""} to deliver today${late ? " · some late" : ""}<span>${CHEV}</span></a>` : ""}
 </section>`;
 }
 
@@ -1004,7 +1041,7 @@ function barChart(points, { labels = false, tick = () => "" } = {}) {
 function readout(p) {
   const s = p.s || L.sumSales(L.salesOn(p.d));
   return `<div><b>${L.money(s.total)}</b> <span class="muted small">${esc(L.niceDate(p.d))} · ${s.count} sale${s.count === 1 ? "" : "s"}</span></div>
-<div class="muted small">${s.count ? `Cash ${L.money(s.cash)} · M-Pesa ${L.money(s.mpesa)} · Later ${L.money(s.later)}` : "No sales this day"} · <a href="#/sales/day/${p.d}">Open ›</a></div>`;
+<div class="muted small">${s.count ? `Cash ${L.money(s.cash)} · M-Pesa ${L.money(s.mpesa)} · Later ${L.money(s.later)}` : "No sales this day"} · <a href="#/sales/day/${p.d}">Open${CHEV}</a></div>`;
 }
 
 /** What she sells herself (not orders): helps choose how many extra batches to cook. */
@@ -1130,7 +1167,7 @@ function dayChoices(d) {
 
 function orderRow(o) {
   const c = S.get(o.customer);
-  return `<a class="row link order" href="#/order/${attr(o.id)}"><span><b>${esc(c?.name || "?")}</b>${o.status === "booked" && isSend(o) ? ` <span class="badge send">📦 Send · ${esc(L.placeName(o.place))}</span>` : ""}${o.status !== "booked" ? ` <span class="badge ${o.status}">${o.status === "done" ? "delivered" : "cancelled"}</span>` : ""}<br><span class="muted small">${esc(L.itemsText(o.items))}${o.note ? " · " + esc(o.note) : ""}</span></span><span>${L.money(L.itemsTotal(o.items))} ›</span></a>`;
+  return `<a class="row link order" href="#/order/${attr(o.id)}"><span><b>${esc(c?.name || "?")}</b>${o.status === "booked" && isSend(o) ? ` <span class="badge send">Send · ${esc(L.placeName(o.place))}</span>` : ""}${o.status !== "booked" ? ` <span class="badge ${o.status}">${o.status === "done" ? "delivered" : "cancelled"}</span>` : ""}<br><span class="muted small">${esc(L.itemsText(o.items))}${o.note ? " · " + esc(o.note) : ""}</span></span><span>${L.money(L.itemsTotal(o.items))}${CHEV}</span></a>`;
 }
 
 // ---------- Actions (buttons) ----------
@@ -1244,7 +1281,7 @@ const ACTS = {
     } finally {
       if (el.isConnected) {
         el.disabled = false;
-        el.textContent = "⬇ Download PDF";
+        el.innerHTML = ic("download") + "Download PDF";
       }
     }
   },
@@ -1782,7 +1819,7 @@ async function watchDue(force) {
   if (!due.length && !low.length) return;
   if (due.length) {
     const total = due.reduce((a, u) => a + u.owed, 0);
-    await reg.showNotification(`💰 ${L.money(total)} due from ${due.length} customer${due.length > 1 ? "s" : ""}`, {
+    await reg.showNotification(`${L.money(total)} due from ${due.length} customer${due.length > 1 ? "s" : ""}`, {
       body: due.map((u) => `${u.c.name} ${L.money(u.owed)}${u.due < t ? " (late)" : ""}`).join(", "),
       tag: "due",
       icon: "/icon-192.png",
@@ -1790,7 +1827,7 @@ async function watchDue(force) {
     });
   }
   if (low.length)
-    await reg.showNotification("⚗️ Chemicals running out", {
+    await reg.showNotification("Chemicals running out", {
       body: low.map((x) => `${x.p.short || x.p.name}: ${x.left} batch${x.left === 1 ? "" : "es"} left`).join(", "),
       tag: "chem",
       icon: "/icon-192.png",

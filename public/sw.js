@@ -1,6 +1,6 @@
 // Keeps the app on the phone so it opens with no network.
 // Change VERSION whenever a file in /public/app or index.html changes.
-const VERSION = "jw-2026-11-15-5";
+const VERSION = "jw-2026-11-15-7";
 const FILES = ["/", "/app/app.css", "/app/main.js", "/app/store.js", "/app/logic.js", "/app/pdf.js", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (e) => {
@@ -87,7 +87,7 @@ async function remindChem(recs) {
   }
   const low = Object.keys(names).filter((id) => left[id] <= 1);
   if (!low.length) return;
-  await self.registration.showNotification("⚗️ Chemicals running out", {
+  await self.registration.showNotification("Chemicals running out", {
     body: low.map((id) => `${names[id]}: ${Math.max(0, left[id])} batch${left[id] === 1 ? "" : "es"} left`).join(", "),
     tag: "chem",
     icon: "/icon-192.png",
@@ -131,7 +131,7 @@ async function remindDue() {
   if (!due.length) return;
   const money = (n) => "KSh " + Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   const total = due.reduce((a, d) => a + d.owed, 0);
-  await self.registration.showNotification(`💰 ${money(total)} due from ${due.length} customer${due.length > 1 ? "s" : ""}`, {
+  await self.registration.showNotification(`${money(total)} due from ${due.length} customer${due.length > 1 ? "s" : ""}`, {
     body: due.map((d) => `${d.name} ${money(d.owed)}${d.late ? " (late)" : ""}`).join(", "),
     tag: "due",
     icon: "/icon-192.png",
