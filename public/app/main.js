@@ -11,7 +11,7 @@ const isBoss = () => !!me()?.roles?.includes("boss");
 const PAY = { cash: "Cash", mpesa: "M-Pesa", later: "Pay later" };
 
 // Screen state that must survive a redraw (cart, order being written, …).
-const st = { cart: [], cartPlace: null, cartCustomer: "", draft: null, showPast: false, sheet: null, people: null, peopleErr: "", tempPw: "" };
+const st = { cart: [], cartPlace: null, cartCustomer: "", draft: null, showPast: false, sheet: null, askDue: null, people: null, peopleErr: "", tempPw: "" };
 let editing = false;
 let installEvt = null;
 
@@ -97,8 +97,8 @@ function render() {
   }
   const v = VIEWS[r.name] || VIEWS.home;
   const [title, body, back] = v(r.arg, r.arg2);
-  app.innerHTML = shell(r.name, title, body, back) + sheet();
-  document.body.classList.toggle("lock", !!st.sheet);
+  app.innerHTML = shell(r.name, title, body, back) + sheet() + dueSheet();
+  document.body.classList.toggle("lock", !!(st.sheet || st.askDue));
 }
 
 // Pop-up card after tapping a size: amount, price and (for a sale) payment, without scrolling.
@@ -116,7 +116,7 @@ function sheet() {
 <div class="row"><h2>${dot(p)}${esc(p?.short || p?.name || "?")} ${L.size(it.ml)}</h2><button type="button" class="x close" data-act="closesheet" aria-label="Close">✕</button></div>
 <div class="bigqty"><button type="button" data-act="qty" data-t="${s.t}" data-i="${s.i}" data-d="-1" aria-label="One less">−</button><b>${it.qty}</b><button type="button" data-act="qty" data-t="${s.t}" data-i="${s.i}" data-d="1" aria-label="One more">+</button></div>
 <div class="daypick center-chips">${[1, 2, 3, 5, 10, 20].map((n) => `<button type="button" class="chip${it.qty === n ? " on" : ""}" data-act="setqty" data-n="${n}">${n}</button>`).join("")}</div>
-<div class="two"><label>Price each (KSh)<input inputmode="numeric" data-price="${s.t}:${s.i}" value="${it.price || ""}" placeholder="price"></label>
+<div class="two"><label>Price each (KSh) <span class="muted tiny">change it for this customer</span><input inputmode="numeric" data-price="${s.t}:${s.i}" value="${it.price || ""}" placeholder="price"></label>
 <div class="linetot"><span class="muted small">This line</span><b data-linetot="${s.t}:${s.i}">${L.money(it.qty * (it.price || 0))}</b></div></div>
 ${others.length ? `<div class="mini">${others.map((o) => `<button type="button" class="row" data-act="openline" data-i="${o.i}"><span>${o.x.qty}× ${esc(S.get(o.x.p)?.short || "?")} ${L.size(o.x.ml)}</span><span>${L.money(o.x.qty * (o.x.price || 0))} ›</span></button>`).join("")}</div>` : ""}
 <div class="total">${sell ? "Sale" : "Order"} total <b data-tot="${s.t}">${L.money(L.itemsTotal(items))}</b></div>
@@ -127,6 +127,27 @@ ${
 <div class="paybtns"><button type="button" class="btn big cash" data-act="sell" data-pay="cash">Cash</button><button type="button" class="btn big mpesa" data-act="sell" data-pay="mpesa">M-Pesa</button><button type="button" class="btn big later" data-act="sell" data-pay="later">Pay later</button></div>`
     : `${st.draft && !st.draft.name.trim() ? `<label>Customer<input list="custlist" data-bind="draft.name" data-change="ordcust" autocomplete="off" placeholder="Name"></label>` : ""}<button type="button" class="btn big" data-act="saveorder">${st.draft?.id ? "Save changes" : "Book order"}</button>`
 }
+</div>`;
+}
+
+// Pop-up after "Pay later": when the customer will pay.
+function dueSheet() {
+  const a = st.askDue;
+  if (!a) return "";
+  const t = L.today();
+  const chips = [
+    [3, "3 days"],
+    [7, "1 week"],
+    [14, "2 weeks"],
+    [30, "1 month"],
+  ];
+  return `<div class="sheet-bg" data-act="closedue"></div>
+<div class="sheet" role="dialog" aria-modal="true" aria-label="When will they pay">
+<div class="row"><h2>When will ${esc(a.name)} pay?</h2><button type="button" class="x close" data-act="closedue" aria-label="Close">✕</button></div>
+<p class="muted small">${L.money(a.total)} on pay later. You get a reminder on this day.</p>
+<div class="daypick center-chips">${chips.map(([n, l]) => `<button type="button" class="chip${a.date === L.addDays(t, n) ? " on" : ""}" data-act="duepick" data-n="${n}">${l}</button>`).join("")}</div>
+<label>Pay by<input type="date" data-bind="askDue.date" data-change="redraw" min="${t}" value="${attr(a.date)}"></label>
+<button type="button" class="btn big later" data-act="${a.act}" data-pay="later" data-ok="1">Save · pay by ${esc(L.niceDate(a.date))}</button>
 </div>`;
 }
 
@@ -173,6 +194,19 @@ function picker(target) {
     .join("")}</div>`;
 }
 const itemsOf = (target) => (target === "cart" ? st.cart : st.draft.items);
+const custOf = (target) => L.findCustomer(target === "cart" ? st.cartCustomer : st.draft?.name || "");
+/** After picking a customer, use the prices they got last time (lines she typed a price on stay). */
+function reprice(target) {
+  const c = custOf(target);
+  let changed = false;
+  for (const it of itemsOf(target) || []) {
+    if (it.own) continue;
+    const pr = (c && L.customerPrice(c.id, it.p, it.ml)) || L.priceOf(it.p, it.ml);
+    if (pr !== it.price) (it.price = pr), (changed = true);
+  }
+  return changed;
+}
+const cleanItems = (items) => items.map(({ own, ...i }) => i); // eslint-disable-line no-unused-vars
 
 function lines(target) {
   const items = itemsOf(target);
@@ -211,6 +245,7 @@ const VIEWS = {
       "JonWin",
       `${installEvt ? `<button class="btn install" data-act="install">📲 Install the app on this phone</button>` : ""}
 ${heroCard(t, stops, sum, todayPlan)}
+${dueCard(t)}
 ${profitCard(t)}
 ${next ? planCard(next, true) : ""}
 ${short.length ? `<section class="card warn"><h3>⚠ Not enough chemicals for the plan</h3>${short.map((x) => `<a class="row" href="#/chem/${attr(x.p.id)}"><span>${dot(x.p)}${esc(x.p.name)}</span><span>need ${x.need} batches · have ${Math.max(0, x.have)} ›</span></a>`).join("")}</section>` : ""}
@@ -358,7 +393,7 @@ ${
         .map((p) => {
           const c = left[p.id] || 0;
           const low = c <= (p.chemLow ?? 1);
-          return `<section class="card"><div class="row"><b>${dot(p)}${esc(p.name)}</b><b class="${(s[p.id] || 0) < 0 ? "red" : ""}">${L.litres(s[p.id])}</b></div>
+          return `<section class="card"><div class="row"><b>${dot(p)}${esc(p.name)}</b><b>${L.litres(Math.max(0, s[p.id] || 0))}</b></div>${(s[p.id] || 0) < 0 ? `<p class="muted small">Sold ${L.litres(-s[p.id])} more than the cooking recorded. Tap <b>Cooked</b> to add the missing cooking, or <b>Count L</b> to set what's there.</p>` : ""}
 <a class="row link chemline${low ? " low" : ""}" href="#/chem/${attr(p.id)}"><span>🧪 Chemicals</span><span><b>${Math.max(0, c)}</b> batch${c === 1 ? "" : "es"} left${low ? " ⚠" : ""} ›</span></a>
 <div class="three"><a class="btn sm" href="#/cook/${attr(p.id)}">Cooked</a><a class="btn sm ghost" href="#/chem/${attr(p.id)}">Bought</a><button class="btn sm ghost" data-act="countstock" data-p="${attr(p.id)}">Count L</button></div></section>`;
         })
@@ -546,6 +581,13 @@ ${order
       `<section class="card"><div class="row"><div><div class="big ${bal > 0 ? "red" : ""}">${L.money(bal)}</div><div class="muted">${bal > 0 ? "owes you" : "owes nothing"}</div></div>
 ${c.phone ? `<a class="btn" href="tel:${attr(c.phone)}">📞 Call</a>` : ""}</div>
 <a class="btn" href="#/order/new/${attr(c.id)}">＋ Book order</a></section>
+${(() => {
+  const u = bal > 0 ? L.unpaid().find((x) => x.c.id === c.id) : null;
+  return u
+    ? `<form data-form="due" class="card${u.due < L.today() ? " warn" : ""}"><div class="row"><h3>${u.due < L.today() ? "Late since" : "Pay by"} ${esc(L.niceDate(u.due))}</h3>${remindBtn(u)}</div>
+<div class="inline"><input name="due" type="date" value="${attr(u.due)}" required aria-label="New pay-by date"><button class="btn sm">Change date</button></div></form>`
+    : "";
+})()}
 ${
   bal > 0
     ? `<form data-form="payment" class="card"><h3>Paid back</h3><div class="inline"><input name="amount" type="number" inputmode="numeric" min="1" value="${bal}" required>
@@ -739,6 +781,7 @@ ${
 <section class="card"><h3>Sync</h3><p>${w ? `<b>${w}</b> record${w > 1 ? "s" : ""} on this phone not sent yet.` : "Everything on this phone is saved online."}</p>
 <p class="muted small">Last sent: ${m.lastSync ? new Date(m.lastSync).toLocaleString() : "never"}</p>
 <button class="btn" data-act="syncnow">Sync now</button></section>
+${"Notification" in window ? `<section class="card"><h3>Pay-later reminders</h3><p class="muted small">A phone notification on the day money is due, and every day after until it's paid.</p>${Notification.permission === "granted" ? `<p class="green">🔔 On</p>` : Notification.permission === "denied" ? `<p class="muted small">Blocked. Allow notifications for this app in the phone's settings.</p>` : `<button class="btn" data-act="notifyon">🔔 Turn on reminders</button>`}</section>` : ""}
 ${installEvt ? `<button class="btn install" data-act="install">📲 Install the app on this phone</button>` : ""}
 <section class="card list"><a class="row link" href="#/password"><span>Change password</span><span>›</span></a>
 <a class="row link" href="#" data-act="backup"><span>Save a backup file</span><span>›</span></a></section>
@@ -751,6 +794,28 @@ ${isBoss() ? `<section class="card warn"><h3>Start fresh</h3><p class="muted sma
     return ["Change password", passwordView(false), "#/account"];
   },
 };
+
+/** Pay-later money due today, tomorrow or late, with a reminder text button. */
+function dueCard(t) {
+  const soon = L.unpaid().filter((u) => u.due <= L.addDays(t, 1));
+  const canAsk = "Notification" in window && Notification.permission === "default";
+  if (!soon.length) return "";
+  return `<section class="card warn"><h3>💰 Payments due</h3>${soon
+    .map((u) => {
+      const late = u.due < t;
+      const when = late ? Math.round((L.parse(t) - L.parse(u.due)) / 864e5) + " day" + (u.due === L.addDays(t, -1) ? "" : "s") + " late" : u.due === t ? "due today" : "due tomorrow";
+      return `<div class="person"><a class="link" href="#/customer/${attr(u.c.id)}"><b>${esc(u.c.name)}</b> <b class="${late ? "red" : ""}">${L.money(u.owed)}</b><div class="small">${when}</div></a>${remindBtn(u)}</div>`;
+    })
+    .join("")}${canAsk ? `<button class="btn sm ghost" data-act="notifyon">🔔 Turn on phone reminders</button>` : ""}</section>`;
+}
+
+/** SMS button with a ready reminder (or a link to add their phone number). */
+function remindBtn(u) {
+  if (!u.c.phone) return `<a class="btn sm ghost" href="#/customer/${attr(u.c.id)}">Add phone ›</a>`;
+  const t = L.today();
+  const msg = `Hello ${u.c.name}, this is JonWin. A reminder that KSh ${Math.round(u.owed).toLocaleString("en")} ${u.due < t ? "was due on " + L.niceDate(u.due) : u.due === t ? "is due today" : "is due " + L.niceDate(u.due).toLowerCase()}. Thank you!`;
+  return `<a class="btn sm" href="sms:${attr(u.c.phone)}?body=${attr(encodeURIComponent(msg))}">✉ Remind</a>`;
+}
 
 /** Profit after all expenses: this month big, today and since the start below. */
 function profitCard(t) {
@@ -765,7 +830,10 @@ function profitCard(t) {
 }
 
 /** Today's card: place, the day's total, and how it was paid as one split bar. */
-function heroCard(t, stops, sum, todayPlan) {
+function heroCard(t, stops, raw, todayPlan) {
+  // Pay-later money already paid back counts as cash / M-Pesa, so the orange part shrinks or goes.
+  const pb = L.paidBack(t);
+  const sum = { ...raw, cash: raw.cash + pb.cash, mpesa: raw.mpesa + pb.mpesa, later: Math.max(0, raw.later - pb.total) };
   const y = L.sumSales(L.salesOn(L.addDays(t, -1))).total;
   const diff = y ? Math.round(((sum.total - y) / y) * 100) : null;
   const parts = [
@@ -781,7 +849,7 @@ function heroCard(t, stops, sum, todayPlan) {
     diff == null ? "" : ` <span class="delta ${diff >= 0 ? "up" : "down"}">${diff >= 0 ? "▲" : "▼"} ${Math.abs(diff)}% vs yesterday</span>`
   }</div>
 <div class="split">${sum.total ? parts.filter((p) => p[2] > 0).map((p) => `<i class="${p[0]}" style="flex:${p[2]}"></i>`).join("") : '<i class="none"></i>'}</div>
-<div class="legend">${parts.map((p) => `<span><i class="${p[0]}"></i>${p[1]} <b>${L.money(p[2])}</b></span>`).join("")}</div>
+<div class="legend">${(sum.total ? parts.filter((p) => p[2] > 0) : parts).map((p) => `<span><i class="${p[0]}"></i>${p[1]} <b>${L.money(p[2])}</b></span>`).join("")}</div>
 ${todayPlan?.orders.length ? `<a class="hero-strip" href="#/orders">📦 ${todayPlan.orders.length} order${todayPlan.orders.length > 1 ? "s" : ""} to deliver today${late ? " · some late" : ""}<span>›</span></a>` : ""}
 </section>`;
 }
@@ -840,7 +908,9 @@ function planRow(d) {
       ? d.rows
           .map(
             (r) =>
-              `<div class="row small"><span>${dot(r.p)}${esc(r.p.short || r.p.name)} ${L.litres(r.need)}</span><span>${r.batches ? `<b>cook ${r.batches} batch${r.batches > 1 ? "es" : ""}</b>` : `<span class="green">from stock</span>`}</span></div>${r.batches ? `<div class="muted tiny">${r.forOrders ? r.forOrders + " for orders" : "orders from stock"}${r.extra ? " + " + r.extra + " to sell" : ""}</div>` : ""}`,
+              r.sellOnly
+                ? `<div class="row small"><span>${dot(r.p)}${esc(r.p.short || r.p.name)} <span class="muted">to sell</span></span><span>${r.batches ? `<b>cook ${r.batches} batch${r.batches > 1 ? "es" : ""}</b>` : `<span class="green">from stock</span>`}</span></div>`
+                : `<div class="row small"><span>${dot(r.p)}${esc(r.p.short || r.p.name)} ${L.litres(r.need)}</span><span>${r.batches ? `<b>cook ${r.batches} batch${r.batches > 1 ? "es" : ""}</b>` : `<span class="green">from stock</span>`}</span></div>${r.batches ? `<div class="muted tiny">${r.forOrders ? r.forOrders + " for orders" : "orders from stock"}${r.extra ? " + " + r.extra + " to sell" : ""}</div>` : ""}`,
           )
           .join("")
       : `<div class="muted small">Nothing booked.</div>`
@@ -977,7 +1047,7 @@ const ACTS = {
     const ml = Number(el.dataset.ml);
     const line = items.find((i) => i.p === p && i.ml === ml);
     if (line) line.qty++;
-    else items.push({ p, ml, qty: 1, price: L.priceOf(p, ml) });
+    else items.push({ p, ml, qty: 1, price: L.customerPrice(custOf(el.dataset.t)?.id, p, ml) || L.priceOf(p, ml) });
     st.sheet = { t: el.dataset.t, i: items.findIndex((i) => i.p === p && i.ml === ml) };
     render();
   },
@@ -1009,6 +1079,22 @@ const ACTS = {
     for (const b of chart.querySelectorAll(".bar.on")) b.classList.remove("on");
     el.classList.add("on");
     chart.querySelector(".readout").innerHTML = readout({ d: el.dataset.d });
+  },
+  closedue() {
+    st.askDue = null;
+    render();
+  },
+  duepick(el) {
+    st.askDue.date = L.addDays(L.today(), Number(el.dataset.n));
+    render();
+  },
+  async notifyon() {
+    const r = await Notification.requestPermission();
+    if (r === "granted") {
+      toast("Reminders on");
+      await watchDue(true);
+    } else toast("Reminders are blocked. Allow notifications for this app in phone settings.", true);
+    render();
   },
   closesheet() {
     st.sheet = null;
@@ -1050,11 +1136,18 @@ const ACTS = {
     if (!st.cart.length) return toast("Tap a product size first.", true);
     const name = st.cartCustomer.trim();
     if (pay === "later" && !name) return toast("Write the customer's name for pay later.", true);
+    if (pay === "later" && !el.dataset.ok) {
+      st.sheet = null;
+      st.askDue = { act: "sell", name, total: L.itemsTotal(st.cart), date: L.addDays(L.today(), L.DUE_DAYS) };
+      return render();
+    }
     let cust = name ? L.findCustomer(name) : null;
     if (name && !cust) cust = await S.save("customer", { name, phone: "", place: st.cartPlace || "", note: "" });
-    const items = st.cart.map((i) => ({ ...i }));
+    const items = cleanItems(st.cart);
     const total = L.itemsTotal(items);
-    await S.save("sale", { date: L.today(), time: L.nowTime(), items, total, pay, customer: cust?.id || "", place: st.cartPlace || "" });
+    const due = pay === "later" ? st.askDue?.date || L.addDays(L.today(), L.DUE_DAYS) : undefined;
+    await S.save("sale", { date: L.today(), time: L.nowTime(), items, total, pay, customer: cust?.id || "", place: st.cartPlace || "", ...(due ? { due } : {}) });
+    st.askDue = null;
     st.cart = [];
     st.cartCustomer = "";
     st.sheet = null;
@@ -1074,10 +1167,17 @@ const ACTS = {
     }
   },
   async deliver(el) {
+    const pay = el.dataset.pay;
+    if (pay === "later" && !el.dataset.ok) {
+      if (!st.draft?.name.trim()) return toast("Write the customer's name.", true);
+      st.askDue = { act: "deliver", name: st.draft.name.trim(), total: L.itemsTotal(st.draft.items), date: L.addDays(L.today(), L.DUE_DAYS) };
+      return render();
+    }
+    const due = pay === "later" ? st.askDue?.date || L.addDays(L.today(), L.DUE_DAYS) : undefined;
+    st.askDue = null;
     const id = await saveDraft();
     if (!id) return;
     const o = S.get(id);
-    const pay = el.dataset.pay;
     const sale = await S.save("sale", {
       date: L.today(),
       time: L.nowTime(),
@@ -1087,6 +1187,7 @@ const ACTS = {
       customer: o.customer,
       place: o.place,
       order: o.id,
+      ...(due ? { due } : {}),
     });
     await S.save("order", { id: o.id, status: "done", sale: sale.id, doneOn: L.today() });
     toast("Delivered · " + L.money(sale.total) + " · " + PAY[pay]);
@@ -1096,7 +1197,7 @@ const ACTS = {
   async again(el) {
     const o = S.get(el.dataset.id);
     const date = o.place ? L.nextVisit(o.place, o.date > L.today() ? o.date : L.today()) : L.addDays(L.today(), 7);
-    const n = await S.save("order", { date, customer: o.customer, place: o.place, items: o.items.map((i) => ({ ...i, price: L.priceOf(i.p, i.ml) || i.price })), total: L.itemsTotal(o.items), note: o.note || "", status: "booked" });
+    const n = await S.save("order", { date, customer: o.customer, place: o.place, items: o.items.map((i) => ({ ...i, price: i.price || L.priceOf(i.p, i.ml) })), total: L.itemsTotal(o.items), note: o.note || "", status: "booked" });
     toast("Booked for " + L.niceDate(date));
     st.draft = null;
     go("#/order/" + n.id);
@@ -1259,7 +1360,7 @@ async function saveDraft() {
   let c = L.findCustomer(name);
   if (!c) c = await S.save("customer", { name, phone: d.phone.trim(), place: d.place, note: "" });
   else if ((d.phone.trim() && d.phone.trim() !== c.phone) || (d.place && !c.place)) c = await S.save("customer", { id: c.id, phone: d.phone.trim() || c.phone, place: c.place || d.place });
-  const items = d.items.map((i) => ({ ...i }));
+  const items = cleanItems(d.items);
   const rec = await S.save("order", {
     ...(d.id ? { id: d.id } : { status: "booked" }),
     date: d.date,
@@ -1330,6 +1431,14 @@ const FORMS = {
     const c = await S.save("customer", { ...(id ? { id } : {}), name, phone: String(fd.get("phone")).trim(), place: fd.get("place") || "", note: String(fd.get("note")).trim() });
     toast("Saved");
     go("#/customer/" + c.id);
+  },
+  async due(fd) {
+    const due = String(fd.get("due"));
+    const u = L.unpaid().find((x) => x.c.id === route().arg);
+    if (!u || !/^\d{4}-\d{2}-\d{2}$/.test(due)) return;
+    for (const o of u.open) await S.save("sale", { id: o.sale.id, due });
+    toast("Pay by " + L.niceDate(due));
+    render();
   },
   async payment(fd) {
     const amount = Math.round(num(fd.get("amount")));
@@ -1455,7 +1564,7 @@ app.addEventListener("input", (e) => {
   if (el.dataset.price) {
     const [t, i] = el.dataset.price.split(":");
     const items = itemsOf(t);
-    if (items[i]) items[i].price = Math.round(num(el.value));
+    if (items[i]) (items[i].price = Math.round(num(el.value))), (items[i].own = true);
     for (const x of document.querySelectorAll(`[data-tot="${t}"]`)) x.textContent = L.money(L.itemsTotal(items));
     const lt = document.querySelector(`[data-linetot="${t}:${i}"]`);
     if (lt && items[i]) lt.textContent = L.money(items[i].qty * (items[i].price || 0));
@@ -1473,8 +1582,10 @@ app.addEventListener("input", (e) => {
 app.addEventListener("change", (e) => {
   const el = e.target;
   if (el.dataset.bind) setPath(el.dataset.bind, el.value);
+  if (el.dataset.bind === "cartCustomer" && reprice("cart")) render();
   const ch = el.dataset.change;
   if (ch === "ordcust") {
+    reprice("draft");
     const c = L.findCustomer(el.value);
     if (c) {
       st.draft.phone = c.phone || st.draft.phone;
@@ -1494,6 +1605,7 @@ app.addEventListener("change", (e) => {
 
 window.addEventListener("hashchange", () => {
   st.sheet = null;
+  st.askDue = null;
   render();
   window.scrollTo(0, 0);
 });
@@ -1521,11 +1633,42 @@ window.addEventListener("beforeinstallprompt", (e) => {
 window.addEventListener("online", () => S.sync());
 window.addEventListener("offline", () => S.sync());
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") S.sync();
+  if (document.visibilityState === "visible") S.sync().then(() => watchDue().catch(() => {}));
 });
 setInterval(() => {
   if (document.visibilityState === "visible") S.sync().then(seedIfEmpty);
 }, 60000);
+
+// ---------- Pay-later reminders ----------
+// A phone notification once a day for money due today or late. The app checks when it opens;
+// installed on the home screen, Chrome also wakes the app about once a day to check (sw.js).
+async function watchDue(force) {
+  if (!("Notification" in window) || Notification.permission !== "granted" || !navigator.serviceWorker) return;
+  const reg = await navigator.serviceWorker.ready;
+  if (reg.periodicSync) reg.periodicSync.register("due", { minInterval: 12 * 3600 * 1000 }).catch(() => {});
+  const t = L.today();
+  let last = "";
+  try {
+    last = localStorage.getItem("jw-due-told") || "";
+  } catch {
+    /* private mode */
+  }
+  if (last === t && !force) return;
+  const due = L.unpaid().filter((u) => u.due <= t);
+  if (!due.length) return;
+  const total = due.reduce((a, u) => a + u.owed, 0);
+  await reg.showNotification(`💰 ${L.money(total)} due from ${due.length} customer${due.length > 1 ? "s" : ""}`, {
+    body: due.map((u) => `${u.c.name} ${L.money(u.owed)}${u.due < t ? " (late)" : ""}`).join(", "),
+    tag: "due",
+    icon: "/icon-192.png",
+    data: { url: "/#/home" },
+  });
+  try {
+    localStorage.setItem("jw-due-told", t);
+  } catch {
+    /* private mode */
+  }
+}
 
 // ---------- Start ----------
 (async () => {
@@ -1539,6 +1682,7 @@ setInterval(() => {
   if (navigator.storage?.persist) navigator.storage.persist().catch(() => {});
   await S.sync();
   await seedIfEmpty();
+  watchDue().catch(() => {});
 })();
 
 if ("serviceWorker" in navigator) {

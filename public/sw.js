@@ -1,6 +1,6 @@
 // Keeps the app on the phone so it opens with no network.
 // Change VERSION whenever a file in /public/app or index.html changes.
-const VERSION = "jw-2026-11-15-2";
+const VERSION = "jw-2026-11-15-3";
 const FILES = ["/", "/app/app.css", "/app/main.js", "/app/store.js", "/app/logic.js", "/app/pdf.js", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (e) => {
@@ -38,5 +38,83 @@ self.addEventListener("fetch", (e) => {
           }),
       ),
     ),
+  );
+});
+
+// ---------- Pay-later reminders ----------
+// Chrome wakes an installed app about once a day ("periodic sync"); we read the records saved on the
+// phone and show a notification for money due today or late. The same sums as unpaid() in logic.js.
+const pad = (n) => (n < 10 ? "0" : "") + n;
+const ymd = (d) => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+const plusDays = (s, n) => {
+  const [y, m, d] = s.split("-").map(Number);
+  return ymd(new Date(y, m - 1, d + n, 12));
+};
+
+function readRecords() {
+  return new Promise((ok, bad) => {
+    const r = indexedDB.open("jonwin", 1);
+    r.onupgradeneeded = () => r.transaction.abort(); // app never opened here: nothing to read
+    r.onerror = () => bad(r.error);
+    r.onsuccess = () => {
+      const g = r.result.transaction("recs").objectStore("recs").getAll();
+      g.onsuccess = () => ok(g.result.filter((x) => !x.del));
+      g.onerror = () => bad(g.error);
+    };
+  });
+}
+
+async function remindDue() {
+  const recs = await readRecords();
+  const today = ymd(new Date());
+  const bal = {};
+  const sales = {};
+  const names = {};
+  for (const r of recs) {
+    if (r.kind === "customer") names[r.id] = r.name;
+    if (r.kind === "sale" && r.pay === "later" && !r.voided && r.customer) {
+      bal[r.customer] = (bal[r.customer] || 0) + r.total;
+      (sales[r.customer] ||= []).push(r);
+    }
+    if (r.kind === "payment" && !r.voided) bal[r.customer] = (bal[r.customer] || 0) - r.amount;
+  }
+  const due = [];
+  for (const [cid, list] of Object.entries(sales)) {
+    let left = bal[cid] || 0;
+    if (left <= 0 || !names[cid]) continue;
+    list.sort((a, b) => b.date.localeCompare(a.date) || b.u - a.u);
+    let first = null;
+    for (const s of list) {
+      if (left <= 0) break;
+      left -= s.total;
+      const d = s.due || plusDays(s.date, 7);
+      if (!first || d < first) first = d;
+    }
+    if (first && first <= today) due.push({ name: names[cid], owed: bal[cid], late: first < today });
+  }
+  if (!due.length) return;
+  const money = (n) => "KSh " + Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const total = due.reduce((a, d) => a + d.owed, 0);
+  await self.registration.showNotification(`💰 ${money(total)} due from ${due.length} customer${due.length > 1 ? "s" : ""}`, {
+    body: due.map((d) => `${d.name} ${money(d.owed)}${d.late ? " (late)" : ""}`).join(", "),
+    tag: "due",
+    icon: "/icon-192.png",
+    data: { url: "/#/home" },
+  });
+}
+
+self.addEventListener("periodicsync", (e) => {
+  if (e.tag === "due") e.waitUntil(remindDue().catch(() => {}));
+});
+
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  const url = e.notification.data?.url || "/";
+  e.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      const w = list[0];
+      if (w) return w.focus().then(() => w.navigate(url).catch(() => {}));
+      return self.clients.openWindow(url);
+    }),
   );
 });

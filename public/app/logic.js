@@ -132,7 +132,19 @@ export function plan(days = 8) {
     const rows = [];
     for (const p of products()) {
       const n = need[p.id] || 0;
-      if (!n) continue;
+      if (!n) {
+        // No order for this product, but on a route day she still sells: cook the extra batches
+        // unless the stock already covers them.
+        if (!stops.length) continue;
+        const e = extraBatches(p);
+        if (!e) continue;
+        const bl = p.batchL || 25;
+        const have = avail[p.id] || 0;
+        const cook = Math.max(0, Math.ceil((e * bl - have) / bl - 1e-9));
+        avail[p.id] = Math.max(0, have - e * bl);
+        rows.push({ p, need: 0, have, forOrders: 0, extra: cook, batches: cook, sellOnly: true });
+        continue;
+      }
       const have = avail[p.id] || 0;
       const short = Math.max(0, n - have);
       const batchL = p.batchL || 25;
@@ -230,4 +242,77 @@ export function profit(prefix = "") {
     .filter((x) => x.type === "buy" && x.date.startsWith(prefix))
     .reduce((a, x) => a + (x.cost || 0), 0);
   return { sales, costs: exp + chem, profit: sales - exp - chem };
+}
+
+// ---------- Pay later: what is still unpaid, and when ----------
+export const DUE_DAYS = 7;
+/** The day a pay-later sale should be paid (older sales without one: a week after). */
+export const dueOf = (s) => s.due || addDays(s.date, DUE_DAYS);
+
+/**
+ * Customers who owe money, with the sales not yet paid (payments pay off the oldest sales first)
+ * and the earliest due day among them. Sorted by due day.
+ */
+export function unpaid() {
+  const bal = balances();
+  const by = {};
+  for (const s of list("sale")) if (s.pay === "later" && !s.voided && s.customer) (by[s.customer] ||= []).push(s);
+  const out = [];
+  for (const [cid, sales] of Object.entries(by)) {
+    const owed = Math.max(0, bal[cid] || 0);
+    const c = get(cid);
+    if (!owed || !c) continue;
+    sales.sort((a, b) => b.date.localeCompare(a.date) || b.u - a.u); // newest first
+    let left = owed;
+    const open = [];
+    for (const s of sales) {
+      if (left <= 0) break;
+      const o = Math.min(s.total, left);
+      left -= o;
+      open.push({ sale: s, owed: o });
+    }
+    const due = open.map((o) => dueOf(o.sale)).sort()[0] || today();
+    out.push({ c, owed, due, open });
+  }
+  return out.sort((a, b) => a.due.localeCompare(b.due));
+}
+
+/**
+ * Of the pay-later sales made on `date`, how much has since been paid back, split by how it was paid.
+ * Today's card moves that money from "Pay later" to Cash / M-Pesa.
+ */
+export function paidBack(date) {
+  const still = new Map();
+  for (const u of unpaid()) for (const o of u.open) still.set(o.sale.id, o.owed);
+  const per = {};
+  for (const s of list("sale")) {
+    if (s.date !== date || s.pay !== "later" || s.voided || !s.customer) continue;
+    const paid = s.total - (still.get(s.id) || 0);
+    if (paid > 0) per[s.customer] = (per[s.customer] || 0) + paid;
+  }
+  const r = { cash: 0, mpesa: 0, total: 0 };
+  for (const [cid, paid] of Object.entries(per)) {
+    const pays = list("payment").filter((p) => p.customer === cid && !p.voided && p.date >= date);
+    const cash = pays.filter((p) => p.pay !== "mpesa").reduce((a, p) => a + p.amount, 0);
+    const mp = pays.filter((p) => p.pay === "mpesa").reduce((a, p) => a + p.amount, 0);
+    const c = cash + mp ? (paid * cash) / (cash + mp) : paid;
+    r.cash += c;
+    r.mpesa += paid - c;
+    r.total += paid;
+  }
+  return r;
+}
+
+// ---------- Prices per customer ----------
+/** The price this customer last got for this product and size (sales and orders), or 0. */
+export function customerPrice(cid, p, ml) {
+  if (!cid) return 0;
+  let best = null;
+  for (const r of [...list("sale"), ...list("order")]) {
+    if (r.customer !== cid || r.voided || r.status === "cancelled") continue;
+    const it = (r.items || []).find((i) => i.p === p && i.ml === ml && i.price);
+    if (!it) continue;
+    if (!best || r.date > best.date || (r.date === best.date && r.u > best.u)) best = { date: r.date, u: r.u, price: it.price };
+  }
+  return best?.price || 0;
 }
