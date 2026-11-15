@@ -25,11 +25,13 @@ const body = z.discriminatedUnion("action", [
   z.object({ action: z.literal("add"), name: z.string().trim().min(2).max(60), phone: z.string().max(30) }),
   z.object({ action: z.literal("reset"), id: z.uuid() }),
   z.object({ action: z.literal("suspend"), id: z.uuid(), on: z.boolean() }),
+  z.object({ action: z.literal("role"), id: z.uuid(), role: z.enum(TEAM) }),
+  z.object({ action: z.literal("delete"), id: z.uuid() }),
 ]);
 
 const tempPassword = () => randomBytes(6).toString("base64url");
 
-/** Add a helper, reset a password, or suspend someone (boss only). */
+/** Add a helper, reset a password, suspend, change role or delete someone (boss only). */
 export async function POST(req: Request) {
   if (!sameOrigin(req)) return json({ error: "Bad origin" }, 403);
   const me = await currentUser();
@@ -59,8 +61,29 @@ export async function POST(req: Request) {
   }
 
   if (b.id === me.id) return json({ error: "You can't do that to your own account here." }, 400);
-  const [target] = await db.select({ id: users.id }).from(users).where(eq(users.id, b.id));
+  const [target] = await db.select({ id: users.id, roles: users.roles }).from(users).where(eq(users.id, b.id));
   if (!target) return json({ error: "Not found." }, 404);
+  // Roles outside the team (e.g. "customer" from the shop) are left as they are.
+  const otherRoles = target.roles.filter((r) => !(TEAM as readonly string[]).includes(r));
+
+  if (b.action === "role") {
+    await db.update(users).set({ roles: [...otherRoles, b.role] }).where(eq(users.id, b.id));
+    // Log them out so their phone picks up the new role on the next login.
+    await destroyAllSessions(b.id);
+    return json({ ok: true });
+  }
+
+  if (b.action === "delete") {
+    await destroyAllSessions(b.id);
+    try {
+      await db.delete(users).where(eq(users.id, b.id));
+    } catch {
+      // Older records still point at this person, so keep the row but take away every team role:
+      // they drop off the team list and can't log in. Adding the same phone again brings them back.
+      await db.update(users).set({ roles: otherRoles.length ? otherRoles : ["customer"], suspendedAt: null }).where(eq(users.id, b.id));
+    }
+    return json({ ok: true });
+  }
 
   if (b.action === "reset") {
     const pw = tempPassword();

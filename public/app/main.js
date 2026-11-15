@@ -717,14 +717,15 @@ ${
           (p) => `<div class="person"><div><b>${esc(p.name)}</b> <span class="muted small">${esc(p.roles.join(", "))}${p.suspendedAt ? " · <span class='red'>blocked</span>" : ""}</span><div class="muted small">${esc(p.phone)}</div></div>${
             p.id === me().id
               ? ""
-              : `<div class="btnrow"><button class="btn sm ghost" data-act="resetpw" data-id="${attr(p.id)}">New password</button><button class="btn sm ghost${p.suspendedAt ? "" : " red"}" data-act="suspend" data-id="${attr(p.id)}" data-on="${p.suspendedAt ? "" : "1"}">${p.suspendedAt ? "Unblock" : "Block"}</button></div>`
+              : `<div class="btnrow"><select class="rolepick" data-change="role" data-id="${attr(p.id)}" aria-label="Role for ${attr(p.name)}">${["boss", "helper", "cook"].map((r) => `<option value="${r}"${p.roles.includes(r) ? " selected" : ""}>${r[0].toUpperCase() + r.slice(1)}</option>`).join("")}</select><button class="btn sm ghost" data-act="resetpw" data-id="${attr(p.id)}">New password</button><button class="btn sm ghost${p.suspendedAt ? "" : " red"}" data-act="suspend" data-id="${attr(p.id)}" data-on="${p.suspendedAt ? "" : "1"}">${p.suspendedAt ? "Unblock" : "Block"}</button><button class="btn sm ghost red" data-act="delperson" data-id="${attr(p.id)}" data-name="${attr(p.name)}">Delete</button></div>`
           }</div>`,
         )
         .join("")}</section>`
     : ""
 }
 <form data-form="addperson" class="card"><h3>Add a helper</h3><label>Name<input name="name" required></label><label>Phone<input name="phone" type="tel" inputmode="tel" required></label><button class="btn">Add</button>
-<p class="muted small">Needs internet. Helpers can sell, book orders, record cooking and expenses. They can't change prices or route days.</p></form>`,
+<p class="muted small">Needs internet. Helpers can sell, book orders, record cooking and expenses. They can't change prices or route days.</p>
+<p class="muted small">Roles: <b>Boss</b> can do everything, including this page. <b>Helper</b> and <b>Cook</b> can't change prices, route days or logins. Changing a role logs that person out.</p></form>`,
       "#/more",
     ];
   },
@@ -1202,6 +1203,29 @@ const ACTS = {
       toast(e.message, true);
     }
   },
+  async setrole(el) {
+    const p = st.people?.find((x) => x.id === el.dataset.id);
+    const role = el.value;
+    const msg = role === "boss" ? `Make ${p?.name || "this person"} a boss? They will be able to change prices, logins and reset all records.` : `Make ${p?.name || "this person"} a ${role}? They will be logged out.`;
+    if (!confirm(msg)) return render();
+    try {
+      await api("/api/people", { action: "role", id: el.dataset.id, role });
+      toast("Role changed");
+    } catch (e) {
+      toast(e.message, true);
+    }
+    await loadPeople();
+  },
+  async delperson(el) {
+    if (!confirm(`Delete ${el.dataset.name}'s login? They are logged out and can't log in again. Their sales and other records stay.`)) return;
+    try {
+      await api("/api/people", { action: "delete", id: el.dataset.id });
+      toast("Login deleted");
+      await loadPeople();
+    } catch (e) {
+      toast(e.message, true);
+    }
+  },
   async suspend(el) {
     const on = el.dataset.on === "1";
     if (on && !confirm("Block this person? Their phones stop syncing.")) return;
@@ -1465,6 +1489,7 @@ app.addEventListener("change", (e) => {
     render();
   } else if (ch === "redraw") render();
   else if (ch === "cookp") go("#/cook/" + el.value);
+  else if (ch === "role") ACTS.setrole(el).catch((err) => toast(err.message || "Something went wrong", true));
 });
 
 window.addEventListener("hashchange", () => {
