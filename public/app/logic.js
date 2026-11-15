@@ -63,7 +63,9 @@ export function nextVisit(placeId, from = today()) {
 export const itemsLitres = (items) => (items || []).reduce((t, i) => t + (i.qty * i.ml) / 1000, 0);
 export const itemsTotal = (items) => (items || []).reduce((t, i) => t + i.qty * (i.price || 0), 0);
 export const itemsText = (items) =>
-  (items || []).map((i) => i.qty + "×" + size(i.ml) + " " + (get(i.p)?.short || productName(i.p))).join(", ");
+  (items || []).map((i) => i.qty + "×" + size(i.ml) + " " + (get(i.p)?.short || productName(i.p)) + (i.col === false ? " (no colour)" : "")).join(", ");
+/** Only liquid soap gets a batch to sell every route day; the rest are made only for orders. */
+export const isSoap = (p) => !!p && (p.id === "p-soap" || /soap/i.test(p.name || ""));
 
 // ---------- Stock (litres per product) ----------
 export function stock() {
@@ -88,9 +90,30 @@ export function chemLeft() {
   for (const b of list("batch")) s[b.p] = (s[b.p] || 0) - (b.n || 0);
   return s;
 }
-/** Products whose chemicals are at or below their warning level (default 1 batch). */
+/** Products with 1 batch of chemicals or less. */
 export function chemLow(left = chemLeft()) {
-  return products().filter((p) => (left[p.id] || 0) <= (p.chemLow ?? 1));
+  return products().filter((p) => (left[p.id] || 0) <= 1);
+}
+
+/**
+ * How long each product's chemicals last, going through the plan for the next 30 days.
+ * until: the last day fully covered; out: the first day there isn't enough (null if none in 30 days).
+ */
+export function chemLasts() {
+  const left = chemLeft();
+  const use = {};
+  const out = {};
+  const until = {};
+  for (const d of plan(30))
+    for (const r of d.rows) {
+      if (!r.batches) continue;
+      const id = r.p.id;
+      use[id] = (use[id] || 0) + r.batches;
+      if (out[id]) continue;
+      if (use[id] > Math.max(0, left[id] || 0)) out[id] = d.date;
+      else until[id] = d.date;
+    }
+  return products().map((p) => ({ p, left: Math.max(0, left[p.id] || 0), until: until[p.id] || null, out: out[p.id] || null, used: use[p.id] || 0 }));
 }
 
 // ---------- Money owed ----------
@@ -128,7 +151,13 @@ export function plan(days = 8) {
     const orders = open.filter((o) => (i === 0 ? o.date <= d : o.date === d));
     if (!stops.length && !orders.length) continue;
     const need = {};
-    for (const o of orders) for (const it of o.items || []) need[it.p] = (need[it.p] || 0) + (it.qty * it.ml) / 1000;
+    const plain = {}; // litres ordered with no colour: always made fresh
+    for (const o of orders)
+      for (const it of o.items || []) {
+        const l = (it.qty * it.ml) / 1000;
+        need[it.p] = (need[it.p] || 0) + l;
+        if (it.col === false) plain[it.p] = (plain[it.p] || 0) + l;
+      }
     const rows = [];
     for (const p of products()) {
       const n = need[p.id] || 0;
@@ -142,18 +171,21 @@ export function plan(days = 8) {
         const have = avail[p.id] || 0;
         const cook = Math.max(0, Math.ceil((e * bl - have) / bl - 1e-9));
         avail[p.id] = Math.max(0, have - e * bl);
-        rows.push({ p, need: 0, have, forOrders: 0, extra: cook, batches: cook, sellOnly: true });
+        rows.push({ p, need: 0, have, forOrders: 0, extra: cook, batches: cook, col: cook, plain: 0, sellOnly: true });
         continue;
       }
       const have = avail[p.id] || 0;
-      const short = Math.max(0, n - have);
       const batchL = p.batchL || 25;
-      const forOrders = Math.ceil(short / batchL - 1e-9);
-      // On top of the orders, extra batches for her to sell along the way. Those litres get sold,
-      // so they are not counted as stock for later days.
+      // Stock is coloured, so it only covers coloured orders; no-colour orders are made fresh.
+      const nPlain = plain[p.id] || 0;
+      const nCol = n - nPlain;
+      const forCol = Math.ceil(Math.max(0, nCol - have) / batchL - 1e-9);
+      const forPlain = Math.ceil(nPlain / batchL - 1e-9);
+      // On top of the orders, extra (coloured) batches for her to sell along the way. Those litres
+      // get sold, so they are not counted as stock for later days.
       const extra = extraBatches(p);
-      avail[p.id] = have + forOrders * batchL - n;
-      rows.push({ p, need: n, have, forOrders, extra, batches: forOrders + extra });
+      avail[p.id] = Math.max(0, have + forCol * batchL - nCol);
+      rows.push({ p, need: n, have, forOrders: forCol + forPlain, extra, batches: forCol + forPlain + extra, col: forCol + extra, plain: forPlain });
     }
     out.push({ date: d, stops, orders, rows, total: orders.reduce((s, o) => s + itemsTotal(o.items), 0) });
   }
@@ -190,6 +222,7 @@ export function walkIn(p, weeks = 4) {
 
 /** Extra batches to cook for her own selling: a fixed number, or worked out from her sales ("auto"). */
 export function extraBatches(p) {
+  if (!isSoap(p)) return 0;
   const e = p.extraBatches ?? 1;
   if (e !== "auto") return Number(e) || 0;
   const w = walkIn(p);

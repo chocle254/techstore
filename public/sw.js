@@ -1,6 +1,6 @@
 // Keeps the app on the phone so it opens with no network.
 // Change VERSION whenever a file in /public/app or index.html changes.
-const VERSION = "jw-2026-11-15-4";
+const VERSION = "jw-2026-11-15-5";
 const FILES = ["/", "/app/app.css", "/app/main.js", "/app/store.js", "/app/logic.js", "/app/pdf.js", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (e) => {
@@ -64,8 +64,44 @@ function readRecords() {
   });
 }
 
+async function readMe() {
+  return new Promise((ok) => {
+    const r = indexedDB.open("jonwin", 1);
+    r.onupgradeneeded = () => r.transaction.abort();
+    r.onerror = () => ok(null);
+    r.onsuccess = () => {
+      const g = r.result.transaction("meta").objectStore("meta").get("me");
+      g.onsuccess = () => ok(g.result?.v || null);
+      g.onerror = () => ok(null);
+    };
+  });
+}
+
+async function remindChem(recs) {
+  const left = {};
+  const names = {};
+  for (const r of recs) {
+    if (r.kind === "product" && !r.off) (names[r.id] = r.short || r.name), (left[r.id] ??= 0);
+    if (r.kind === "chemmove" && r.p) left[r.p] = (left[r.p] || 0) + (r.qty || 0);
+    if (r.kind === "batch") left[r.p] = (left[r.p] || 0) - (r.n || 0);
+  }
+  const low = Object.keys(names).filter((id) => left[id] <= 1);
+  if (!low.length) return;
+  await self.registration.showNotification("⚗️ Chemicals running out", {
+    body: low.map((id) => `${names[id]}: ${Math.max(0, left[id])} batch${left[id] === 1 ? "" : "es"} left`).join(", "),
+    tag: "chem",
+    icon: "/icon-192.png",
+    data: { url: "/#/chems" },
+  });
+}
+
 async function remindDue() {
   const recs = await readRecords();
+  const me = await readMe();
+  if (!me) return;
+  await remindChem(recs);
+  const roles = me.roles || [];
+  if (!roles.includes("boss") && roles.includes("cook")) return; // Production: no money reminders
   const today = ymd(new Date());
   const bal = {};
   const sales = {};

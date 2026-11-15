@@ -9,6 +9,12 @@ const attr = esc;
 const me = () => S.getMeta().me;
 const isBoss = () => !!me()?.roles?.includes("boss");
 const PAY = { cash: "Cash", mpesa: "M-Pesa", later: "Pay later" };
+// "cook" is stored on the server; it is shown as Production.
+const ROLE_NAME = { boss: "Boss", helper: "Helper", cook: "Production" };
+const roleText = (roles) => (roles || []).filter((r) => ROLE_NAME[r]).map((r) => ROLE_NAME[r]).join(", ");
+/** Production only sees what to make and the chemicals. */
+const isProd = () => !isBoss() && !!me()?.roles?.includes("cook");
+const PROD_VIEWS = new Set(["make", "chems", "chem", "account", "password"]);
 
 // Screen state that must survive a redraw (cart, order being written, …).
 const st = { cart: [], cartPlace: null, cartCustomer: "", draft: null, showPast: false, sheet: null, askDue: null, people: null, peopleErr: "", tempPw: "" };
@@ -57,10 +63,15 @@ const NAV = [
   ["home", "🏠", "Home"],
   ["sell", "🛒", "Sell"],
   ["orders", "📅", "Orders"],
-  ["stock", "🧪", "Stock"],
+  ["chems", "⚗️", "Chemicals"],
   ["more", "☰", "More"],
 ];
-const SUB = { sales: "more", owed: "more", customers: "more", customer: "more", expenses: "more", reports: "more", products: "more", product: "more", places: "more", team: "more", account: "more", order: "orders", cook: "stock", chem: "stock" };
+const PROD_NAV = [
+  ["make", "🧪", "Batches"],
+  ["chems", "⚗️", "Chemicals"],
+  ["account", "👤", "Account"],
+];
+const SUB = { sales: "more", owed: "more", customers: "more", customer: "more", expenses: "more", reports: "more", products: "more", product: "more", places: "more", team: "more", account: "more", order: "orders", chem: "chems", password: "account" };
 
 function syncPill() {
   const m = S.getMeta();
@@ -82,7 +93,7 @@ function shell(name, title, body, back) {
   const active = SUB[name] || name;
   return `<header class="top">${back ? `<a class="back" href="${attr(back)}" aria-label="Back">‹</a>` : ""}<h1>${esc(title)}</h1>${syncPill()}</header>
 <main>${body}</main>
-<nav class="tabs">${NAV.map(([k, i, t]) => `<a href="#/${k}" class="${k === active ? "on" : ""}"><span>${i}</span>${t}</a>`).join("")}</nav>`;
+<nav class="tabs">${(isProd() ? PROD_NAV : NAV).map(([k, i, t]) => `<a href="#/${k}" class="${k === active ? "on" : ""}"><span>${i}</span>${t}</a>`).join("")}</nav>`;
 }
 
 function render() {
@@ -95,6 +106,7 @@ function render() {
     app.innerHTML = shell(r.name, "JonWin", setupView());
     return;
   }
+  if (isProd() && !PROD_VIEWS.has(r.name)) return go("#/make");
   const v = VIEWS[r.name] || VIEWS.home;
   const [title, body, back] = v(r.arg, r.arg2);
   app.innerHTML = shell(r.name, title, body, back) + sheet() + dueSheet();
@@ -118,6 +130,7 @@ function sheet() {
 <div class="daypick center-chips">${[1, 2, 3, 5, 10, 20].map((n) => `<button type="button" class="chip${it.qty === n ? " on" : ""}" data-act="setqty" data-n="${n}">${n}</button>`).join("")}</div>
 <div class="two"><label>Price each (KSh) <span class="muted tiny">change it for this customer</span><input inputmode="numeric" data-price="${s.t}:${s.i}" value="${it.price || ""}" placeholder="price"></label>
 <div class="linetot"><span class="muted small">This line</span><b data-linetot="${s.t}:${s.i}">${L.money(it.qty * (it.price || 0))}</b></div></div>
+${sell ? "" : `<div class="daypick center-chips"><button type="button" class="chip${it.col === false ? "" : " on"}" data-act="setcol" data-v="1">🎨 Coloured</button><button type="button" class="chip${it.col === false ? " on" : ""}" data-act="setcol" data-v="0">⚪ No colour</button></div>`}
 ${others.length ? `<div class="mini">${others.map((o) => `<button type="button" class="row" data-act="openline" data-i="${o.i}"><span>${o.x.qty}× ${esc(S.get(o.x.p)?.short || "?")} ${L.size(o.x.ml)}</span><span>${L.money(o.x.qty * (o.x.price || 0))} ›</span></button>`).join("")}</div>` : ""}
 <div class="total">${sell ? "Sale" : "Order"} total <b data-tot="${s.t}">${L.money(L.itemsTotal(items))}</b></div>
 <button type="button" class="btn ghost" data-act="closesheet">＋ Add another product</button>
@@ -206,7 +219,7 @@ function reprice(target) {
   }
   return changed;
 }
-const cleanItems = (items) => items.map(({ own, ...i }) => i); // eslint-disable-line no-unused-vars
+const cleanItems = (items) => items.map(({ own, col, ...i }) => (col === false ? { ...i, col } : i)); // eslint-disable-line no-unused-vars
 
 function lines(target) {
   const items = itemsOf(target);
@@ -216,7 +229,9 @@ function lines(target) {
       const p = S.get(it.p);
       return `<div class="line">${dot(p)}<div class="lname">${esc(p?.short || p?.name || "?")} ${L.size(it.ml)}</div>
 <div class="qty"><button type="button" data-act="qty" data-t="${target}" data-i="${i}" data-d="-1">−</button><b>${it.qty}</b><button type="button" data-act="qty" data-t="${target}" data-i="${i}" data-d="1">+</button></div>
-<input class="price" inputmode="numeric" data-price="${target}:${i}" value="${it.price || ""}" placeholder="price" aria-label="Price each"></div>`;
+<input class="price" inputmode="numeric" data-price="${target}:${i}" value="${it.price || ""}" placeholder="price" aria-label="Price each">${
+        target === "draft" ? `<button type="button" class="chip colchip${it.col === false ? "" : " on"}" data-act="togglecol" data-i="${i}">${it.col === false ? "⚪ No colour" : "🎨 Coloured"}</button>` : ""
+      }</div>`;
     })
     .join("")}<div class="total">Total <b data-tot="${target}">${L.money(L.itemsTotal(items))}</b></div></div>`;
 }
@@ -229,10 +244,7 @@ const VIEWS = {
     const sum = L.sumSales(L.salesOn(t));
     const pl = L.plan(8);
     const todayPlan = pl.find((d) => d.date === t);
-    const next = pl.find((d) => d.date > t);
     const owed = Object.values(L.balances()).reduce((a, b) => a + Math.max(0, b), 0);
-    const left = L.chemLeft();
-    const short = L.chemShortfall(pl);
 
     // Last 14 days of sales as bars.
     const days = [];
@@ -247,18 +259,13 @@ const VIEWS = {
 ${heroCard(t, stops, sum, todayPlan)}
 ${dueCard(t)}
 ${profitCard(t)}
-${next ? planCard(next, true) : ""}
-${short.length ? `<section class="card warn"><h3>⚠ Not enough chemicals for the plan</h3>${short.map((x) => `<a class="row" href="#/chem/${attr(x.p.id)}"><span>${dot(x.p)}${esc(x.p.name)}</span><span>need ${x.need} batches · have ${Math.max(0, x.have)} ›</span></a>`).join("")}</section>` : ""}
-${(() => {
-  const low = L.chemLow(left).filter((p) => !short.some((x) => x.p.id === p.id));
-  return low.length ? `<section class="card warn"><h3>Chemicals running low</h3>${low.map((p) => `<a class="row" href="#/chem/${attr(p.id)}"><span>${dot(p)}${esc(p.name)}</span><span>${Math.max(0, left[p.id] || 0)} batch${left[p.id] === 1 ? "" : "es"} left ›</span></a>`).join("")}</section>` : "";
-})()}
+${chemCard(true)}
 <a class="card row link" href="#/owed"><span>Money owed to you</span><b>${L.money(owed)} ›</b></a>
 <section class="card"><h3>Sales, last 14 days</h3>${barChart(days, { labels: true, tick: (d) => L.parse(d).getDate() })}</section>
 <section class="card"><div class="row"><h3>Coming days</h3><a href="#/orders">All orders ›</a></div>${pl
-        .filter((d) => d.date > t)
-        .map((d) => `<div class="row"><span>${esc(L.niceDate(d.date))} · ${esc(d.stops.map((s) => s.name).join(", ") || "—")}</span><span>${d.orders.length} orders · ${batchText(d)}</span></div>`)
-        .join("") || `<p class="muted">Nothing booked.</p>`}</section>`,
+        .filter((d) => d.date > t && d.orders.length)
+        .map((d) => `<a class="row link" href="#/orders"><span>${esc(L.niceDate(d.date))} · ${esc(d.orders.map((o) => S.get(o.customer)?.name || "?").join(", "))}</span><span>${L.money(d.total)} ›</span></a>`)
+        .join("") || `<p class="muted">No orders booked.</p>`}</section>`,
     ];
   },
 
@@ -281,7 +288,6 @@ ${st.cart.length ? `<button class="btn ghost" data-act="clearcart">Clear</button
 
   orders() {
     const t = L.today();
-    const pl = L.plan(8);
     const open = L.booked().sort((a, b) => a.date.localeCompare(b.date));
     const groups = new Map();
     for (const o of open) {
@@ -298,9 +304,7 @@ ${st.cart.length ? `<button class="btn ghost" data-act="clearcart">Clear</button
     return [
       "Orders",
       `<a class="btn big" href="#/order/new">＋ Book an order</a>
-<section class="card"><h3>Cooking plan</h3><p class="muted small">Litres booked for each day, minus what's in stock. Cook the day before.</p>${
-        pl.map((d) => planRow(d)).join("") || `<p class="muted">Nothing booked yet.</p>`
-      }</section>
+${open.length ? "" : `<p class="card muted">No orders booked.</p>`}
 ${[...groups.entries()]
   .map(([k, list]) => {
     const late = k === "late";
@@ -408,6 +412,47 @@ ${
     ];
   },
 
+  make() {
+    const t = L.today();
+    const pl = L.plan(8).filter((d) => d.rows.some((r) => r.batches));
+    const low = L.chemLasts().filter((x) => x.left <= 1 || x.out);
+    return [
+      "Batches to make",
+      `${low.length ? `<a class="card warn link" href="#/chems"><b>⚗️ Chemicals:</b> ${low.map((x) => esc(x.p.short || x.p.name) + " " + x.left + " left").join(" · ")} ›</a>` : ""}
+${
+  pl
+    .map((d) => {
+      const makeDay = L.addDays(d.date, -1);
+      const total = d.rows.reduce((a, r) => a + r.batches, 0);
+      return `<section class="card plancard"><div class="row"><h3>${makeDay <= t ? "Make today" : "Make " + esc(L.niceDate(makeDay))}</h3><b>${total} batch${total === 1 ? "" : "es"}</b></div>
+<p class="muted small">For ${esc(L.niceDate(d.date))}${d.stops.length ? " · " + esc(d.stops.map((x) => x.name).join(", ")) : ""}${d.orders.length ? " · " + d.orders.length + " order" + (d.orders.length > 1 ? "s" : "") : ""}</p>
+${d.rows
+  .filter((r) => r.batches)
+  .map(
+    (r) => `<div class="mk"><span>${dot(r.p)}<b>${esc(r.p.short || r.p.name)}</b></span><span>${r.col ? `<span class="tag col">🎨 ${r.col} coloured</span>` : ""}${r.plain ? `<span class="tag plain">⚪ ${r.plain} no colour</span>` : ""}</span></div>
+<div class="muted tiny">${[r.forOrders ? r.forOrders + " for orders" : "", r.extra ? r.extra + " to sell" : ""].filter(Boolean).join(" + ")}</div>`,
+  )
+  .join("")}</section>`;
+    })
+    .join("") || `<p class="card muted">Nothing to make in the next week.</p>`
+}`,
+    ];
+  },
+
+  chems() {
+    const prod = isProd();
+    return [
+      "Chemicals",
+      `<p class="muted small">${prod ? "Tap a product to set how many batches its chemicals are enough for." : "Tap a product to add chemicals you bought."}</p>
+${L.chemLasts()
+  .map(
+    (x) => `<a class="card link${x.left <= 1 ? " warn" : ""}" href="#/chem/${attr(x.p.id)}"><div class="row"><b>${dot(x.p)}${esc(x.p.name)}</b><b>${x.left} <small class="muted">batch${x.left === 1 ? "" : "es"}</small> ›</b></div>
+<div class="small">${lastsText(x)}</div></a>`,
+  )
+  .join("")}`,
+    ];
+  },
+
   cook(pid) {
     const p = S.get(pid) || L.products()[0];
     const bl = p.batchL || 25;
@@ -428,12 +473,12 @@ ${
 
   chem(pid) {
     const p = S.get(pid);
-    if (!p) return ["Chemicals", `<p class="card">Not found.</p>`, "#/stock"];
+    if (!p) return ["Chemicals", `<p class="card">Not found.</p>`, "#/chems"];
     const left = L.chemLeft()[p.id] || 0;
     const hist = [
       ...S.list("chemmove")
         .filter((m) => m.p === p.id)
-        .map((m) => ({ d: m.date, t: m.type === "buy" ? "Bought" + (m.cost ? " · " + L.money(m.cost) : "") : "Counted", q: m.qty })),
+        .map((m) => ({ d: m.date, t: m.type === "buy" ? "Bought" + (m.cost && !isProd() ? " · " + L.money(m.cost) : "") : "Counted", q: m.qty })),
       ...S.list("batch")
         .filter((b) => b.p === p.id)
         .map((b) => ({ d: b.date, t: "Cooked", q: -(b.n || 0) })),
@@ -442,12 +487,16 @@ ${
       .slice(0, 30);
     return [
       p.short || p.name,
-      `<section class="card"><div class="muted">${dot(p)}${esc(p.name)} chemicals</div><div class="big ${left <= (p.chemLow ?? 1) ? "red" : ""}">${Math.max(0, left)} <small>batch${left === 1 ? "" : "es"} left</small></div></section>
-<form data-form="chembuy" class="card"><h3>Bought chemicals</h3><div class="two"><label>Enough for how many batches<input name="qty" type="number" inputmode="numeric" min="1" step="1" required></label>
-<label>Cost KSh<input name="cost" type="number" inputmode="numeric" min="0"></label></div><button class="btn">Add</button></form>
-<form data-form="chemcount" class="card"><h3>Count what's left</h3><p class="muted small">If the number above is wrong, enter how many batches the chemicals at home are enough for.</p><div class="inline"><input name="qty" type="number" inputmode="numeric" min="0" step="1" placeholder="${Math.max(0, left)}" required><button class="btn sm">Save</button></div></form>
+      `<section class="card"><div class="muted">${dot(p)}${esc(p.name)} chemicals</div><div class="big ${left <= 1 ? "red" : ""}">${Math.max(0, left)} <small>batch${left === 1 ? "" : "es"} left</small></div>
+<div class="small">${lastsText(L.chemLasts().find((x) => x.p.id === p.id))}</div></section>
+${
+  isProd()
+    ? `<form data-form="chemcount" class="card"><h3>Batches left</h3><p class="muted small">How many batches the chemicals at home are enough for now.</p><div class="inline"><input name="qty" type="number" inputmode="numeric" min="0" step="1" value="${Math.max(0, left)}" required><button class="btn sm">Save</button></div></form>`
+    : `<form data-form="chembuy" class="card"><h3>Bought chemicals</h3><div class="two"><label>Enough for how many batches<input name="qty" type="number" inputmode="numeric" min="1" step="1" required></label>
+<label>Cost KSh<input name="cost" type="number" inputmode="numeric" min="0"></label></div><button class="btn">Add</button></form>`
+}
 <section class="card"><h3>History</h3>${hist.map((h) => `<div class="row"><span>${esc(L.niceDate(h.d))} · ${esc(h.t)}</span><span class="${h.q < 0 ? "red" : "green"}">${h.q > 0 ? "+" : ""}${h.q}</span></div>`).join("") || `<p class="muted">Nothing yet.</p>`}</section>`,
-      "#/stock",
+      "#/chems",
     ];
   },
 
@@ -457,7 +506,7 @@ ${
     return [
       "More",
       `<section class="card list">${link("sales", "🧾", "Sales")}${link("owed", "💰", "Money owed", L.money(owed))}${link("customers", "👥", "Customers")}${link("expenses", "💸", "Expenses")}${link("reports", "📊", "Reports")}</section>
-<section class="card list">${link("products", "🧴", "Products & prices")}${link("places", "📍", "Route days")}${isBoss() ? link("team", "🔑", "Team logins") : ""}${link("account", "👤", "My account & sync", esc(me()?.name))}</section>`,
+<section class="card list">${isBoss() ? link("products", "🧴", "Products & prices") + link("places", "📍", "Route days") + link("team", "🔑", "Team logins") : ""}${link("account", "👤", "My account & sync", esc(me()?.name))}</section>`,
     ];
   },
 
@@ -580,7 +629,7 @@ ${order
       c.name,
       `<section class="card"><div class="row"><div><div class="big ${bal > 0 ? "red" : ""}">${L.money(bal)}</div><div class="muted">${bal > 0 ? "owes you" : "owes nothing"}</div></div>
 ${c.phone ? `<a class="btn" href="tel:${attr(c.phone)}">📞 Call</a>` : ""}</div>
-<a class="btn" href="#/order/new/${attr(c.id)}">＋ Book order</a></section>
+<div class="two"><a class="btn" href="#/order/new/${attr(c.id)}">＋ Book order</a><button class="btn ghost" data-act="invoice" data-id="${attr(c.id)}">🧾 Invoice PDF</button></div></section>
 ${(() => {
   const u = bal > 0 ? L.unpaid().find((x) => x.c.id === c.id) : null;
   return u
@@ -719,12 +768,12 @@ ${form}`,
 <label>Name<input name="name" value="${attr(p?.name || "")}" required${dis}></label>
 <div class="two"><label>Short name<input name="short" value="${attr(p?.short || "")}" placeholder="e.g. Soap"${dis}></label><label>Colour<input name="color" type="color" value="${attr(p?.color || "#16a34a")}"${dis}></label></div>
 <div class="two"><label>Litres per batch<input name="batchL" type="number" inputmode="decimal" step="any" min="1" value="${attr(p?.batchL || 25)}"${dis}></label>
-<label>Extra batches to sell<select name="extraBatches"${dis}>${opts([{ v: 0, t: "None" }, { v: 1, t: "1 batch" }, { v: 2, t: "2 batches" }, { v: 3, t: "3 batches" }, { v: "auto", t: "Auto (from her sales)" }], p?.extraBatches ?? 1)}</select></label></div>
-${p ? walkInNote(p) : ""}
+${L.isSoap(p) ? `<label>Batches to sell each route day<select name="extraBatches"${dis}>${opts([{ v: 0, t: "None" }, { v: 1, t: "1 batch" }, { v: 2, t: "2 batches" }, { v: 3, t: "3 batches" }, { v: "auto", t: "Auto (from her sales)" }], p?.extraBatches ?? 1)}</select></label>` : `<input type="hidden" name="extraBatches" value="0"><p class="muted small">Made only when ordered.</p>`}</div>
+${L.isSoap(p) ? walkInNote(p) : ""}
 <h3>Price per bottle</h3><p class="muted small">What a customer pays for one bottle of each size, e.g. 500ml = 70, 20L = 2800.</p>
 ${(p?.sizes || []).map((s) => `<div class="sizerow"><input type="hidden" name="ml" value="${s.ml}"><b>${L.size(s.ml)}</b><label class="ksh">KSh<input name="price" type="number" inputmode="numeric" min="0" placeholder="0" value="${attr(s.price || "")}"${dis}></label>${isBoss() ? `<button type="button" class="x" data-act="rmrow" aria-label="Remove ${L.size(s.ml)}">✕</button>` : ""}</div>`).join("")}
 ${isBoss() ? `<div class="sizerow"><select name="ml">${addOpts}</select><label class="ksh">KSh<input name="price" type="number" inputmode="numeric" min="0" placeholder="0"></label><span></span></div>` : ""}
-<label>Warn when chemicals are left for this many batches or fewer<input name="chemLow" type="number" inputmode="numeric" min="0" step="1" value="${attr(p?.chemLow ?? 1)}"${dis}></label>
+<input type="hidden" name="chemLow" value="1">
 ${isBoss() ? `<label class="check"><input type="checkbox" name="off"${p?.off ? " checked" : ""}> Hide this product</label><button class="btn big">Save</button>` : ""}
 </form>`,
       "#/products",
@@ -756,10 +805,10 @@ ${
   st.people
     ? `<section class="card">${st.people
         .map(
-          (p) => `<div class="person"><div><b>${esc(p.name)}</b> <span class="muted small">${esc(p.roles.join(", "))}${p.suspendedAt ? " · <span class='red'>blocked</span>" : ""}</span><div class="muted small">${esc(p.phone)}</div></div>${
+          (p) => `<div class="person"><div><b>${esc(p.name)}</b> <span class="muted small">${esc(roleText(p.roles))}${p.suspendedAt ? " · <span class='red'>blocked</span>" : ""}</span><div class="muted small">${esc(p.phone)}</div></div>${
             p.id === me().id
               ? ""
-              : `<div class="btnrow"><select class="rolepick" data-change="role" data-id="${attr(p.id)}" aria-label="Role for ${attr(p.name)}">${["boss", "helper", "cook"].map((r) => `<option value="${r}"${p.roles.includes(r) ? " selected" : ""}>${r[0].toUpperCase() + r.slice(1)}</option>`).join("")}</select><button class="btn sm ghost" data-act="resetpw" data-id="${attr(p.id)}">New password</button><button class="btn sm ghost${p.suspendedAt ? "" : " red"}" data-act="suspend" data-id="${attr(p.id)}" data-on="${p.suspendedAt ? "" : "1"}">${p.suspendedAt ? "Unblock" : "Block"}</button><button class="btn sm ghost red" data-act="delperson" data-id="${attr(p.id)}" data-name="${attr(p.name)}">Delete</button></div>`
+              : `<div class="btnrow"><select class="rolepick" data-change="role" data-id="${attr(p.id)}" aria-label="Role for ${attr(p.name)}">${["boss", "helper", "cook"].map((r) => `<option value="${r}"${p.roles.includes(r) ? " selected" : ""}>${ROLE_NAME[r]}</option>`).join("")}</select><button class="btn sm ghost" data-act="resetpw" data-id="${attr(p.id)}">New password</button><button class="btn sm ghost${p.suspendedAt ? "" : " red"}" data-act="suspend" data-id="${attr(p.id)}" data-on="${p.suspendedAt ? "" : "1"}">${p.suspendedAt ? "Unblock" : "Block"}</button><button class="btn sm ghost red" data-act="delperson" data-id="${attr(p.id)}" data-name="${attr(p.name)}">Delete</button></div>`
           }</div>`,
         )
         .join("")}</section>`
@@ -767,7 +816,7 @@ ${
 }
 <form data-form="addperson" class="card"><h3>Add a helper</h3><label>Name<input name="name" required></label><label>Phone<input name="phone" type="tel" inputmode="tel" required></label><button class="btn">Add</button>
 <p class="muted small">Needs internet. Helpers can sell, book orders, record cooking and expenses. They can't change prices or route days.</p>
-<p class="muted small">Roles: <b>Boss</b> can do everything, including this page. <b>Helper</b> and <b>Cook</b> can't change prices, route days or logins. Changing a role logs that person out.</p></form>`,
+<p class="muted small">Roles: <b>Boss</b> can do everything, including this page. <b>Helper</b> sells and books orders but can't change prices, route days or logins. <b>Production</b> only sees the batches to make and the chemicals. Changing a role logs that person out.</p></form>`,
       "#/more",
     ];
   },
@@ -777,11 +826,11 @@ ${
     const w = S.waiting();
     return [
       "My account",
-      `<section class="card"><h2>${esc(m.me.name)}</h2><p class="muted">${esc((m.me.roles || []).join(", "))}</p></section>
+      `<section class="card"><h2>${esc(m.me.name)}</h2><p class="muted">${esc(roleText(m.me.roles))}</p></section>
 <section class="card"><h3>Sync</h3><p>${w ? `<b>${w}</b> record${w > 1 ? "s" : ""} on this phone not sent yet.` : "Everything on this phone is saved online."}</p>
 <p class="muted small">Last sent: ${m.lastSync ? new Date(m.lastSync).toLocaleString() : "never"}</p>
 <button class="btn" data-act="syncnow">Sync now</button></section>
-${"Notification" in window ? `<section class="card"><h3>Pay-later reminders</h3><p class="muted small">A phone notification on the day money is due, and every day after until it's paid.</p>${Notification.permission === "granted" ? `<p class="green">🔔 On</p>` : Notification.permission === "denied" ? `<p class="muted small">Blocked. Allow notifications for this app in the phone's settings.</p>` : `<button class="btn" data-act="notifyon">🔔 Turn on reminders</button>`}</section>` : ""}
+${"Notification" in window ? `<section class="card"><h3>Reminders</h3><p class="muted small">${isProd() ? "A phone notification when a product's chemicals are down to 1 batch." : "A phone notification on the day money is due (and every day after until it's paid), and when a product's chemicals are down to 1 batch."}</p>${Notification.permission === "granted" ? `<p class="green">🔔 On</p>` : Notification.permission === "denied" ? `<p class="muted small">Blocked. Allow notifications for this app in the phone's settings.</p>` : `<button class="btn" data-act="notifyon">🔔 Turn on reminders</button>`}</section>` : ""}
 ${installEvt ? `<button class="btn install" data-act="install">📲 Install the app on this phone</button>` : ""}
 <section class="card list"><a class="row link" href="#/password"><span>Change password</span><span>›</span></a>
 <a class="row link" href="#" data-act="backup"><span>Save a backup file</span><span>›</span></a></section>
@@ -815,6 +864,77 @@ function remindBtn(u) {
   const t = L.today();
   const msg = `Hello ${u.c.name}, this is JonWin. A reminder that KSh ${Math.round(u.owed).toLocaleString("en")} ${u.due < t ? "was due on " + L.niceDate(u.due) : u.due === t ? "is due today" : "is due " + L.niceDate(u.due).toLowerCase()}. Thank you!`;
   return `<a class="btn sm" href="sms:${attr(u.c.phone)}?body=${attr(encodeURIComponent(msg))}">✉ Remind</a>`;
+}
+
+/** "Enough until Thursday" for one product's chemicals. */
+function lastsText(x) {
+  if (!x) return "";
+  if (x.out && x.left === 0) return `<span class="red">None left — needed ${esc(L.niceDate(x.out))}</span>`;
+  if (x.out) return `Enough until <b>${esc(L.niceDate(x.until || L.today()))}</b> · <span class="red">runs out ${esc(L.niceDate(x.out))}</span>`;
+  if (!x.used) return x.left ? `Not needed by any order yet` : `<span class="muted">None left · no orders need it</span>`;
+  return `Enough for everything planned${x.until ? " (to " + esc(L.niceDate(x.until)) + ")" : ""}`;
+}
+
+/** Home: chemicals that are down to 1 batch or will run out soon. */
+function chemCard() {
+  const bad = L.chemLasts().filter((x) => x.left <= 1 || x.out);
+  if (!bad.length) return "";
+  return `<section class="card warn"><div class="row"><h3>⚗️ Buy chemicals</h3><a href="#/chems">All ›</a></div>${bad
+    .map((x) => `<a class="row link" href="#/chem/${attr(x.p.id)}"><span>${dot(x.p)}${esc(x.p.short || x.p.name)} · <b>${x.left}</b> left</span><span class="small">${x.out ? "runs out " + esc(L.niceDate(x.out)) : x.left ? "1 batch left" : "none left"} ›</span></a>`)
+    .join("")}</section>`;
+}
+
+/** Invoice PDF for one customer: what they still owe (or recent buying when nothing is owed). */
+function invoiceSpec(c) {
+  const t = L.today();
+  const u = L.unpaid().find((x) => x.c.id === c.id);
+  const dm = (d) => d.slice(8) + "/" + d.slice(5, 7) + "/" + d.slice(0, 4);
+  const from = L.addDays(t, -30);
+  const recent = S.list("sale")
+    .filter((s) => s.customer === c.id && !s.voided && s.date >= from)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const pays = S.list("payment")
+    .filter((p) => p.customer === c.id && !p.voided && p.date >= from)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const owed = u?.owed || 0;
+  const tables = [];
+  if (u)
+    tables.push({
+      title: "Unpaid",
+      cols: [{ h: "Date", w: 62 }, { h: "Items" }, { h: "Due", w: 62 }, { h: "Amount", w: 86, align: "right" }],
+      rows: [...u.open].reverse().map((o) => ({ cells: [dm(o.sale.date), L.itemsText(o.sale.items), dm(L.dueOf(o.sale)), L.money(o.owed)] })),
+      total: ["", "", "DUE", L.money(owed)],
+    });
+  tables.push({
+    title: "Bought in the last 30 days",
+    cols: [{ h: "Date", w: 62 }, { h: "Items" }, { h: "Paid by", w: 62 }, { h: "Amount", w: 86, align: "right" }],
+    rows: recent.map((s) => ({ cells: [dm(s.date), L.itemsText(s.items), PAY[s.pay] || s.pay, L.money(s.total)] })),
+    total: ["", "", "TOTAL", L.money(recent.reduce((a, s) => a + s.total, 0))],
+  });
+  if (pays.length)
+    tables.push({
+      title: "Payments received",
+      cols: [{ h: "Date", w: 62 }, { h: "Paid by" }, { h: "Amount", w: 86, align: "right" }],
+      rows: pays.map((p) => ({ cells: [dm(p.date), PAY[p.pay] || p.pay, L.money(p.amount)] })),
+    });
+  return {
+    title: "INVOICE",
+    number: "INV-" + t.replace(/-/g, "") + "-" + c.id.slice(0, 4).toUpperCase(),
+    periodLabel: "BILL TO",
+    period: c.name,
+    sub: [c.phone, L.placeName(c.place)].filter(Boolean).join(" · "),
+    issued: periodName("day", t),
+    by: me()?.name || "",
+    summary: [
+      ["Amount due", L.money(owed)],
+      ["Pay by", u ? L.niceDate(u.due).replace(/^(Today|Tomorrow|Yesterday)$/, (m) => m + " " + dm(u.due).slice(0, 5)) : "-"],
+      ["Bought (30 days)", L.money(recent.reduce((a, s) => a + s.total, 0))],
+      ["Paid (30 days)", L.money(pays.reduce((a, p) => a + p.amount, 0))],
+    ],
+    tables,
+    empty: "Nothing.",
+    note: owed ? "Please pay by M-Pesa or cash. Thank you for buying JonWin!" : "Nothing owed. Thank you for buying JonWin!",
+  };
 }
 
 /** Profit after all expenses: this month big, today and since the start below. */
@@ -887,11 +1007,6 @@ function readout(p) {
 <div class="muted small">${s.count ? `Cash ${L.money(s.cash)} · M-Pesa ${L.money(s.mpesa)} · Later ${L.money(s.later)}` : "No sales this day"} · <a href="#/sales/day/${p.d}">Open ›</a></div>`;
 }
 
-function batchText(d) {
-  const b = d.rows.filter((r) => r.batches > 0);
-  return b.length ? b.map((r) => esc(r.p.short || r.p.name) + " ×" + r.batches).join(", ") + " to cook" : "stock is enough";
-}
-
 /** What she sells herself (not orders): helps choose how many extra batches to cook. */
 function walkInNote(p) {
   const w = L.walkIn(p);
@@ -900,38 +1015,6 @@ function walkInNote(p) {
   return `<p class="note">Her own sales (not orders), last 4 weeks: about <b>${L.litres(w.perDay)}</b> a day over ${w.days} day${w.days === 1 ? "" : "s"}${
     w.bottlesPerDay.length ? " (" + w.bottlesPerDay.slice(0, 3).map((b) => (Math.round(b.q * 10) / 10) + " × " + L.size(b.ml)).join(", ") + ")" : ""
   }. One batch is ${bl} L, so that's about <b>${L.num(w.perDay / bl)} batches</b> a day. Auto would cook <b>${L.extraBatches({ ...p, extraBatches: "auto" })}</b>.</p>`;
-}
-
-function planRow(d) {
-  return `<div class="plan"><div class="row"><b>${esc(L.niceDate(d.date))}${d.stops.length ? " · " + esc(d.stops.map((s) => s.name).join(", ")) : ""}</b><span class="muted small">${d.orders.length} order${d.orders.length === 1 ? "" : "s"}${d.orders.some(isSend) ? " · " + d.orders.filter(isSend).length + " to send" : ""}</span></div>${
-    d.rows.length
-      ? d.rows
-          .map(
-            (r) =>
-              r.sellOnly
-                ? `<div class="row small"><span>${dot(r.p)}${esc(r.p.short || r.p.name)} <span class="muted">to sell</span></span><span>${r.batches ? `<b>cook ${r.batches} batch${r.batches > 1 ? "es" : ""}</b>` : `<span class="green">from stock</span>`}</span></div>`
-                : `<div class="row small"><span>${dot(r.p)}${esc(r.p.short || r.p.name)} ${L.litres(r.need)}</span><span>${r.batches ? `<b>cook ${r.batches} batch${r.batches > 1 ? "es" : ""}</b>` : `<span class="green">from stock</span>`}</span></div>${r.batches ? `<div class="muted tiny">${r.forOrders ? r.forOrders + " for orders" : "orders from stock"}${r.extra ? " + " + r.extra + " to sell" : ""}</div>` : ""}`,
-          )
-          .join("")
-      : `<div class="muted small">Nothing booked.</div>`
-  }${whoOrdered(d.orders)}</div>`;
-}
-
-/** Who ordered for the day: name, what, how much. Tap to open the order. */
-function whoOrdered(orders) {
-  if (!orders.length) return "";
-  return `<div class="who">${orders
-    .map((o) => {
-      const c = S.get(o.customer);
-      return `<a class="row small link" href="#/order/${attr(o.id)}"><span>👤 <b>${esc(c?.name || "?")}</b>${o.date < L.today() ? ` <span class="red">late</span>` : ""}${isSend(o) ? ` <span class="badge send">📦 Send</span>` : ""}<br><span class="muted">${esc(L.itemsText(o.items))}</span></span><span>${L.money(L.itemsTotal(o.items))} ›</span></a>`;
-    })
-    .join("")}</div>`;
-}
-
-function planCard(d) {
-  const cookDay = L.addDays(d.date, -1);
-  return `<section class="card plancard"><h3>${cookDay === L.today() ? "Cook today" : "Cook " + esc(L.niceDate(cookDay))} for ${esc(L.niceDate(d.date))}${d.stops.length ? " · " + esc(d.stops.map((s) => s.name).join(", ")) : ""}</h3>
-${planRow(d)}${d.total ? `<p class="muted small">Orders worth ${L.money(d.total)}</p>` : ""}<a href="#/orders">See orders ›</a></section>`;
 }
 
 // ---------- Sales periods ----------
@@ -1056,10 +1139,10 @@ const ACTS = {
     const items = itemsOf(el.dataset.t);
     const p = el.dataset.p;
     const ml = Number(el.dataset.ml);
-    const line = items.find((i) => i.p === p && i.ml === ml);
+    const line = items.find((i) => i.p === p && i.ml === ml && i.col !== false);
     if (line) line.qty++;
     else items.push({ p, ml, qty: 1, price: L.customerPrice(custOf(el.dataset.t)?.id, p, ml) || L.priceOf(p, ml) });
-    st.sheet = { t: el.dataset.t, i: items.findIndex((i) => i.p === p && i.ml === ml) };
+    st.sheet = { t: el.dataset.t, i: items.findIndex((i) => i.p === p && i.ml === ml && i.col !== false) };
     render();
   },
   qty(el) {
@@ -1090,6 +1173,34 @@ const ACTS = {
     for (const b of chart.querySelectorAll(".bar.on")) b.classList.remove("on");
     el.classList.add("on");
     chart.querySelector(".readout").innerHTML = readout({ d: el.dataset.d });
+  },
+  setcol(el) {
+    const it = st.sheet && itemsOf(st.sheet.t)[st.sheet.i];
+    if (it) it.col = el.dataset.v === "1" ? undefined : false;
+    render();
+  },
+  togglecol(el) {
+    const it = st.draft?.items[Number(el.dataset.i)];
+    if (it) it.col = it.col === false ? undefined : false;
+    render();
+  },
+  async invoice(el) {
+    el.disabled = true;
+    try {
+      const { statement } = await import("./pdf.js");
+      const c = S.get(el.dataset.id);
+      const blob = statement(invoiceSpec(c));
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "JonWin-invoice-" + c.name.replace(/[^\w]+/g, "-") + "-" + L.today() + ".pdf";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+      toast("Invoice saved to Downloads");
+    } finally {
+      if (el.isConnected) el.disabled = false;
+    }
   },
   closedue() {
     st.askDue = null;
@@ -1318,7 +1429,7 @@ const ACTS = {
   async setrole(el) {
     const p = st.people?.find((x) => x.id === el.dataset.id);
     const role = el.value;
-    const msg = role === "boss" ? `Make ${p?.name || "this person"} a boss? They will be able to change prices, logins and reset all records.` : `Make ${p?.name || "this person"} a ${role}? They will be logged out.`;
+    const msg = role === "boss" ? `Make ${p?.name || "this person"} a boss? They will be able to change prices, logins and reset all records.` : `Make ${p?.name || "this person"} ${ROLE_NAME[role]}? They will be logged out.`;
     if (!confirm(msg)) return render();
     try {
       await api("/api/people", { action: "role", id: el.dataset.id, role });
@@ -1650,8 +1761,9 @@ setInterval(() => {
   if (document.visibilityState === "visible") S.sync().then(seedIfEmpty);
 }, 60000);
 
-// ---------- Pay-later reminders ----------
-// A phone notification once a day for money due today or late. The app checks when it opens;
+// ---------- Reminders ----------
+// Once a day: money due today or late (not for Production), and chemicals down to 1 batch.
+// The app checks when it opens;
 // installed on the home screen, Chrome also wakes the app about once a day to check (sw.js).
 async function watchDue(force) {
   if (!("Notification" in window) || Notification.permission !== "granted" || !navigator.serviceWorker) return;
@@ -1665,15 +1777,25 @@ async function watchDue(force) {
     /* private mode */
   }
   if (last === t && !force) return;
-  const due = L.unpaid().filter((u) => u.due <= t);
-  if (!due.length) return;
-  const total = due.reduce((a, u) => a + u.owed, 0);
-  await reg.showNotification(`💰 ${L.money(total)} due from ${due.length} customer${due.length > 1 ? "s" : ""}`, {
-    body: due.map((u) => `${u.c.name} ${L.money(u.owed)}${u.due < t ? " (late)" : ""}`).join(", "),
-    tag: "due",
-    icon: "/icon-192.png",
-    data: { url: "/#/home" },
-  });
+  const due = isProd() ? [] : L.unpaid().filter((u) => u.due <= t);
+  const low = L.chemLasts().filter((x) => x.left <= 1);
+  if (!due.length && !low.length) return;
+  if (due.length) {
+    const total = due.reduce((a, u) => a + u.owed, 0);
+    await reg.showNotification(`💰 ${L.money(total)} due from ${due.length} customer${due.length > 1 ? "s" : ""}`, {
+      body: due.map((u) => `${u.c.name} ${L.money(u.owed)}${u.due < t ? " (late)" : ""}`).join(", "),
+      tag: "due",
+      icon: "/icon-192.png",
+      data: { url: "/#/home" },
+    });
+  }
+  if (low.length)
+    await reg.showNotification("⚗️ Chemicals running out", {
+      body: low.map((x) => `${x.p.short || x.p.name}: ${x.left} batch${x.left === 1 ? "" : "es"} left`).join(", "),
+      tag: "chem",
+      icon: "/icon-192.png",
+      data: { url: "/#/chems" },
+    });
   try {
     localStorage.setItem("jw-due-told", t);
   } catch {

@@ -124,8 +124,9 @@ export function statement(spec) {
 
   // Details
   y = 122;
-  d.text(M, y, "PERIOD", { size: 8, bold: true, color: GREY });
-  d.text(M, y + 16, spec.period, { size: 13, bold: true });
+  d.text(M, y, spec.periodLabel || "PERIOD", { size: 8, bold: true, color: GREY });
+  d.text(M, y + 16, spec.period, { size: 13, bold: true, max: right - M - 170 });
+  if (spec.sub) d.text(M, y + 32, spec.sub, { size: 9, color: GREY, max: right - M - 170 });
   d.text(right - 150, y, "DATE ISSUED", { size: 8, bold: true, color: GREY });
   d.text(right - 150, y + 16, spec.issued, { size: 10 });
   d.text(right - 150, y + 34, "PREPARED BY", { size: 8, bold: true, color: GREY });
@@ -190,7 +191,7 @@ export function statement(spec) {
       y += ROW;
     });
     if (!t.rows.length) {
-      d.text(M + 6, y + 13, "No sales.", { size: 9, color: GREY });
+      d.text(M + 6, y + 13, spec.empty || "No sales.", { size: 9, color: GREY });
       y += ROW;
     }
     if (t.total) {
