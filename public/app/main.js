@@ -300,6 +300,7 @@ ${heroCard(t, stops, sum, todayPlan)}
 ${new Date().getHours() >= 17 ? `<a class="card row link" href="#/summary"><span class="rowlabel">${ic("sun")}<b>Today's summary</b></span><span class="muted">Share${CHEV}</span></a>` : ""}
 ${dueCard(t)}
 ${profitCard(t)}
+${cookedCard(t)}
 ${chemCard(true)}
 <a class="card row link" href="#/owed"><span>Money owed to you</span><b>${L.money(owed)}${CHEV}</b></a>
 <section class="card"><h3>Sales, last 14 days</h3>${barChart(days, { labels: true, tick: (d) => L.parse(d).getDate() })}</section>
@@ -967,6 +968,21 @@ function lastsText(x) {
   if (x.out) return `Enough until <b>${esc(L.niceDate(x.until || L.today()))}</b> · <span class="red">runs out ${esc(L.niceDate(x.out))}</span>`;
   if (!x.used) return x.left ? `Not needed by any order yet` : `<span class="muted">None left · no orders need it</span>`;
   return `Enough for everything planned${x.until ? " (to " + esc(L.niceDate(x.until)) + ")" : ""}`;
+}
+
+/** Home (boss): what Production has cooked today and yesterday. */
+function cookedCard(t) {
+  const from = L.addDays(t, -1);
+  const rows = S.list("batch")
+    .filter((b) => b.date >= from)
+    .sort((a, b) => b.date.localeCompare(a.date) || (b.u || 0) - (a.u || 0));
+  const todayN = rows.filter((b) => b.date === t).reduce((a, b) => a + (b.n || 0), 0);
+  return `<a class="card link" href="#/stock"><div class="row"><h3>Cooked</h3><b>${todayN} batch${todayN === 1 ? "" : "es"} today${CHEV}</b></div>${
+    rows
+      .slice(0, 6)
+      .map((b) => `<div class="row small"><span>${b.date === t ? "Today" : "Yesterday"} · ${dot(S.get(b.p))}${esc(L.productName(b.p))} ×${b.n}</span><span>${L.litres(b.litres)}${b.by ? " · " + esc(b.by) : ""}</span></div>`)
+      .join("") || `<p class="muted small">Nothing cooked yet.</p>`
+  }</a>`;
 }
 
 /** Home: chemicals that are down to 1 batch or will run out soon. */
