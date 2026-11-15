@@ -34,7 +34,7 @@ function writeAll(list, metaToo) {
     for (const r of list) s.put(r);
     if (metaToo) {
       const m = tx.objectStore("meta");
-      for (const k of ["since", "me", "lastSync", "seeded"]) m.put({ k, v: meta[k] });
+      for (const k of ["since", "me", "lastSync", "seeded", "prod"]) m.put({ k, v: meta[k] });
     }
     tx.oncomplete = () => ok();
     tx.onerror = () => bad(tx.error);
@@ -128,6 +128,24 @@ export async function remove(id) {
 }
 
 // ---------- Sync ----------
+const PROD_KINDS = new Set(["product", "place", "order", "batch", "chemmove"]);
+const isProduction = (roles = []) => !roles.includes("boss") && !roles.includes("helper") && roles.includes("cook");
+
+/** Drop records from this phone only (nothing is sent to the server). */
+async function forget(test) {
+  const gone = [...recs.values()].filter(test);
+  if (!gone.length) return;
+  for (const r of gone) recs.delete(r.id);
+  byKind = null;
+  await new Promise((ok, bad) => {
+    const tx = idb.transaction("recs", "readwrite");
+    const s = tx.objectStore("recs");
+    for (const r of gone) s.delete(r.id);
+    tx.oncomplete = () => ok();
+    tx.onerror = () => bad(tx.error);
+  });
+  emit();
+}
 const LOCAL = new Set(["id", "kind", "u", "del", "dirty"]);
 function toWire(r) {
   const data = {};
@@ -163,6 +181,7 @@ export async function sync() {
   try {
     let more = true;
     while (more) {
+      more = false;
       const sent = [];
       for (const r of recs.values()) {
         if (r.dirty) sent.push(r);
@@ -202,10 +221,17 @@ export async function sync() {
       meta.since = j.seq;
       meta.lastSync = Date.now();
       if (j.me) meta.me = { ...meta.me, ...j.me };
+      // Role changed between Production and the rest: start over so this phone holds exactly what
+      // the new role may see (Production drops money and customer records).
+      const prod = isProduction(meta.me?.roles);
+      if (prod && meta.prod !== true) await forget((r) => !PROD_KINDS.has(r.kind) || r.kind === "order");
+      if (prod && meta.prod !== true) (meta.since = 0), (more = true); // fetch orders again, without prices
+      if (!prod && meta.prod === true) (meta.since = 0), (more = true); // fetch everything Production didn't get
+      meta.prod = prod;
       byKind = null;
       await writeAll(changed, true);
       if (changed.length) emit();
-      more = j.more || sent.length >= 400;
+      more = more || j.more || sent.length >= 400;
     }
     setStatus(waiting() ? "waiting" : "synced");
   } catch {
@@ -227,7 +253,7 @@ export function exportAll() {
 export async function wipe() {
   recs.clear();
   byKind = null;
-  Object.assign(meta, { since: 0, me: null, lastSync: 0, status: "idle", seeded: false });
+  Object.assign(meta, { since: 0, me: null, lastSync: 0, status: "idle", seeded: false, prod: undefined });
   await new Promise((ok, bad) => {
     const tx = idb.transaction(["recs", "meta"], "readwrite");
     tx.objectStore("recs").clear();

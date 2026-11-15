@@ -219,14 +219,14 @@ main { padding: 4px 16px calc(104px + env(safe-area-inset-bottom)); max-width: 6
 
 /* ---------- Forms ---------- */
 label { display: block; margin: 0 0 12px; font-size: 13px; font-weight: 700; color: var(--muted); }
-input, select {
+input, select, textarea {
   display: block; width: 100%; margin-top: 6px; padding: 12px 14px; min-height: 48px;
   border: 0; border-radius: var(--r-sm); background: var(--well); color: var(--ink); font-size: 16px; font-weight: 500;
   box-shadow: var(--press);
 }
 input::placeholder { color: var(--muted); opacity: 0.7; }
 input[type="color"] { padding: 6px; }
-input:focus, select:focus { outline: 2px solid var(--brand); outline-offset: 1px; }
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--brand); outline-offset: 1px; }
 input:disabled, select:disabled { opacity: 0.7; }
 .check { display: flex; align-items: center; gap: 10px; color: var(--ink); }
 .check input { width: 24px; min-height: 24px; margin: 0; box-shadow: none; }
@@ -394,3 +394,4 @@ body.lock { overflow: hidden; }
 .sw.plain { background: transparent; box-shadow: inset 0 0 0 2px currentColor; opacity: 0.7; }
 .tag.col .sw.col { box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.85); }
 .two > .btn { margin-top: 0; align-self: stretch; }
+textarea { resize: vertical; line-height: 1.4; font-size: 15px; }

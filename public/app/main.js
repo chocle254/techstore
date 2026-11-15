@@ -38,6 +38,9 @@ const ICONS = {
   bottle: '<path d="M10 2.5h4M10.5 2.5v3L8 9v10.5A1.5 1.5 0 0 0 9.5 21h5a1.5 1.5 0 0 0 1.5-1.5V9l-2.5-3.5v-3"/><path d="M8 13.5h8"/>',
   pin: '<path d="M12 21s-6.5-6-6.5-11a6.5 6.5 0 0 1 13 0c0 5-6.5 11-6.5 11Z"/><circle cx="12" cy="10" r="2.3"/>',
   key: '<circle cx="8" cy="15.5" r="4"/><path d="m11 12.5 8.5-8.5M16 7.5l2.5 2.5"/>',
+  chat: '<path d="M4.5 19.5 5.6 16A8 8 0 1 1 8.4 18.6L4.5 19.5Z"/><path d="M9 10.5h6M9 13.5h4"/>',
+  paste: '<rect x="5" y="4.5" width="14" height="16.5" rx="2"/><path d="M9 4.5V3.5h6v1M9 11h6M9 15h4"/>',
+  sun: '<circle cx="12" cy="12" r="3.8"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/>',
   install: '<rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M12 7v7M9.3 11.5 12 14.2l2.7-2.7"/>',
 };
 const ic = (name, cls = "") => `<svg class="i${cls ? " " + cls : ""}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
@@ -54,7 +57,7 @@ const isProd = () => !isBoss() && !!me()?.roles?.includes("cook");
 const PROD_VIEWS = new Set(["make", "chems", "chem", "account", "password"]);
 
 // Screen state that must survive a redraw (cart, order being written, …).
-const st = { cart: [], cartPlace: null, cartCustomer: "", draft: null, showPast: false, sheet: null, askDue: null, people: null, peopleErr: "", tempPw: "" };
+const st = { cart: [], cartPlace: null, cartCustomer: "", draft: null, showPast: false, sheet: null, askDue: null, mp: null, people: null, peopleErr: "", tempPw: "" };
 let editing = false;
 let installEvt = null;
 
@@ -108,7 +111,7 @@ const PROD_NAV = [
   ["chems", "flask", "Chemicals"],
   ["account", "user", "Account"],
 ];
-const SUB = { sales: "more", owed: "more", customers: "more", customer: "more", expenses: "more", reports: "more", products: "more", product: "more", places: "more", team: "more", account: "more", order: "orders", chem: "chems", password: "account" };
+const SUB = { mpesa: "home", summary: "home", sales: "more", owed: "more", customers: "more", customer: "more", expenses: "more", reports: "more", products: "more", product: "more", places: "more", team: "more", account: "more", order: "orders", chem: "chems", password: "account" };
 
 function syncPill() {
   const m = S.getMeta();
@@ -294,6 +297,7 @@ const VIEWS = {
       "JonWin",
       `${installEvt ? `<button class="btn install" data-act="install">${ic("install")}Install the app on this phone</button>` : ""}
 ${heroCard(t, stops, sum, todayPlan)}
+${new Date().getHours() >= 17 ? `<a class="card row link" href="#/summary"><span class="rowlabel">${ic("sun")}<b>Today's summary</b></span><span class="muted">Share${CHEV}</span></a>` : ""}
 ${dueCard(t)}
 ${profitCard(t)}
 ${chemCard(true)}
@@ -449,6 +453,56 @@ ${
     ];
   },
 
+  mpesa() {
+    const m = st.mp?.m;
+    const owe = L.balances();
+    const opts2 = [...L.customers()].sort((a, b) => (owe[b.id] > 0) - (owe[a.id] > 0) || a.name.localeCompare(b.name));
+    const cid = st.mp?.cid || "";
+    const c = cid ? S.get(cid) : null;
+    const dup = m?.code && S.list("payment").some((p) => p.code === m.code && !p.voided);
+    return [
+      "M-Pesa payment",
+      `<section class="card"><p class="muted small">Copy the M-Pesa message you got, then tap Paste.</p>
+<button class="btn big" data-act="mppaste">${ic("paste")}Paste M-Pesa message</button>
+<label>Or paste it here<textarea id="mptext" rows="4" placeholder="QK12ABC3DE Confirmed. You have received Ksh…">${esc(st.mp?.text || "")}</textarea></label>
+<button class="btn ghost" data-act="mpread">Read message</button></section>
+${
+  st.mp && !m
+    ? `<p class="card warn">That doesn't look like an M-Pesa message with an amount. Copy the whole message and try again.</p>`
+    : m
+      ? `<section class="card${dup ? " warn" : ""}"><div class="muted small">Received${m.code ? " · " + esc(m.code) : ""} · ${esc(L.niceDate(m.date))}</div>
+<div class="big">${L.money(m.amount)}</div><div>from <b>${esc(m.name || "?")}</b>${m.phone ? ` <span class="muted">${esc(m.phone)}</span>` : ""}</div>
+${dup ? `<p><b>Already saved.</b> This M-Pesa code is already recorded as a payment.</p>` : ""}
+<label>Customer<select data-bind="mp.cid" data-change="redraw">${opts([{ v: "", t: "Choose…" }, ...opts2.map((x) => ({ v: x.id, t: x.name + (owe[x.id] > 0 ? " · owes " + L.money(owe[x.id]) : "") }))], cid)}</select></label>
+${c ? `<p class="small">${owe[c.id] > 0 ? (m.amount > owe[c.id] ? `${esc(c.name)} owes ${L.money(owe[c.id])}. The extra ${L.money(m.amount - owe[c.id])} is kept as credit.` : `${esc(c.name)} owes ${L.money(owe[c.id])}. After this: <b>${L.money(owe[c.id] - m.amount)}</b>.`) : `${esc(c.name)} owes nothing. This is kept as credit.`}</p>` : ""}
+<button class="btn big mpesa" data-act="mpsave"${!c || dup ? " disabled" : ""}>Save payment ${L.money(m.amount)}</button></section>`
+      : ""
+}`,
+      "#/owed",
+    ];
+  },
+
+  summary(date) {
+    const d = /^\d{4}-\d{2}-\d{2}$/.test(date || "") ? date : L.today();
+    const x = L.daySummary(d);
+    const line = (k, v, cls = "") => `<div class="row"><span>${k}</span><b class="${cls}">${v}</b></div>`;
+    return [
+      d === L.today() ? "Today's summary" : L.niceDate(d),
+      `<section class="card">
+${line("Sold" + (x.sum.count ? ` (${x.sum.count} sale${x.sum.count > 1 ? "s" : ""})` : ""), L.money(x.sum.total))}
+<div class="muted small">Cash ${L.money(x.sum.cash)} · M-Pesa ${L.money(x.sum.mpesa)} · Pay later ${L.money(x.sum.later)}</div>
+${line("Owed money paid back", L.money(x.paidBack))}
+${line("Spent", L.money(x.spent))}
+${line("Profit", L.money(x.profit), x.profit < 0 ? "red" : "green")}
+${line("Still owed to you", L.money(x.owedNow))}
+</section>
+${x.dueNext.length || x.lateNow.length ? `<section class="card"><h3>Money to collect</h3>${[...x.lateNow.map((u) => [u, "late"]), ...x.dueNext.map((u) => [u, "due tomorrow"])].map(([u, w]) => `<a class="row link" href="#/customer/${attr(u.c.id)}"><span>${esc(u.c.name)} <span class="muted small">${w}</span></span><b>${L.money(u.owed)}${CHEV}</b></a>`).join("")}</section>` : ""}
+${x.ordersNext.length ? `<section class="card"><h3>Orders tomorrow</h3>${x.ordersNext.map((o) => `<a class="row link" href="#/order/${attr(o.id)}"><span>${esc(S.get(o.customer)?.name || "?")}<br><span class="muted small">${esc(L.itemsText(o.items))}</span></span><span>${L.money(L.itemsTotal(o.items))}${CHEV}</span></a>`).join("")}</section>` : ""}
+<a class="btn big" href="${attr("https://wa.me/?text=" + encodeURIComponent(summaryText(x)))}">${ic("chat")}Share on WhatsApp</a>`,
+      "#/home",
+    ];
+  },
+
   make() {
     const t = L.today();
     const pl = L.plan(8).filter((d) => d.rows.some((r) => r.batches));
@@ -599,7 +653,7 @@ ${
     const daysAgo = (d) => Math.round((L.parse(L.today()) - L.parse(d)) / 86400000);
     return [
       "Money owed",
-      `<section class="card"><div class="big">${L.money(total)}</div><div class="muted">${rows.length} customer${rows.length === 1 ? "" : "s"} owe you</div></section>
+      `<section class="card"><div class="big">${L.money(total)}</div><div class="muted">${rows.length} customer${rows.length === 1 ? "" : "s"} owe you</div>${rows.length ? `<a class="btn ghost" href="#/mpesa">${ic("paste")}Paid by M-Pesa? Paste the message</a>` : ""}</section>
 <section class="card">${
         rows
           .map(
@@ -666,6 +720,7 @@ ${order
       c.name,
       `<section class="card"><div class="row"><div><div class="big ${bal > 0 ? "red" : ""}">${L.money(bal)}</div><div class="muted">${bal > 0 ? "owes you" : "owes nothing"}</div></div>
 ${c.phone ? `<a class="btn" href="tel:${attr(c.phone)}">${ic("phone")}Call</a>` : ""}</div>
+${bal > 0 && L.waNumber(c.phone) ? `<a class="btn ghost" href="${attr(L.waLink(c.phone, balanceText(c)))}">${ic("chat")}Send balance on WhatsApp</a>` : ""}
 <div class="two"><a class="btn" href="#/order/new/${attr(c.id)}">${ic("plus")}Book order</a><button class="btn ghost" data-act="invoice" data-id="${attr(c.id)}">${ic("file")}Invoice PDF</button></div></section>
 ${(() => {
   const u = bal > 0 ? L.unpaid().find((x) => x.c.id === c.id) : null;
@@ -892,7 +947,7 @@ function dueCard(t) {
       const when = late ? Math.round((L.parse(t) - L.parse(u.due)) / 864e5) + " day" + (u.due === L.addDays(t, -1) ? "" : "s") + " late" : u.due === t ? "due today" : "due tomorrow";
       return `<div class="person"><a class="link" href="#/customer/${attr(u.c.id)}"><b>${esc(u.c.name)}</b> <b class="${late ? "red" : ""}">${L.money(u.owed)}</b><div class="small">${when}</div></a>${remindBtn(u)}</div>`;
     })
-    .join("")}${canAsk ? `<button class="btn sm ghost" data-act="notifyon">${ic("bell")}Turn on phone reminders</button>` : ""}</section>`;
+    .join("")}<a class="btn ghost" href="#/mpesa">${ic("paste")}Paid by M-Pesa? Paste the message</a>${canAsk ? `<button class="btn sm ghost" data-act="notifyon">${ic("bell")}Turn on phone reminders</button>` : ""}</section>`;
 }
 
 /** SMS button with a ready reminder (or a link to add their phone number). */
@@ -900,6 +955,7 @@ function remindBtn(u) {
   if (!u.c.phone) return `<a class="btn sm ghost" href="#/customer/${attr(u.c.id)}">Add phone${CHEV}</a>`;
   const t = L.today();
   const msg = `Hello ${u.c.name}, this is JonWin. A reminder that KSh ${Math.round(u.owed).toLocaleString("en")} ${u.due < t ? "was due on " + L.niceDate(u.due) : u.due === t ? "is due today" : "is due " + L.niceDate(u.due).toLowerCase()}. Thank you!`;
+  if (L.waNumber(u.c.phone)) return `<a class="btn sm" href="${attr(L.waLink(u.c.phone, msg))}">${ic("chat")}Remind</a>`;
   return `<a class="btn sm" href="sms:${attr(u.c.phone)}?body=${attr(encodeURIComponent(msg))}">${ic("message")}Remind</a>`;
 }
 
@@ -972,6 +1028,37 @@ function invoiceSpec(c) {
     empty: "Nothing.",
     note: owed ? "Please pay by M-Pesa or cash. Thank you for buying JonWin!" : "Nothing owed. Thank you for buying JonWin!",
   };
+}
+
+/** The balance message for a customer, for WhatsApp. */
+function balanceText(c) {
+  const u = L.unpaid().find((x) => x.c.id === c.id);
+  if (!u) return `Hello ${c.name}, this is JonWin. Thank you for buying from us!`;
+  const nice = (d) => (d === L.today() ? "today" : L.niceDate(d));
+  return [
+    `Hello ${c.name}, this is JonWin.`,
+    `Your balance is KSh ${Math.round(u.owed).toLocaleString("en")}, ${u.due < L.today() ? "it was due " + nice(u.due) : "please pay by " + nice(u.due)}.`,
+    "",
+    ...[...u.open].reverse().map((o) => `- ${L.niceDate(o.sale.date)}: ${L.itemsText(o.sale.items)}, KSh ${Math.round(o.owed).toLocaleString("en")}`),
+    "",
+    "You can pay by M-Pesa or cash. Thank you!",
+  ].join("\n");
+}
+
+/** The day summary as a WhatsApp message. */
+function summaryText(x) {
+  const k = (n) => "KSh " + Math.round(n).toLocaleString("en");
+  const out = [
+    `JonWin · ${L.DAYS[L.weekday(x.date)]} ${L.parse(x.date).getDate()} ${L.MONTHS[L.parse(x.date).getMonth()]}`,
+    `Sold: ${k(x.sum.total)} (${x.sum.count} sale${x.sum.count === 1 ? "" : "s"})`,
+    `Cash ${k(x.sum.cash)} · M-Pesa ${k(x.sum.mpesa)} · Pay later ${k(x.sum.later)}`,
+  ];
+  if (x.paidBack) out.push(`Paid back: ${k(x.paidBack)}`);
+  if (x.spent) out.push(`Spent: ${k(x.spent)}`);
+  out.push(`Profit: ${k(x.profit)}`, `Still owed: ${k(x.owedNow)}`);
+  if (x.dueNext.length) out.push(`Due tomorrow: ${x.dueNext.map((u) => u.c.name + " " + k(u.owed)).join(", ")}`);
+  if (x.ordersNext.length) out.push(`Orders tomorrow: ${x.ordersNext.map((o) => S.get(o.customer)?.name || "?").join(", ")}`);
+  return out.join("\n");
 }
 
 /** Profit after all expenses: this month big, today and since the start below. */
@@ -1210,6 +1297,31 @@ const ACTS = {
     for (const b of chart.querySelectorAll(".bar.on")) b.classList.remove("on");
     el.classList.add("on");
     chart.querySelector(".readout").innerHTML = readout({ d: el.dataset.d });
+  },
+  async mppaste() {
+    let text = "";
+    try {
+      text = await navigator.clipboard.readText();
+    } catch {
+      /* not allowed: she can paste into the box */
+    }
+    if (!text) return toast("Long-press the box below and choose Paste.", true), document.getElementById("mptext")?.focus();
+    readMp(text);
+  },
+  mpread() {
+    readMp(document.getElementById("mptext")?.value || "");
+  },
+  async mpsave() {
+    const { m, cid } = st.mp || {};
+    const c = S.get(cid);
+    if (!m || !c) return;
+    if (m.code && S.list("payment").some((p) => p.code === m.code && !p.voided)) return toast("Already saved.", true);
+    await S.save("payment", { date: m.date, customer: c.id, amount: m.amount, pay: "mpesa", code: m.code, note: "From M-Pesa message" });
+    // Learn their number when the message shows it in full.
+    if (!c.phone && /^0\d{9}$/.test(m.phone)) await S.save("customer", { id: c.id, phone: m.phone });
+    st.mp = null;
+    toast("Payment saved · " + L.money(m.amount));
+    go("#/customer/" + c.id);
   },
   setcol(el) {
     const it = st.sheet && itemsOf(st.sheet.t)[st.sheet.i];
@@ -1510,6 +1622,12 @@ async function loadPeople() {
   if (route().name === "team") render();
 }
 
+function readMp(text) {
+  const m = L.readMpesa(text);
+  st.mp = { text, m, cid: m ? L.matchCustomer(m)?.id || "" : "" };
+  render();
+}
+
 async function saveDraft() {
   const d = st.draft;
   const name = d.name.trim();
@@ -1764,6 +1882,7 @@ app.addEventListener("change", (e) => {
 
 window.addEventListener("hashchange", () => {
   st.sheet = null;
+  if (route().name !== "mpesa") st.mp = null;
   st.askDue = null;
   render();
   window.scrollTo(0, 0);

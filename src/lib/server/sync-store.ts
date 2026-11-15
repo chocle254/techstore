@@ -70,9 +70,15 @@ export async function resetRecords(db: DB, userId: string, kinds: string[]) {
 
 const PAGE = 1000;
 
-export async function pullChanges(db: DB, since: number) {
-  const res = await db.execute(sql`
-    select id, kind, data, u, del, seq from sync_records where seq > ${since} order by seq limit ${PAGE}`);
+/** Records changed after `since`; with `kinds`, only those kinds (a Production phone). */
+export async function pullChanges(db: DB, since: number, kinds: string[] | null = null) {
+  const res = kinds
+    ? await db.execute(sql`
+        select id, kind, data, u, del, seq from sync_records
+        where seq > ${since} and kind in (select jsonb_array_elements_text(${JSON.stringify(kinds)}::jsonb))
+        order by seq limit ${PAGE}`)
+    : await db.execute(sql`
+        select id, kind, data, u, del, seq from sync_records where seq > ${since} order by seq limit ${PAGE}`);
   const rows = rowsOf(res);
   const changes = rows.map((r) => ({ id: r.id, kind: r.kind, data: r.data, u: Number(r.u), del: Boolean(r.del) }));
   const last = rows.length ? Number(rows[rows.length - 1].seq) : since;

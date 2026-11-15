@@ -349,3 +349,96 @@ export function customerPrice(cid, p, ml) {
   }
   return best?.price || 0;
 }
+
+// ---------- M-Pesa messages ----------
+/**
+ * Read an M-Pesa "received" message, e.g.
+ * "QK12ABC3DE Confirmed. You have received Ksh1,700.00 from ANN CHEBET 0712345678 on 15/11/26 at 4:35 PM ..."
+ * Returns { code, amount, name, phone, date } or null when no amount is found.
+ */
+export function readMpesa(text) {
+  const t = String(text || "").replace(/\s+/g, " ").trim();
+  const amt = /(?:received|receive)\D{0,20}?Ksh\.?\s?([\d,]+(?:\.\d{1,2})?)/i.exec(t) || /Ksh\.?\s?([\d,]+(?:\.\d{1,2})?)/i.exec(t);
+  if (!amt) return null;
+  const amount = Math.round(Number(amt[1].replace(/,/g, "")));
+  if (!amount) return null;
+  const code = (/\b([A-Z0-9]{10})\b(?=\s+Confirmed)/i.exec(t) || /^([A-Z0-9]{10})\b/.exec(t) || [])[1] || "";
+  const from = /from\s+(.+?)(?:\s+(\+?254|0)\s?[17][\d*\s]{6,12}\d|\s+on\s+\d|\.|$)/i.exec(t.slice(amt.index));
+  const name = from ? from[1].replace(/\s+\d.*$/, "").trim() : "";
+  const ph = /(?:\+?254|\b0)\s?([17][\d*]{2}\s?[\d*]{3}\s?[\d*]{3})/.exec(t.slice(amt.index));
+  const phone = ph ? "0" + ph[1].replace(/\s/g, "") : "";
+  const dm = /\bon (\d{1,2})\/(\d{1,2})\/(\d{2,4})/.exec(t);
+  let date = today();
+  if (dm) {
+    const y = dm[3].length === 2 ? "20" + dm[3] : dm[3];
+    const d = y + "-" + pad(Number(dm[2])) + "-" + pad(Number(dm[1]));
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d) && d <= today()) date = d;
+  }
+  return { code: code.toUpperCase(), amount, name, phone, date };
+}
+
+const digits = (s) => String(s || "").replace(/\D/g, "");
+/** Same phone? Handles 07…/254… and M-Pesa's hidden digits ("0712***678"). */
+function samePhone(a, b) {
+  const x = String(a || "").replace(/[^\d*]/g, "").replace(/^254/, "0");
+  const y = digits(b).replace(/^254/, "0");
+  if (x.length < 9 || y.length < 9) return false;
+  const xs = x.slice(-9);
+  const ys = y.slice(-9);
+  for (let i = 0; i < 9; i++) if (xs[i] !== "*" && xs[i] !== ys[i]) return false;
+  return true;
+}
+const words = (s) => String(s || "").toLowerCase().split(/[^a-z]+/).filter((w) => w.length > 1);
+
+/** The customer a payment is most likely from: by phone first, then by name. People who owe come first. */
+export function matchCustomer(m) {
+  const owe = balances();
+  const all = customers();
+  const byPhone = all.filter((c) => m.phone && samePhone(m.phone, c.phone));
+  if (byPhone.length) return byPhone.sort((a, b) => (owe[b.id] || 0) - (owe[a.id] || 0))[0];
+  const mw = words(m.name);
+  if (!mw.length) return null;
+  let best = null;
+  let bestScore = 0;
+  for (const c of all) {
+    const cw = words(c.name);
+    const hits = cw.filter((w) => mw.includes(w)).length;
+    if (!hits) continue;
+    const score = hits * 10 + (owe[c.id] > 0 ? 5 : 0) - Math.abs(cw.length - hits);
+    if (score > bestScore) (best = c), (bestScore = score);
+  }
+  return best;
+}
+
+// ---------- WhatsApp ----------
+/** "0712 345 678" → "254712345678" for wa.me links, or "" if it doesn't look like a Kenyan mobile. */
+export function waNumber(phone) {
+  let d = digits(phone);
+  if (d.startsWith("0")) d = "254" + d.slice(1);
+  else if (d.length === 9 && /^[17]/.test(d)) d = "254" + d;
+  return /^254[17]\d{8}$/.test(d) ? d : "";
+}
+export const waLink = (phone, text) => "https://wa.me/" + waNumber(phone) + "?text=" + encodeURIComponent(text);
+
+// ---------- Day summary ----------
+export function daySummary(date) {
+  const sum = sumSales(salesOn(date));
+  const paid = list("payment").filter((p) => p.date === date && !p.voided);
+  const exp = list("expense").filter((e) => e.date === date).reduce((a, e) => a + (e.amount || 0), 0);
+  const chem = list("chemmove")
+    .filter((x) => x.type === "buy" && x.date === date)
+    .reduce((a, x) => a + (x.cost || 0), 0);
+  const owedNow = Object.values(balances()).reduce((a, b) => a + Math.max(0, b), 0);
+  const next = addDays(date, 1);
+  return {
+    date,
+    sum,
+    paidBack: paid.reduce((a, p) => a + p.amount, 0),
+    spent: exp + chem,
+    profit: profit(date).profit,
+    owedNow,
+    dueNext: unpaid().filter((u) => u.due === next),
+    lateNow: unpaid().filter((u) => u.due < date),
+    ordersNext: booked().filter((o) => o.date === next),
+  };
+}
