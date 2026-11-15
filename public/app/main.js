@@ -211,6 +211,7 @@ const VIEWS = {
       "JonWin",
       `${installEvt ? `<button class="btn install" data-act="install">📲 Install the app on this phone</button>` : ""}
 ${heroCard(t, stops, sum, todayPlan)}
+${profitCard(t)}
 ${next ? planCard(next, true) : ""}
 ${short.length ? `<section class="card warn"><h3>⚠ Not enough chemicals for the plan</h3>${short.map((x) => `<a class="row" href="#/chem/${attr(x.p.id)}"><span>${dot(x.p)}${esc(x.p.name)}</span><span>need ${x.need} batches · have ${Math.max(0, x.have)} ›</span></a>`).join("")}</section>` : ""}
 ${(() => {
@@ -740,7 +741,8 @@ ${
 ${installEvt ? `<button class="btn install" data-act="install">📲 Install the app on this phone</button>` : ""}
 <section class="card list"><a class="row link" href="#/password"><span>Change password</span><span>›</span></a>
 <a class="row link" href="#" data-act="backup"><span>Save a backup file</span><span>›</span></a></section>
-<button class="btn ghost red" data-act="logout">Log out</button>`,
+<button class="btn ghost red" data-act="logout">Log out</button>
+${isBoss() ? `<section class="card warn"><h3>Start fresh</h3><p class="muted small">Clears all sales, orders, customers, money owed, expenses, cooking, stock and chemicals on every phone. Products, prices, route days and team logins stay. This can't be undone, so save a backup file first.</p><button class="btn danger" data-act="reset">Reset all records</button></section>` : ""}`,
     ];
   },
 
@@ -748,6 +750,18 @@ ${installEvt ? `<button class="btn install" data-act="install">📲 Install the 
     return ["Change password", passwordView(false), "#/account"];
   },
 };
+
+/** Profit after all expenses: this month big, today and since the start below. */
+function profitCard(t) {
+  const m = L.profit(t.slice(0, 7));
+  const d = L.profit(t);
+  const all = L.profit("");
+  const cls = (n) => (n < 0 ? "red" : "green");
+  return `<a class="card link" href="#/reports"><div class="row"><h3>Profit this month</h3><span>›</span></div>
+<div class="big ${cls(m.profit)}">${L.money(m.profit)}</div>
+<div class="muted small">Sales ${L.money(m.sales)} − expenses ${L.money(m.costs)}</div>
+<div class="row small"><span>Today <b class="${cls(d.profit)}">${L.money(d.profit)}</b></span><span>Since start <b class="${cls(all.profit)}">${L.money(all.profit)}</b></span></div></a>`;
+}
 
 /** Today's card: place, the day's total, and how it was paid as one split bar. */
 function heroCard(t, stops, sum, todayPlan) {
@@ -1151,6 +1165,23 @@ const ACTS = {
     }
     await S.setMeta({ me: null });
     go("#/home");
+  },
+  async reset() {
+    if (!isBoss()) return;
+    const typed = prompt('This deletes all records on every phone. Type RESET to confirm.');
+    if (typed == null) return;
+    if (typed.trim().toUpperCase() !== "RESET") return toast("Not reset. You must type RESET.", true);
+    if (!navigator.onLine) return toast("Needs internet.", true);
+    try {
+      await S.sync(); // send anything still on this phone first, so it is cleared too
+      const r = await api("/api/reset", { confirm: "RESET" });
+      await S.sync();
+      st.cart = [];
+      toast(r.cleared + " records cleared. Fresh start!");
+      go("#/home");
+    } catch (e) {
+      toast(e.message, true);
+    }
   },
   hidepw() {
     st.tempPw = "";

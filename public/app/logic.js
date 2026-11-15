@@ -215,3 +215,19 @@ export function sumSales(sales) {
 }
 
 export const EXPENSE_CATS = ["Chemicals", "Containers", "Labels", "Transport", "Rent", "Tips", "Food", "Other"];
+
+// ---------- Profit ----------
+/**
+ * Sales (pay-later included, cancelled ones not) minus every expense and chemicals bought,
+ * for dates starting with `prefix` ("2026-11" for a month, "" for everything).
+ */
+export function profit(prefix = "") {
+  const sales = sumSales(list("sale").filter((s) => s.date.startsWith(prefix))).total;
+  const exp = list("expense")
+    .filter((e) => e.date.startsWith(prefix))
+    .reduce((a, e) => a + (e.amount || 0), 0);
+  const chem = list("chemmove")
+    .filter((x) => x.type === "buy" && x.date.startsWith(prefix))
+    .reduce((a, x) => a + (x.cost || 0), 0);
+  return { sales, costs: exp + chem, profit: sales - exp - chem };
+}

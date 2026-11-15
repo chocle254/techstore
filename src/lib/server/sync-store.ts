@@ -49,6 +49,25 @@ export async function pushChanges(db: DB, userId: string, changes: SyncChange[])
   });
 }
 
+/**
+ * Mark every live record of these kinds as deleted. The deletes get new seq numbers and a newer `u`,
+ * so every phone drops its copies on its next sync, and older unsent edits can't bring them back.
+ */
+export async function resetRecords(db: DB, userId: string, kinds: string[]) {
+  const now = Date.now();
+  const kindList = JSON.stringify(kinds);
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(771001)`);
+    const res = await tx.execute(sql`
+      update sync_records set
+        del = true, data = '{}'::jsonb, u = greatest(u + 1, ${now}::bigint),
+        by_user = ${userId}::uuid, seq = nextval('sync_seq'), saved_at = now()
+      where del = false and kind in (select jsonb_array_elements_text(${kindList}::jsonb))
+      returning id`);
+    return rowsOf(res).length;
+  });
+}
+
 const PAGE = 1000;
 
 export async function pullChanges(db: DB, since: number) {

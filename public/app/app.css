@@ -245,6 +245,7 @@ input:disabled, select:disabled { opacity: 0.7; }
 .btn.ghost { background: var(--card); color: var(--brand); box-shadow: var(--clay-sm); display: flex; width: 100%; margin-top: 10px; }
 .btn.sm.ghost { display: inline-flex; width: auto; margin: 0; }
 .btn.ghost.red { color: var(--red); }
+.btn.danger { background: var(--red); color: #fff; }
 .btn.install { display: flex; width: 100%; margin-bottom: 14px; background: var(--card); color: var(--brand); box-shadow: var(--clay-sm); }
 .btn.cash { background: linear-gradient(180deg, var(--cash-1), var(--cash-2)); }
 .btn.mpesa { background: linear-gradient(180deg, var(--mpesa-1), var(--mpesa-2)); }
