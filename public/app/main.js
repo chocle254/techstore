@@ -54,7 +54,7 @@ const ROLE_NAME = { boss: "Boss", helper: "Helper", cook: "Production" };
 const roleText = (roles) => (roles || []).filter((r) => ROLE_NAME[r]).map((r) => ROLE_NAME[r]).join(", ");
 /** Production only sees what to make and the chemicals. */
 const isProd = () => !isBoss() && !!me()?.roles?.includes("cook");
-const PROD_VIEWS = new Set(["make", "chems", "chem", "account", "password"]);
+const PROD_VIEWS = new Set(["make", "cook", "chems", "chem", "account", "password"]);
 
 // Screen state that must survive a redraw (cart, order being written, …).
 const st = { cart: [], cartPlace: null, cartCustomer: "", draft: null, showPast: false, sheet: null, askDue: null, mp: null, people: null, peopleErr: "", tempPw: "" };
@@ -130,7 +130,7 @@ function syncPill() {
 }
 
 function shell(name, title, body, back) {
-  const active = SUB[name] || name;
+  const active = isProd() && name === "cook" ? "make" : SUB[name] || name;
   return `<header class="top">${back ? `<a class="back" href="${attr(back)}" aria-label="Back">${ic("back")}</a>` : ""}<h1>${esc(title)}</h1>${syncPill()}</header>
 <main>${body}</main>
 <nav class="tabs">${(isProd() ? PROD_NAV : NAV).map(([k, i, t]) => `<a href="#/${k}" class="${k === active ? "on" : ""}">${ic(i)}<span>${t}</span></a>`).join("")}</nav>`;
@@ -521,7 +521,7 @@ ${d.rows
   .filter((r) => r.batches)
   .map(
     (r) => `<div class="mk"><span>${dot(r.p)}<b>${esc(r.p.short || r.p.name)}</b></span><span>${r.col ? `<span class="tag col">${sw(true)}${r.col} coloured</span>` : ""}${r.plain ? `<span class="tag plain">${sw(false)}${r.plain} no colour</span>` : ""}</span></div>
-<div class="muted tiny">${[r.forOrders ? r.forOrders + " for orders" : "", r.extra ? r.extra + " to sell" : ""].filter(Boolean).join(" + ")}</div>`,
+<div class="row"><span class="muted tiny">${[r.forOrders ? r.forOrders + " for orders" : "", r.extra ? r.extra + " to sell" : ""].filter(Boolean).join(" + ")}</span><a class="btn sm" href="#/cook/${attr(r.p.id)}/${r.batches}">Cooked</a></div>`,
   )
   .join("")}</section>`;
     })
@@ -544,21 +544,22 @@ ${L.chemLasts()
     ];
   },
 
-  cook(pid) {
+  cook(pid, nb) {
     const p = S.get(pid) || L.products()[0];
     const bl = p.batchL || 25;
+    const nn = Math.max(1, Math.round(Number(nb)) || 1);
     const left = L.chemLeft()[p.id] || 0;
     return [
       "Cooked",
       `<form data-form="cook" class="card">
 <label>Product<select name="p" data-change="cookp">${opts(L.products().map((x) => ({ v: x.id, t: x.name })), p.id)}</select></label>
-<div class="two"><label>Batches<input name="n" type="number" inputmode="numeric" min="1" step="1" value="1" data-litres="${bl}" required></label>
-<label>Litres made<input name="litres" type="number" inputmode="decimal" min="0" step="0.5" value="${bl}" required></label></div>
+<div class="two"><label>Batches<input name="n" type="number" inputmode="numeric" min="1" step="1" value="${nn}" data-litres="${bl}" required></label>
+<label>Litres made<input name="litres" type="number" inputmode="decimal" min="0" step="0.5" value="${bl * nn}" required></label></div>
 <label>Day<input name="date" type="date" value="${L.today()}" required></label>
 <label>Note<input name="note" placeholder="optional"></label>
 <p class="${left < 1 ? "sendnote" : "muted small"}">Chemicals for ${Math.max(0, left)} batch${left === 1 ? "" : "es"} left. Cooking takes them off.</p>
 <button class="btn big">Save</button></form>`,
-      "#/stock",
+      isProd() ? "#/make" : "#/stock",
     ];
   },
 
@@ -1683,7 +1684,7 @@ const FORMS = {
     const litres = num(fd.get("litres"));
     await S.save("batch", { date: fd.get("date"), p: p.id, n, litres, note: String(fd.get("note")).trim() });
     toast(`Saved · ${p.name} +${L.litres(litres)}`);
-    go("#/stock");
+    go(isProd() ? "#/make" : "#/stock");
   },
   async chembuy(fd) {
     const qty = Math.round(num(fd.get("qty")));
