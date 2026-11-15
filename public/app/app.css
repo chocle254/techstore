@@ -193,6 +193,9 @@ main { padding: 4px 16px calc(104px + env(safe-area-inset-bottom)); max-width: 6
 .strip { display: block; margin-top: 12px; padding: 12px 14px; border-radius: var(--r-sm); background: var(--brand-soft); color: var(--ink); font-weight: 700; }
 .plan { padding: 10px 0; border-bottom: 1px solid var(--line); }
 .plan:last-child { border-bottom: 0; }
+.who { margin-top: 8px; padding: 4px 12px; border-radius: 14px; background: var(--well); }
+.who .row { padding: 8px 0; border-bottom: 1px solid var(--line); text-align: left; }
+.who .row:last-child { border-bottom: 0; }
 
 /* ---------- Chart ---------- */
 .chart { margin-top: 6px; }

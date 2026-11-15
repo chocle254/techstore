@@ -903,7 +903,7 @@ function walkInNote(p) {
 }
 
 function planRow(d) {
-  return `<div class="plan"><div class="row"><b>${esc(L.niceDate(d.date))}${d.stops.length ? " · " + esc(d.stops.map((s) => s.name).join(", ")) : ""}</b><span class="muted small">${d.orders.length} orders${d.orders.some(isSend) ? " · " + d.orders.filter(isSend).length + " to send" : ""}</span></div>${
+  return `<div class="plan"><div class="row"><b>${esc(L.niceDate(d.date))}${d.stops.length ? " · " + esc(d.stops.map((s) => s.name).join(", ")) : ""}</b><span class="muted small">${d.orders.length} order${d.orders.length === 1 ? "" : "s"}${d.orders.some(isSend) ? " · " + d.orders.filter(isSend).length + " to send" : ""}</span></div>${
     d.rows.length
       ? d.rows
           .map(
@@ -914,7 +914,18 @@ function planRow(d) {
           )
           .join("")
       : `<div class="muted small">Nothing booked.</div>`
-  }</div>`;
+  }${whoOrdered(d.orders)}</div>`;
+}
+
+/** Who ordered for the day: name, what, how much. Tap to open the order. */
+function whoOrdered(orders) {
+  if (!orders.length) return "";
+  return `<div class="who">${orders
+    .map((o) => {
+      const c = S.get(o.customer);
+      return `<a class="row small link" href="#/order/${attr(o.id)}"><span>👤 <b>${esc(c?.name || "?")}</b>${o.date < L.today() ? ` <span class="red">late</span>` : ""}${isSend(o) ? ` <span class="badge send">📦 Send</span>` : ""}<br><span class="muted">${esc(L.itemsText(o.items))}</span></span><span>${L.money(L.itemsTotal(o.items))} ›</span></a>`;
+    })
+    .join("")}</div>`;
 }
 
 function planCard(d) {
