@@ -1915,7 +1915,7 @@ document.addEventListener("visibilitychange", () => {
 });
 setInterval(() => {
   if (document.visibilityState === "visible") S.sync().then(seedIfEmpty);
-}, 60000);
+}, 5 * 60000); // every 5 minutes while open: saves still send at once, opening the app syncs at once
 
 // ---------- Reminders ----------
 // Once a day: money due today or late (not for Production), and chemicals down to 1 batch.
