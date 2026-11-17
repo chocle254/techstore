@@ -395,3 +395,22 @@ body.lock { overflow: hidden; }
 .tag.col .sw.col { box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.85); }
 .two > .btn { margin-top: 0; align-self: stretch; }
 textarea { resize: vertical; line-height: 1.4; font-size: 15px; }
+
+/* Record my day: one question per screen */
+.btn.dayrec { font-size: 19px; min-height: 62px; }
+.steps { display: flex; gap: 5px; margin: 4px 0 6px; }
+.steps i { flex: 1; height: 6px; border-radius: 99px; background: var(--line); }
+.steps i.on { background: var(--brand); }
+h2.ask { font-size: 23px; line-height: 1.25; margin: 6px 0 14px; }
+.qgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+.qbox { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 0; font-weight: 800; font-size: 16px; }
+.qbox input { margin: 0; text-align: center; font-size: 22px; font-weight: 800; padding: 10px 4px; }
+.qbox small { font-weight: 600; font-size: 12px; }
+.card.live { text-align: center; font-weight: 700; background: var(--brand-soft); box-shadow: none; }
+.payrow { display: grid; grid-template-columns: minmax(0, 1fr) 96px auto; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.payrow input { margin: 0; text-align: right; }
+.payrow .chip { min-width: 78px; }
+.spendrow { justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--line); color: var(--ink); }
+.spendrow input { max-width: 140px; }
+.stepnav { margin-top: 6px; }
+.stepnav .btn { width: 100%; margin: 0; min-height: 54px; }

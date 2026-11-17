@@ -41,6 +41,7 @@ const ICONS = {
   chat: '<path d="M4.5 19.5 5.6 16A8 8 0 1 1 8.4 18.6L4.5 19.5Z"/><path d="M9 10.5h6M9 13.5h4"/>',
   paste: '<rect x="5" y="4.5" width="14" height="16.5" rx="2"/><path d="M9 4.5V3.5h6v1M9 11h6M9 15h4"/>',
   sun: '<circle cx="12" cy="12" r="3.8"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/>',
+  clipboard: '<rect x="5" y="4.5" width="14" height="16.5" rx="2"/><path d="M9 4.5V3h6v1.5M8.5 11l1.5 1.5 3-3M8.5 16.5h7"/>',
   install: '<rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M12 7v7M9.3 11.5 12 14.2l2.7-2.7"/>',
 };
 const ic = (name, cls = "") => `<svg class="i${cls ? " " + cls : ""}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
@@ -57,7 +58,7 @@ const isProd = () => !isBoss() && !!me()?.roles?.includes("cook");
 const PROD_VIEWS = new Set(["make", "cook", "chems", "chem", "account", "password"]);
 
 // Screen state that must survive a redraw (cart, order being written, …).
-const st = { cart: [], cartPlace: null, cartCustomer: "", draft: null, showPast: false, sheet: null, askDue: null, mp: null, people: null, peopleErr: "", tempPw: "" };
+const st = { cart: [], cartPlace: null, cartCustomer: "", draft: null, showPast: false, sheet: null, askDue: null, mp: null, people: null, peopleErr: "", tempPw: "", day: null };
 let editing = false;
 let installEvt = null;
 
@@ -111,7 +112,7 @@ const PROD_NAV = [
   ["chems", "flask", "Chemicals"],
   ["account", "user", "Account"],
 ];
-const SUB = { mpesa: "home", summary: "home", sales: "more", owed: "more", customers: "more", customer: "more", expenses: "more", reports: "more", products: "more", product: "more", places: "more", team: "more", account: "more", order: "orders", chem: "chems", password: "account" };
+const SUB = { day: "home", mpesa: "home", summary: "home", sales: "more", owed: "more", customers: "more", customer: "more", expenses: "more", reports: "more", products: "more", product: "more", places: "more", team: "more", account: "more", order: "orders", chem: "chems", password: "account" };
 
 function syncPill() {
   const m = S.getMeta();
@@ -296,6 +297,7 @@ const VIEWS = {
     return [
       "JonWin",
       `${installEvt ? `<button class="btn install" data-act="install">${ic("install")}Install the app on this phone</button>` : ""}
+${dayButton()}
 ${heroCard(t, stops, sum, todayPlan)}
 ${new Date().getHours() >= 17 ? `<a class="card row link" href="#/summary"><span class="rowlabel">${ic("sun")}<b>Today's summary</b></span><span class="muted">Share${CHEV}</span></a>` : ""}
 ${dueCard(t)}
@@ -1091,6 +1093,12 @@ function profitCard(t) {
 }
 
 /** Today's card: place, the day's total, and how it was paid as one split bar. */
+/** The big way in for recording a whole day at once, when she gets home. */
+function dayButton() {
+  const d = hasDayDraft() ? dayState() : null;
+  return `<a class="btn big dayrec" href="#/day">${ic("clipboard")}${d ? "Finish recording " + esc(L.niceDate(d.date)) : "Record my day"}</a>`;
+}
+
 function heroCard(t, stops, raw, todayPlan) {
   // Pay-later money already paid back counts as cash / M-Pesa, so the orange part shrinks or goes.
   const pb = L.paidBack(t);
@@ -1273,6 +1281,450 @@ function orderRow(o) {
   const c = S.get(o.customer);
   return `<a class="row link order" href="#/order/${attr(o.id)}"><span><b>${esc(c?.name || "?")}</b>${o.status === "booked" && isSend(o) ? ` <span class="badge send">Send · ${esc(L.placeName(o.place))}</span>` : ""}${o.status !== "booked" ? ` <span class="badge ${o.status}">${o.status === "done" ? "delivered" : "cancelled"}</span>` : ""}<br><span class="muted small">${esc(L.itemsText(o.items))}${o.note ? " · " + esc(o.note) : ""}</span></span><span>${L.money(L.itemsTotal(o.items))}${CHEV}</span></a>`;
 }
+
+// ---------- Record the day: one question at a time ----------
+// For when she comes home with everything in her head or on paper. Nothing is saved until the last step,
+// and the answers stay on the phone (in case the app closes) until then.
+const DAY_KEY = "jw-day-draft";
+const SPEND_CATS = ["Transport", "Food", "Containers", "Labels", "Tips", "Other"];
+const kOf = (p, ml) => p + "|" + ml;
+const unK = (k) => {
+  const i = k.lastIndexOf("|");
+  return { p: k.slice(0, i), ml: Number(k.slice(i + 1)) };
+};
+const cnt = (v) => Math.max(0, Math.round(num(v)));
+
+function newDay(date = L.today()) {
+  return { step: 0, date, place: L.placeFor(date)[0]?.id || "", mode: "pack", pack: {}, back: {}, sold: {}, orders: {}, credit: [], paid: {}, spent: {}, cash: "", mpesa: "" };
+}
+function dayState() {
+  if (st.day) return st.day;
+  try {
+    const raw = localStorage.getItem(DAY_KEY);
+    if (raw) st.day = JSON.parse(raw);
+  } catch {
+    /* private mode or bad data: start again */
+  }
+  return st.day;
+}
+function keepDay() {
+  try {
+    if (st.day) localStorage.setItem(DAY_KEY, JSON.stringify(st.day));
+    else localStorage.removeItem(DAY_KEY);
+  } catch {
+    /* private mode: the answers just aren't kept if the app closes */
+  }
+}
+const hasDayDraft = () => {
+  const d = dayState();
+  return !!d && (d.step > 0 || Object.keys(d.pack).length > 0);
+};
+
+/** Bottles sold, per product|size. */
+function daySold(d) {
+  const out = {};
+  if (d.mode === "sold") {
+    for (const [k, v] of Object.entries(d.sold)) if (cnt(v)) out[k] = cnt(v);
+  } else {
+    for (const [k, v] of Object.entries(d.pack)) {
+      const n = cnt(v) - Math.min(cnt(v), cnt(d.back[k]));
+      if (n) out[k] = n;
+    }
+  }
+  return out;
+}
+function dayCreditUsed(d) {
+  const out = {};
+  for (const c of d.credit) for (const [k, v] of Object.entries(c.items || {})) out[k] = (out[k] || 0) + cnt(v);
+  return out;
+}
+/** Bottles paid for there and then (sold minus pay later). */
+function dayPaidItems(d) {
+  const sold = daySold(d);
+  const used = dayCreditUsed(d);
+  const out = {};
+  for (const [k, n] of Object.entries(sold)) if (n - (used[k] || 0) > 0) out[k] = n - (used[k] || 0);
+  return out;
+}
+const mapBottles = (m) => Object.values(m).reduce((a, n) => a + n, 0);
+const mapValue = (m, cid) => Object.entries(m).reduce((a, [k, n]) => {
+  const { p, ml } = unK(k);
+  return a + n * ((cid && L.customerPrice(cid, p, ml)) || L.priceOf(p, ml));
+}, 0);
+const mapItems = (m, cid) =>
+  Object.entries(m)
+    .filter(([, n]) => n > 0)
+    .map(([k, n]) => {
+      const { p, ml } = unK(k);
+      return { p, ml, qty: n, price: (cid && L.customerPrice(cid, p, ml)) || L.priceOf(p, ml) };
+    });
+const dayOrders = (d) => L.booked().filter((o) => o.date <= d.date).sort((a, b) => a.date.localeCompare(b.date));
+const dayOwing = (d) => {
+  const bal = L.balances();
+  return L.customers()
+    .filter((c) => bal[c.id] > 0)
+    .map((c) => ({ c, owes: bal[c.id] }))
+    .sort((a, b) => (b.c.place === d.place) - (a.c.place === d.place) || b.owes - a.owes);
+};
+/** The money picture: what the bottles were worth against the cash and M-Pesa she says she got. */
+function dayMoney(d) {
+  let orderCash = 0;
+  let orderMp = 0;
+  for (const o of dayOrders(d)) {
+    const how = d.orders[o.id];
+    if (how === "cash") orderCash += L.itemsTotal(o.items);
+    if (how === "mpesa") orderMp += L.itemsTotal(o.items);
+  }
+  let payCash = 0;
+  let payMp = 0;
+  for (const x of Object.values(d.paid)) {
+    const a = cnt(x.amount);
+    if (x.pay === "mpesa") payMp += a;
+    else payCash += a;
+  }
+  const spent = Object.values(d.spent).reduce((a, v) => a + cnt(v), 0);
+  const expected = mapValue(dayPaidItems(d));
+  const typed = d.cash !== "" || d.mpesa !== "";
+  // Cash she spent on the way came out of the sales money, so add it back.
+  const cashSales = Math.max(0, cnt(d.cash) + spent - orderCash - payCash);
+  const mpSales = Math.max(0, cnt(d.mpesa) - orderMp - payMp);
+  return { orderCash, orderMp, payCash, payMp, spent, expected, typed, cashSales, mpSales, got: cashSales + mpSales, diff: cashSales + mpSales - expected };
+}
+
+function daySteps(d) {
+  const s = ["day", d.mode === "sold" ? "sold" : "pack"];
+  if (d.mode !== "sold") s.push("back");
+  if (dayOrders(d).length) s.push("orders");
+  s.push("credit");
+  if (dayOwing(d).length) s.push("paid");
+  s.push("spent", "money", "check");
+  return s;
+}
+
+/** Number boxes for each product and size. */
+function qtyGrid(path, values, only, hint) {
+  return L.products()
+    .map((p) => {
+      const sizes = (p.sizes || []).filter((s) => !only || only[kOf(p.id, s.ml)]);
+      if (!sizes.length) return "";
+      return `<section class="card"><div class="pname">${dot(p)}${esc(p.short || p.name)}</div><div class="qgrid">${sizes
+        .map((s) => {
+          const k = kOf(p.id, s.ml);
+          const v = values[k];
+          return `<label class="qbox"><span>${L.size(s.ml)}</span><input type="number" inputmode="numeric" min="0" ${only ? `max="${only[k]}"` : ""} data-dq="${attr(path + "." + k)}" value="${attr(v ?? "")}" placeholder="0">${hint ? `<small class="muted">${esc(hint(k))}</small>` : ""}</label>`;
+        })
+        .join("")}</div></section>`;
+    })
+    .join("");
+}
+const dueChips = (path, cur, from) =>
+  `<div class="daypick">${[
+    [3, "3 days"],
+    [7, "1 week"],
+    [14, "2 weeks"],
+    [30, "1 month"],
+  ]
+    .map(([n, l]) => {
+      const v = L.addDays(from, n);
+      return `<button type="button" class="chip${cur === v ? " on" : ""}" data-act="dayset" data-path="${attr(path)}" data-v="${v}">${l}</button>`;
+    })
+    .join("")}</div>`;
+
+function dayLive(d, name) {
+  if (name === "pack") {
+    const n = mapBottles(Object.fromEntries(Object.entries(d.pack).map(([k, v]) => [k, cnt(v)])));
+    return n ? `${n} bottle${n === 1 ? "" : "s"} packed` : "Nothing packed yet";
+  }
+  if (name === "back" || name === "sold") {
+    const s = daySold(d);
+    const n = mapBottles(s);
+    return n ? `Sold ${n} bottle${n === 1 ? "" : "s"} · worth ${L.money(mapValue(s))}` : "Nothing sold";
+  }
+  if (name === "credit") {
+    const v = d.credit.reduce((a, c) => a + mapValue(Object.fromEntries(Object.entries(c.items || {}).map(([k, x]) => [k, cnt(x)])), L.findCustomer(c.name || "")?.id), 0);
+    return v ? `Pay later: ${L.money(v)}` : "";
+  }
+  if (name === "paid") {
+    const v = Object.values(d.paid).reduce((a, x) => a + cnt(x.amount), 0);
+    return v ? `Paid back: ${L.money(v)}` : "";
+  }
+  if (name === "spent") {
+    const v = Object.values(d.spent).reduce((a, x) => a + cnt(x), 0);
+    return v ? `Spent: ${L.money(v)}` : "";
+  }
+  if (name === "money") return moneyCheck(d);
+  return "";
+}
+function moneyCheck(d) {
+  const m = dayMoney(d);
+  if (!m.typed) return `Bottles sold for money were worth <b>${L.money(m.expected)}</b>.`;
+  const ok = Math.abs(m.diff) < 1;
+  return `Bottles worth <b>${L.money(m.expected)}</b> · money from them <b>${L.money(m.got)}</b><br>${
+    ok ? `<span class="green">It matches.</span>` : m.diff < 0 ? `<span class="red">${L.money(-m.diff)} less.</span> A discount, someone who'll pay later, or a count that's off?` : `<span class="green">${L.money(m.diff)} more.</span> Maybe higher prices, or bottles not counted?`
+  }`;
+}
+
+function dayView() {
+  let d = dayState();
+  if (!d) d = st.day = newDay();
+  const steps = daySteps(d);
+  if (d.step >= steps.length) d.step = steps.length - 1;
+  const name = steps[d.step];
+  const sold = daySold(d);
+  let q = "";
+  let body = "";
+  if (name === "day") {
+    const t = L.today();
+    const already = L.sumSales(L.salesOn(d.date));
+    q = "Which day are you recording?";
+    body = `<div class="daypick">${[0, 1, 2]
+      .map((n) => L.addDays(t, -n))
+      .map((x) => `<button type="button" class="chip${d.date === x ? " on" : ""}" data-act="daydate" data-v="${x}">${esc(L.niceDate(x))}</button>`)
+      .join("")}</div>
+<label>Or pick the day<input type="date" max="${t}" value="${attr(d.date)}" data-change="daydate"></label>
+${already.count ? `<p class="sendnote">${ic("receipt")}${already.count} sale${already.count > 1 ? "s" : ""} (${L.money(already.total)}) already recorded for this day. Only add what isn't recorded yet.</p>` : ""}
+<h3>Where did you go?</h3><div class="daypick">${[...L.places(), { id: "", name: "Other / shop" }]
+      .map((p) => `<button type="button" class="chip${d.place === p.id ? " on" : ""}" data-act="dayset" data-path="place" data-v="${attr(p.id)}">${esc(p.name)}</button>`)
+      .join("")}</div>`;
+  } else if (name === "pack") {
+    q = "How many bottles did you pack to sell?";
+    body = `<p class="muted small">Count every size you carried. Leave empty what you didn't take. Don't count booked orders here.</p>${qtyGrid("pack", d.pack)}
+<button type="button" class="btn ghost" data-act="daymode" data-v="sold">I didn't count what I packed. I know what I sold.</button>`;
+  } else if (name === "back") {
+    const packed = Object.fromEntries(Object.entries(d.pack).filter(([, v]) => cnt(v)).map(([k, v]) => [k, cnt(v)]));
+    q = "How many bottles came back?";
+    body = Object.keys(packed).length
+      ? `<p class="muted small">The ones not sold. Empty means all of that size was sold.</p>${qtyGrid("back", d.back, packed, (k) => "took " + packed[k])}`
+      : `<p class="card muted">You didn't pack anything, so nothing came back. Tap Next.</p>`;
+  } else if (name === "sold") {
+    q = "How many bottles did you sell?";
+    body = `<p class="muted small">All bottles sold, cash, M-Pesa and pay later together. Not booked orders.</p>${qtyGrid("sold", d.sold)}
+<button type="button" class="btn ghost" data-act="daymode" data-v="pack">I counted what I packed and what came back</button>`;
+  } else if (name === "orders") {
+    q = "Did these orders get delivered?";
+    const how = [
+      ["cash", "Cash"],
+      ["mpesa", "M-Pesa"],
+      ["later", "Pay later"],
+      ["no", "Not yet"],
+    ];
+    body = dayOrders(d)
+      .map((o) => {
+        const cur = d.orders[o.id] || "no";
+        return `<section class="card"><div class="row"><b>${esc(S.get(o.customer)?.name || "?")}</b><b>${L.money(L.itemsTotal(o.items))}</b></div><div class="muted small">${esc(L.niceDate(o.date))} · ${esc(L.itemsText(o.items))}</div>
+<div class="daypick">${how.map(([v, l]) => `<button type="button" class="chip${cur === v ? " on" : ""}" data-act="dayset" data-path="${attr("orders." + o.id)}" data-v="${v}">${l}</button>`).join("")}</div></section>`;
+      })
+      .join("");
+  } else if (name === "credit") {
+    q = "Did anyone take bottles to pay later?";
+    if (!mapBottles(sold)) body = `<p class="card muted">No bottles sold, so nobody took on pay later. Tap Next.</p>`;
+    else {
+      body = `${d.credit
+        .map((c, i) => {
+          const due = c.due || L.addDays(d.date, L.DUE_DAYS);
+          return `<section class="card"><div class="row"><h3>Person ${i + 1}</h3><button type="button" class="x" data-act="daycreditrm" data-i="${i}" aria-label="Remove">${ic("x")}</button></div>
+<label>Name<input list="custlist" data-dq="${attr("credit." + i + ".name")}" value="${attr(c.name || "")}" autocomplete="off" placeholder="Name"></label>
+<p class="muted small">What did they take?</p>${qtyGrid("credit." + i + ".items", c.items || {}, sold, (k) => "sold " + sold[k])}
+<h3>When will they pay?</h3>${dueChips("credit." + i + ".due", due, d.date)}</section>`;
+        })
+        .join("")}${custList()}
+<button type="button" class="btn ghost" data-act="daycreditadd">${ic("plus")}${d.credit.length ? "Someone else too" : "Yes, add a person"}</button>
+${d.credit.length ? "" : `<p class="muted center small">Nobody? Tap Next.</p>`}`;
+    }
+  } else if (name === "paid") {
+    q = "Did anyone pay back money they owed?";
+    body = `<p class="muted small">Write how much each person gave you. Leave empty for the rest.</p><section class="card">${dayOwing(d)
+      .map(({ c, owes }) => {
+        const x = d.paid[c.id] || {};
+        return `<div class="payrow"><div><b>${esc(c.name)}</b><div class="muted small">owes ${L.money(owes)}${c.place ? " · " + esc(L.placeName(c.place)) : ""}</div></div>
+<input type="number" inputmode="numeric" min="0" placeholder="0" data-dq="${attr("paid." + c.id + ".amount")}" value="${attr(x.amount ?? "")}" aria-label="Paid by ${attr(c.name)}">
+<button type="button" class="chip${x.pay === "mpesa" ? " on" : ""}" data-act="daypaypay" data-id="${attr(c.id)}">${x.pay === "mpesa" ? "M-Pesa" : "Cash"}</button></div>`;
+      })
+      .join("")}</section>`;
+  } else if (name === "spent") {
+    q = "Did you spend money on the way?";
+    body = `<p class="muted small">Cash you paid out today. Leave empty if nothing.</p><section class="card">${SPEND_CATS.map(
+      (c) => `<label class="ksh spendrow"><span>${esc(c)}</span><input type="number" inputmode="numeric" min="0" placeholder="0" data-dq="${attr("spent." + c)}" value="${attr(d.spent[c] ?? "")}"></label>`,
+    ).join("")}</section>`;
+  } else if (name === "money") {
+    const m = dayMoney(d);
+    q = "How much money did you get?";
+    body = `<section class="card"><label>Cash you brought home (KSh)<input type="number" inputmode="numeric" min="0" data-dq="cash" value="${attr(d.cash)}" placeholder="0"></label>
+<label>M-Pesa you received (KSh)<input type="number" inputmode="numeric" min="0" data-dq="mpesa" value="${attr(d.mpesa)}" placeholder="0"></label>
+<p class="muted small">All of it, together: from bottles${m.orderCash + m.orderMp ? ", orders" : ""}${m.payCash + m.payMp ? ", money paid back" : ""}. ${m.spent ? `Count the cash left after spending ${L.money(m.spent)}.` : ""}</p></section>`;
+  } else if (name === "check") {
+    const m = dayMoney(d);
+    const credit = d.credit.filter((c) => mapBottles(mapCnt(c.items)));
+    const ords = dayOrders(d).filter((o) => d.orders[o.id] && d.orders[o.id] !== "no");
+    const pays = Object.entries(d.paid).filter(([, x]) => cnt(x.amount));
+    const spent = Object.entries(d.spent).filter(([, v]) => cnt(v));
+    const line = (a, b) => `<div class="row"><span>${a}</span><b>${b}</b></div>`;
+    q = "Check, then save";
+    body = `<section class="card"><h3>${esc(L.niceDate(d.date))}${d.place ? " · " + esc(L.placeName(d.place)) : ""}</h3>
+${m.cashSales ? line("Sold for cash", L.money(m.cashSales)) : ""}${m.mpSales ? line("Sold for M-Pesa", L.money(m.mpSales)) : ""}
+${!m.got && !mapBottles(dayPaidItems(d)) ? `<p class="muted small">No cash or M-Pesa sales.</p>` : ""}
+${credit.map((c) => line("Pay later · " + esc(c.name || "?"), L.money(mapValue(mapCnt(c.items), L.findCustomer(c.name || "")?.id)))).join("")}
+${ords.map((o) => line("Order delivered · " + esc(S.get(o.customer)?.name || "?") + " · " + PAY[d.orders[o.id]], L.money(L.itemsTotal(o.items)))).join("")}
+${pays.map(([cid, x]) => line("Paid back · " + esc(S.get(cid)?.name || "?") + " · " + PAY[x.pay === "mpesa" ? "mpesa" : "cash"], L.money(cnt(x.amount)))).join("")}
+${spent.map(([c, v]) => line("Spent · " + esc(c), L.money(cnt(v)))).join("")}
+<p class="small">${moneyCheck(d)}</p></section>
+<button type="button" class="btn big" data-act="daysave">Save everything</button>`;
+  }
+  const live = dayLive(d, name);
+  const last = d.step === steps.length - 1;
+  return [
+    "Record my day",
+    `<div class="steps" aria-label="Step ${d.step + 1} of ${steps.length}">${steps.map((_, i) => `<i class="${i <= d.step ? "on" : ""}"></i>`).join("")}</div>
+<p class="muted small center">Question ${d.step + 1} of ${steps.length}</p>
+<h2 class="ask">${esc(q)}</h2>
+${body}
+${live && name !== "check" ? `<p class="card live" data-daylive="${name}">${live}</p>` : `<p data-daylive="${name}" hidden></p>`}
+<div class="two stepnav">${d.step ? `<button type="button" class="btn ghost" data-act="daystep" data-d="-1">${ic("back")}Back</button>` : `<button type="button" class="btn ghost red" data-act="dayquit">Stop</button>`}${last ? "<span></span>" : `<button type="button" class="btn" data-act="daystep" data-d="1">Next${CHEV}</button>`}</div>
+${d.step ? `<button type="button" class="btn ghost red" data-act="dayquit">Stop and throw away these answers</button>` : ""}`,
+    "#/home",
+  ];
+}
+const mapCnt = (m) => Object.fromEntries(Object.entries(m || {}).map(([k, v]) => [k, cnt(v)]).filter(([, n]) => n));
+VIEWS.day = dayView;
+
+/** Split the paid-for bottles into a cash part and an M-Pesa part that roughly match the money. */
+function splitBottles(items, cashAmt, mpAmt) {
+  if (!mpAmt) return { cash: items, mpesa: [] };
+  if (!cashAmt) return { cash: [], mpesa: items };
+  const bottles = items.flatMap((i) => Array.from({ length: i.qty }, () => i)).sort((a, b) => b.price - a.price);
+  const target = (L.itemsTotal(items) * mpAmt) / (cashAmt + mpAmt);
+  const mp = [];
+  const cash = [];
+  let v = 0;
+  for (const b of bottles) {
+    if (v + b.price <= target + b.price / 2) (mp.push(b), (v += b.price));
+    else cash.push(b);
+  }
+  const group = (list) => {
+    const out = [];
+    for (const b of list) {
+      const x = out.find((o) => o.p === b.p && o.ml === b.ml);
+      if (x) x.qty++;
+      else out.push({ p: b.p, ml: b.ml, qty: 1, price: b.price });
+    }
+    return out;
+  };
+  return { cash: group(cash), mpesa: group(mp) };
+}
+
+function daySetPath(path, v) {
+  const keys = path.split(".");
+  let o = st.day;
+  for (let i = 0; i < keys.length - 1; i++) o = o[keys[i]] ??= {};
+  o[keys[keys.length - 1]] = v;
+}
+
+const DAY_ACTS = {
+  daydate(el) {
+    const v = el.dataset.v;
+    st.day.date = v;
+    st.day.place = L.placeFor(v)[0]?.id || "";
+    keepDay();
+    render();
+  },
+  dayset(el) {
+    daySetPath(el.dataset.path, el.dataset.v);
+    keepDay();
+    render();
+  },
+  daymode(el) {
+    st.day.mode = el.dataset.v;
+    keepDay();
+    render();
+  },
+  daycreditadd() {
+    st.day.credit.push({ name: "", items: {}, due: L.addDays(st.day.date, L.DUE_DAYS) });
+    keepDay();
+    render();
+  },
+  daycreditrm(el) {
+    st.day.credit.splice(Number(el.dataset.i), 1);
+    keepDay();
+    render();
+  },
+  daypaypay(el) {
+    const x = (st.day.paid[el.dataset.id] ??= {});
+    x.pay = x.pay === "mpesa" ? "cash" : "mpesa";
+    keepDay();
+    render();
+  },
+  daystep(el) {
+    const d = st.day;
+    const steps = daySteps(d);
+    const name = steps[d.step];
+    const n = Number(el.dataset.d);
+    if (n > 0) {
+      if (name === "back") {
+        for (const [k, v] of Object.entries(d.back)) if (cnt(v) > cnt(d.pack[k])) return toast("More came back than you packed. Check the numbers.", true);
+      }
+      if (name === "credit") {
+        const sold = daySold(d);
+        const used = dayCreditUsed(d);
+        for (const c of d.credit) if (mapBottles(mapCnt(c.items)) && !String(c.name || "").trim()) return toast("Write the name of who took on pay later.", true);
+        for (const [k, u] of Object.entries(used)) if (u > (sold[k] || 0)) return toast("Pay later is more bottles than were sold. Check the numbers.", true);
+      }
+      if (name === "money") {
+        const m = dayMoney(d);
+        if (!m.typed && m.expected) return toast("Write the cash and the M-Pesa (0 if none).", true);
+      }
+    }
+    d.step = Math.max(0, d.step + n);
+    keepDay();
+    render();
+    window.scrollTo(0, 0);
+  },
+  dayquit() {
+    if (hasDayDraft() && !confirm("Throw away these answers? Nothing has been saved yet.")) return;
+    st.day = null;
+    keepDay();
+    go("#/home");
+  },
+  async daysave(el) {
+    const d = st.day;
+    el.disabled = true;
+    const time = d.date === L.today() ? L.nowTime() : "";
+    const m = dayMoney(d);
+    const base = { date: d.date, time, place: d.place || "", note: "Recorded with the day" };
+    // Delivered orders
+    for (const o of dayOrders(d)) {
+      const pay = d.orders[o.id];
+      if (!pay || pay === "no") continue;
+      const sale = await S.save("sale", { ...base, place: o.place || d.place || "", items: o.items, total: L.itemsTotal(o.items), pay, customer: o.customer, order: o.id, ...(pay === "later" ? { due: L.addDays(d.date, L.DUE_DAYS) } : {}) });
+      await S.save("order", { id: o.id, status: "done", sale: sale.id, doneOn: d.date });
+    }
+    // Pay later
+    for (const c of d.credit) {
+      const name = String(c.name || "").trim();
+      const it = mapCnt(c.items);
+      if (!name || !mapBottles(it)) continue;
+      let cust = L.findCustomer(name);
+      if (!cust) cust = await S.save("customer", { name, phone: "", place: d.place || "", note: "" });
+      const items = mapItems(it, cust.id);
+      await S.save("sale", { ...base, items, total: L.itemsTotal(items), pay: "later", customer: cust.id, due: c.due || L.addDays(d.date, L.DUE_DAYS) });
+    }
+    // Paid for there and then: totals are the money she actually got.
+    const paidItems = mapItems(dayPaidItems(d));
+    const split = splitBottles(paidItems, m.cashSales, m.mpSales);
+    if (m.cashSales || split.cash.length) await S.save("sale", { ...base, items: split.cash, total: m.cashSales, pay: "cash", customer: "" });
+    if (m.mpSales || split.mpesa.length) await S.save("sale", { ...base, items: split.mpesa, total: m.mpSales, pay: "mpesa", customer: "" });
+    // Paid back
+    for (const [cid, x] of Object.entries(d.paid)) {
+      const amount = cnt(x.amount);
+      if (amount && S.get(cid)) await S.save("payment", { date: d.date, customer: cid, amount, pay: x.pay === "mpesa" ? "mpesa" : "cash" });
+    }
+    // Spending
+    for (const [cat, v] of Object.entries(d.spent)) if (cnt(v)) await S.save("expense", { date: d.date, cat, amount: cnt(v), note: "Recorded with the day" });
+    st.day = null;
+    keepDay();
+    toast("Day saved");
+    go("#/summary/" + d.date);
+  },
+};
 
 // ---------- Actions (buttons) ----------
 const ACTS = {
@@ -1627,6 +2079,8 @@ const ACTS = {
   },
 };
 
+Object.assign(ACTS, DAY_ACTS);
+
 async function loadPeople() {
   st.peopleLoading = true;
   try {
@@ -1855,6 +2309,18 @@ app.addEventListener("input", (e) => {
   const el = e.target;
   editing = true;
   if (el.dataset.bind) setPath(el.dataset.bind, el.value);
+  if (el.dataset.dq && st.day) {
+    daySetPath(el.dataset.dq, el.value);
+    clearTimeout(keepDay.t);
+    keepDay.t = setTimeout(keepDay, 400);
+    const live = document.querySelector("[data-daylive]");
+    if (live) {
+      const html = dayLive(st.day, live.dataset.daylive);
+      live.innerHTML = html;
+      live.hidden = !html;
+      live.className = html ? "card live" : "";
+    }
+  }
   if (el.dataset.price) {
     const [t, i] = el.dataset.price.split(":");
     const items = itemsOf(t);
@@ -1893,6 +2359,7 @@ app.addEventListener("change", (e) => {
     if (st.draft.place) st.draft.date = L.nextVisit(st.draft.place);
     render();
   } else if (ch === "redraw") render();
+  else if (ch === "daydate" && /^\d{4}-\d{2}-\d{2}$/.test(el.value) && el.value <= L.today()) ACTS.daydate({ dataset: { v: el.value } });
   else if (ch === "cookp") go("#/cook/" + el.value);
   else if (ch === "role") ACTS.setrole(el).catch((err) => toast(err.message || "Something went wrong", true));
 });
