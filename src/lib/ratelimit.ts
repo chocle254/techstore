@@ -9,6 +9,7 @@ export const LIMITS = {
   passwordReset: { limit: 3, windowSec: 60 * 60 },
   checkout: { limit: 10, windowSec: 60 * 60 },
   write: { limit: 120, windowSec: 60 },
+  chat: { limit: 150, windowSec: 60 * 60 },
 } satisfies Record<string, Limit>;
 
 export async function clientIp(): Promise<string> {

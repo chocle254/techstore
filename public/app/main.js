@@ -58,7 +58,7 @@ const isProd = () => !isBoss() && !!me()?.roles?.includes("cook");
 const PROD_VIEWS = new Set(["make", "cook", "chems", "chem", "account", "password"]);
 
 // Screen state that must survive a redraw (cart, order being written, …).
-const st = { cart: [], cartPlace: null, cartCustomer: "", draft: null, showPast: false, sheet: null, askDue: null, mp: null, people: null, peopleErr: "", tempPw: "", day: null };
+const st = { cart: [], cartPlace: null, cartCustomer: "", draft: null, showPast: false, sheet: null, askDue: null, mp: null, people: null, peopleErr: "", tempPw: "", day: null, chat: null, chatText: "" };
 let editing = false;
 let installEvt = null;
 
@@ -112,7 +112,7 @@ const PROD_NAV = [
   ["chems", "flask", "Chemicals"],
   ["account", "user", "Account"],
 ];
-const SUB = { day: "home", mpesa: "home", summary: "home", sales: "more", owed: "more", customers: "more", customer: "more", expenses: "more", reports: "more", products: "more", product: "more", places: "more", team: "more", account: "more", order: "orders", chem: "chems", password: "account" };
+const SUB = { day: "home", chat: "home", mpesa: "home", summary: "home", sales: "more", owed: "more", customers: "more", customer: "more", expenses: "more", reports: "more", products: "more", product: "more", places: "more", team: "more", account: "more", order: "orders", chem: "chems", password: "account" };
 
 function syncPill() {
   const m = S.getMeta();
@@ -1096,7 +1096,8 @@ function profitCard(t) {
 /** The big way in for recording a whole day at once, when she gets home. */
 function dayButton() {
   const d = hasDayDraft() ? dayState() : null;
-  return `<a class="btn big dayrec" href="#/day">${ic("clipboard")}${d ? "Finish recording " + esc(L.niceDate(d.date)) : "Record my day"}</a>`;
+  if (d) return `<a class="btn big dayrec" href="#/day">${ic("clipboard")}Finish recording ${esc(L.niceDate(d.date))}</a>`;
+  return `<a class="btn big dayrec" href="#/chat">${ic("chat")}${hasChat() ? "Continue recording my day" : "Record my day"}</a><a class="dayalt" href="#/day">Or answer the questions yourself${CHEV}</a>`;
 }
 
 function heroCard(t, stops, raw, todayPlan) {
@@ -1295,7 +1296,7 @@ const unK = (k) => {
 const cnt = (v) => Math.max(0, Math.round(num(v)));
 
 function newDay(date = L.today()) {
-  return { step: 0, date, place: L.placeFor(date)[0]?.id || "", mode: "pack", pack: {}, back: {}, sold: {}, orders: {}, credit: [], paid: {}, spent: {}, cash: "", mpesa: "" };
+  return { step: 0, date, place: L.placeFor(date)[0]?.id || "", mode: "pack", pack: {}, back: {}, sold: {}, orders: {}, credit: [], paid: {}, spent: {}, cash: "", mpesa: "", newOrders: [] };
 }
 function dayState() {
   if (st.day) return st.day;
@@ -1567,8 +1568,10 @@ ${credit.map((c) => line("Pay later · " + esc(c.name || "?"), L.money(mapValue(
 ${ords.map((o) => line("Order delivered · " + esc(S.get(o.customer)?.name || "?") + " · " + PAY[d.orders[o.id]], L.money(L.itemsTotal(o.items)))).join("")}
 ${pays.map(([cid, x]) => line("Paid back · " + esc(S.get(cid)?.name || "?") + " · " + PAY[x.pay === "mpesa" ? "mpesa" : "cash"], L.money(cnt(x.amount)))).join("")}
 ${spent.map(([c, v]) => line("Spent · " + esc(c), L.money(cnt(v)))).join("")}
+${(d.newOrders || []).map((o, i) => `<div class="row"><span>New order · ${esc(o.name)} · ${esc(L.niceDate(o.date))}${o.place ? " · " + esc(L.placeName(o.place)) : ""}<br><span class="muted small">${esc(L.itemsText(mapItems(mapCnt(o.items))))}</span></span><span><b>${L.money(mapValue(mapCnt(o.items), L.findCustomer(o.name)?.id))}</b> <button type="button" class="x" data-act="daynewrm" data-i="${i}" aria-label="Remove">${ic("x")}</button></span></div>`).join("")}
 <p class="small">${moneyCheck(d)}</p></section>
-<button type="button" class="btn big" data-act="daysave">Save everything</button>`;
+<button type="button" class="btn big" data-act="daysave">Save everything</button>
+${d.fromChat ? `<a class="btn ghost" href="#/chat">${ic("chat")}Something wrong? Tell the chat</a>` : ""}`;
   }
   const live = dayLive(d, name);
   const last = d.step === steps.length - 1;
@@ -1639,6 +1642,11 @@ const DAY_ACTS = {
   },
   daycreditadd() {
     st.day.credit.push({ name: "", items: {}, due: L.addDays(st.day.date, L.DUE_DAYS) });
+    keepDay();
+    render();
+  },
+  daynewrm(el) {
+    st.day.newOrders.splice(Number(el.dataset.i), 1);
     keepDay();
     render();
   },
@@ -1719,8 +1727,18 @@ const DAY_ACTS = {
     }
     // Spending
     for (const [cat, v] of Object.entries(d.spent)) if (cnt(v)) await S.save("expense", { date: d.date, cat, amount: cnt(v), note: "Recorded with the day" });
+    // New orders she told the chat about
+    for (const o of d.newOrders || []) {
+      const it = mapCnt(o.items);
+      if (!o.name || !mapBottles(it)) continue;
+      let cust = L.findCustomer(o.name);
+      if (!cust) cust = await S.save("customer", { name: o.name, phone: "", place: o.place || "", note: "" });
+      const items = mapItems(it, cust.id);
+      await S.save("order", { status: "booked", date: o.date, customer: cust.id, place: o.place || cust.place || "", items, total: L.itemsTotal(items), note: "" });
+    }
     st.day = null;
     keepDay();
+    if (d.fromChat) (st.chat = null), keepChat();
     toast("Day saved");
     go("#/summary/" + d.date);
   },
@@ -2255,6 +2273,188 @@ const FORMS = {
     }
   },
 };
+
+// ---------- Record my day by chatting ----------
+// The AI asks the questions and keeps a draft; she checks it on the questionnaire's last screen and saves.
+const CHAT_KEY = "jw-chat";
+function chatState() {
+  if (st.chat) return st.chat;
+  try {
+    const raw = localStorage.getItem(CHAT_KEY);
+    if (raw) st.chat = JSON.parse(raw);
+  } catch {
+    /* private mode or bad data */
+  }
+  if (!st.chat || !Array.isArray(st.chat.msgs)) st.chat = newChat();
+  st.chat.busy = false;
+  return st.chat;
+}
+function newChat() {
+  const t = L.today();
+  const stop = L.placeFor(t)[0];
+  const first = (me()?.name || "").split(" ")[0];
+  return {
+    msgs: [{ role: "assistant", content: `Welcome home${first ? ", " + first : ""}! Let's record your day together. ${stop ? `Did you go to ${stop.name} today?` : "Where did you sell today?"}` }],
+    draft: null,
+    done: false,
+    err: "",
+  };
+}
+function keepChat() {
+  try {
+    if (st.chat) localStorage.setItem(CHAT_KEY, JSON.stringify({ msgs: st.chat.msgs, draft: st.chat.draft, done: st.chat.done }));
+    else localStorage.removeItem(CHAT_KEY);
+  } catch {
+    /* private mode */
+  }
+}
+const hasChat = () => chatState().msgs.length > 1;
+
+/** What the AI needs to know, kept short (the free plan counts every word). */
+function chatContext() {
+  const t = L.today();
+  const bal = L.balances();
+  const owing = L.customers()
+    .filter((c) => bal[c.id] > 0)
+    .sort((a, b) => bal[b.id] - bal[a.id])
+    .slice(0, 40)
+    .map((c) => ({ id: c.id, name: c.name, place: c.place || "", owes: Math.round(bal[c.id]) }));
+  const until = L.addDays(t, 8);
+  const orders = L.booked()
+    .filter((o) => o.date <= until)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, 30)
+    .map((o) => ({ id: o.id, customer: S.get(o.customer)?.name || "?", place: o.place || "", date: o.date, items: L.itemsText(o.items), total: L.itemsTotal(o.items) }));
+  const already = L.sumSales(L.salesOn(t));
+  return {
+    today: t + " (" + L.DAYS[L.weekday(t)] + ")",
+    products: L.products().map((p) => ({ id: p.id, name: p.name, sizes: (p.sizes || []).map((s) => L.size(s.ml) + "=" + s.ml + "ml KSh" + (s.price || 0)).join(", ") })),
+    places: L.places().map((p) => ({ id: p.id, name: p.name, day: p.day ? L.DAYS[p.day] : "" })),
+    owing,
+    bookedOrders: orders,
+    otherCustomers: L.customers()
+      .filter((c) => !(bal[c.id] > 0))
+      .slice(0, 80)
+      .map((c) => c.name),
+    alreadyRecordedToday: already.count ? already.count + " sales, " + L.money(already.total) : "nothing",
+  };
+}
+
+/** Turn the AI's draft into the questionnaire's answers, keeping only things that exist. */
+function chatToDay(x) {
+  const d = newDay(/^\d{4}-\d{2}-\d{2}$/.test(x?.date || "") && x.date <= L.today() ? x.date : L.today());
+  if (!x) return d;
+  if (typeof x.place === "string" && (x.place === "" || S.get(x.place)?.kind === "place")) d.place = x.place;
+  const okItem = (i) => i && S.get(i.p)?.kind === "product" && (S.get(i.p).sizes || []).some((s) => s.ml === Number(i.ml)) && cnt(i.qty) > 0;
+  const toMap = (list) => {
+    const m = {};
+    for (const i of Array.isArray(list) ? list : []) if (okItem(i)) m[kOf(i.p, Number(i.ml))] = String(cnt(m[kOf(i.p, Number(i.ml))]) + cnt(i.qty));
+    return m;
+  };
+  d.pack = toMap(x.packed);
+  d.back = toMap(x.back);
+  d.sold = toMap(x.sold);
+  d.mode = Object.keys(d.pack).length || !Object.keys(d.sold).length ? "pack" : "sold";
+  const open = new Set(L.booked().map((o) => o.id));
+  for (const o of Array.isArray(x.orders) ? x.orders : []) if (open.has(o?.id) && ["cash", "mpesa", "later", "no"].includes(o.how)) d.orders[o.id] = o.how;
+  const date = (v, from) => (/^\d{4}-\d{2}-\d{2}$/.test(v || "") && v > from ? v : "");
+  d.credit = (Array.isArray(x.credit) ? x.credit : [])
+    .filter((c) => String(c?.name || "").trim())
+    .map((c) => ({ name: String(c.name).trim().slice(0, 80), items: toMap(c.items), due: date(c.due, d.date) || L.addDays(d.date, L.DUE_DAYS) }));
+  for (const p of Array.isArray(x.paid) ? x.paid : []) if (S.get(p?.id)?.kind === "customer" && cnt(p.amount)) d.paid[p.id] = { amount: String(cnt(p.amount)), pay: p.pay === "mpesa" ? "mpesa" : "cash" };
+  for (const s of Array.isArray(x.spent) ? x.spent : []) {
+    if (!cnt(s?.amount)) continue;
+    const cat = SPEND_CATS.find((c) => c.toLowerCase() === String(s.cat || "").toLowerCase()) || "Other";
+    d.spent[cat] = String(cnt(d.spent[cat]) + cnt(s.amount));
+  }
+  if (x.cash != null && x.cash !== "") d.cash = String(cnt(x.cash));
+  if (x.mpesa != null && x.mpesa !== "") d.mpesa = String(cnt(x.mpesa));
+  d.newOrders = (Array.isArray(x.newOrders) ? x.newOrders : [])
+    .filter((o) => String(o?.name || "").trim())
+    .map((o) => {
+      const place = S.get(o.place)?.kind === "place" ? o.place : L.findCustomer(String(o.name))?.place || "";
+      return { name: String(o.name).trim().slice(0, 80), place, date: date(o.date, L.today()) || (place ? L.nextVisit(place) : L.addDays(L.today(), 1)), items: toMap(o.items) };
+    })
+    .filter((o) => Object.keys(o.items).length);
+  return d;
+}
+
+function chatView() {
+  const c = chatState();
+  const d = c.draft ? chatToDay(c.draft) : null;
+  const sold = d ? mapBottles(daySold(d)) : 0;
+  const noted = d
+    ? [sold ? sold + " bottles sold" : "", d.credit.length ? d.credit.length + " on pay later" : "", Object.keys(d.paid).length ? Object.keys(d.paid).length + " paid back" : "", d.newOrders.length ? d.newOrders.length + " new order" + (d.newOrders.length > 1 ? "s" : "") : ""].filter(Boolean).join(" · ")
+    : "";
+  return [
+    "Record my day",
+    `<div class="chat" id="chatlog">${c.msgs
+      .map((m) => `<div class="bubble ${m.role === "user" ? "me" : "bot"}">${esc(m.content).replace(/\n/g, "<br>")}</div>`)
+      .join("")}${c.busy ? `<div class="bubble bot typing" aria-label="Thinking"><i></i><i></i><i></i></div>` : ""}</div>
+${c.err ? `<p class="card warn small">${esc(c.err)}</p>` : ""}
+${navigator.onLine ? "" : `<p class="card warn small">No internet. The chat needs network. You can <a href="#/day">answer the questions</a> instead; they work offline.</p>`}
+<form data-form="chat" class="chatbox"><textarea name="text" rows="2" placeholder="Type, or tap the microphone on your keyboard to speak" aria-label="Your answer" data-bind="chatText">${esc(st.chatText || "")}</textarea><button class="btn" aria-label="Send"${c.busy ? " disabled" : ""}>Send</button></form>
+${d ? `<button type="button" class="btn big${c.done ? "" : " ghost"}" data-act="chatcheck">${ic("clipboard")}Check and save${noted ? ` <small>· ${esc(noted)}</small>` : ""}</button>` : ""}
+<div class="two"><a class="btn ghost" href="#/day">Answer questions instead</a><button type="button" class="btn ghost red" data-act="chatnew">Start again</button></div>`,
+    "#/home",
+  ];
+}
+VIEWS.chat = chatView;
+
+async function chatSend(text) {
+  const c = chatState();
+  text = text.trim();
+  if (!text || c.busy) return;
+  c.msgs.push({ role: "user", content: text.slice(0, 2000) });
+  c.busy = true;
+  c.err = "";
+  st.chatText = "";
+  keepChat();
+  render();
+  scrollChat();
+  try {
+    const j = await api("/api/chat", { messages: c.msgs.slice(-16), context: chatContext(), draft: c.draft || undefined });
+    c.msgs.push({ role: "assistant", content: j.reply });
+    if (j.draft) c.draft = j.draft;
+    c.done = !!j.done;
+  } catch (e) {
+    // Her message stays; she can send it again.
+    c.msgs.pop();
+    st.chatText = text;
+    c.err = navigator.onLine ? e.message : "No internet. Your message is kept; send it when you have network.";
+    if (e.message === "login") c.err = "Log in again to use the chat.";
+  }
+  c.busy = false;
+  keepChat();
+  if (route().name === "chat") {
+    render();
+    scrollChat();
+  }
+}
+function scrollChat() {
+  const log = document.getElementById("chatlog");
+  if (log) log.lastElementChild?.scrollIntoView({ block: "end" });
+}
+
+const CHAT_ACTS = {
+  chatcheck() {
+    const c = chatState();
+    st.day = chatToDay(c.draft);
+    st.day.fromChat = true;
+    st.day.step = daySteps(st.day).length - 1;
+    keepDay();
+    go("#/day");
+  },
+  chatnew() {
+    if (hasChat() && !confirm("Start a new chat? What you told the AI so far is thrown away.")) return;
+    st.chat = newChat();
+    st.chatText = "";
+    keepChat();
+    render();
+  },
+};
+FORMS.chat = async (fd) => chatSend(String(fd.get("text") || ""));
+Object.assign(ACTS, CHAT_ACTS);
 
 // ---------- First-time products (boss phone only, after the first sync) ----------
 async function seedIfEmpty() {
