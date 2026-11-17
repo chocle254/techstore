@@ -137,12 +137,12 @@ export const booked = () => list("order").filter((o) => o.status === "booked");
  * The next `days` days that have a route stop or a booked order, with what to cook for each.
  * Stock is shared out day by day, so stock used on Tuesday isn't counted again on Wednesday.
  */
-export function plan(days = 8) {
+export function plan(days = 8, extra = []) {
   const t = today();
   const st = stock();
   const avail = {};
   for (const p of products()) avail[p.id] = Math.max(0, st[p.id] || 0);
-  const open = booked();
+  const open = [...booked(), ...extra];
   const out = [];
   for (let i = 0; i < days; i++) {
     const d = addDays(t, i);
@@ -441,4 +441,86 @@ export function daySummary(date) {
     lateNow: unpaid().filter((u) => u.due < date),
     ordersNext: booked().filter((o) => o.date === next),
   };
+}
+
+// ---------- Projections ----------
+const monthDays = (ym) => new Date(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)), 0).getDate();
+const shiftMonth = (ym, n) => {
+  const d = new Date(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)) - 1 + n, 1);
+  return d.getFullYear() + "-" + pad(d.getMonth() + 1);
+};
+/** Average KSh per chemicals batch from what was paid for them (0 if never bought with a price). */
+export function chemCostPerBatch(pid) {
+  let qty = 0;
+  let cost = 0;
+  for (const m of list("chemmove")) if (m.type === "buy" && m.p === pid && m.cost > 0 && m.qty > 0) (qty += m.qty), (cost += m.cost);
+  return qty ? cost / qty : 0;
+}
+
+/**
+ * Where the money is heading, from the last 4 weeks: this month's expected end, next month,
+ * the coming week (booked orders + her usual selling per route day), money due back and chemicals to buy.
+ */
+export function forecast() {
+  const t = today();
+  const ym = t.slice(0, 7);
+  const allDates = [...list("sale"), ...list("expense"), ...list("chemmove")].map((r) => r.date).filter(Boolean).sort();
+  const first = allDates[0] || t;
+  // Average per day over the last 28 days before today (fewer if the records are newer than that).
+  const from = addDays(t, -28) > first ? addDays(t, -28) : first;
+  const span = Math.max(1, Math.round((parse(t) - parse(from)) / 86400000));
+  const inSpan = (r) => r.date >= from && r.date < t;
+  const sales28 = sumSales(list("sale").filter(inSpan)).total;
+  const cost28 =
+    list("expense").filter(inSpan).reduce((a, e) => a + (e.amount || 0), 0) +
+    list("chemmove").filter((x) => x.type === "buy" && inSpan(x)).reduce((a, x) => a + (x.cost || 0), 0);
+  const perDay = { sales: sales28 / span, costs: cost28 / span };
+  const enough = span >= 7;
+
+  const now = profit(ym);
+  const dayNo = Number(t.slice(8));
+  const left = monthDays(ym) - dayNo;
+  const month = { sales: now.sales + perDay.sales * left, costs: now.costs + perDay.costs * left };
+  month.profit = month.sales - month.costs;
+  const nm = shiftMonth(ym, 1);
+  const next = { ym: nm, sales: perDay.sales * monthDays(nm), costs: perDay.costs * monthDays(nm) };
+  next.profit = next.sales - next.costs;
+  const past = [3, 2, 1].map((n) => {
+    const k = shiftMonth(ym, -n);
+    return { ym: k, ...profit(k) };
+  });
+  const last = past[2];
+
+  // Coming 7 days: booked orders, plus what she usually sells on that weekday (not counting orders).
+  const week = [];
+  for (let i = 1; i <= 7; i++) {
+    const d = addDays(t, i);
+    const orders = booked().filter((o) => o.date === d).reduce((a, o) => a + itemsTotal(o.items), 0);
+    let walk = 0;
+    if (placeFor(d).length) {
+      const same = [7, 14, 21, 28].map((n) => addDays(d, -n)).filter((x) => x < t);
+      const tot = list("sale")
+        .filter((s) => !s.voided && !s.order && same.includes(s.date))
+        .reduce((a, s) => a + s.total, 0);
+      const days = same.filter((x) => list("sale").some((s) => s.date === x && !s.order)).length;
+      walk = days ? tot / days : 0;
+    }
+    if (orders || walk) week.push({ date: d, orders, walk, places: placeFor(d).map((p) => p.name) });
+  }
+  const weekTotal = week.reduce((a, w) => a + w.orders + w.walk, 0);
+
+  const owed = unpaid();
+  const dueWeek = owed.filter((u) => u.due <= addDays(t, 7)).reduce((a, u) => a + u.owed, 0);
+  const owedAll = owed.reduce((a, u) => a + u.owed, 0);
+
+  // Chemicals to buy for the next 30 days of cooking.
+  const chems = chemLasts()
+    .map((x) => {
+      const buy = Math.max(0, x.used - x.left);
+      const each = chemCostPerBatch(x.p.id);
+      return { p: x.p, buy, cost: buy * each, priced: each > 0 };
+    })
+    .filter((x) => x.buy);
+
+  return { perDay, enough, span, now, month, next, past, last, week, weekTotal, dueWeek, owedAll, chems, chemCost: chems.reduce((a, x) => a + x.cost, 0), left };
 }

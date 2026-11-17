@@ -263,3 +263,46 @@ export async function wipe() {
   });
   emit();
 }
+
+// ---------- Restoring ----------
+const KINDS = new Set(["product", "place", "customer", "order", "sale", "payment", "expense", "chemical", "chemmove", "batch", "stockadj"]);
+
+/**
+ * Put back records from a backup file (this phone's or the server's). A record only replaces the
+ * phone's copy when the file's copy is newer. Everything put back is sent to the server.
+ */
+export async function importRecords(list) {
+  const changed = [];
+  for (const r of Array.isArray(list) ? list : []) {
+    if (!r || typeof r.id !== "string" || !/^[\w-]{1,64}$/.test(r.id) || !KINDS.has(r.kind) || !Number.isFinite(r.u)) continue;
+    const cur = recs.get(r.id);
+    if (cur && cur.u >= r.u) continue;
+    const rec = { ...r, del: !!r.del, dirty: 1 };
+    recs.set(rec.id, rec);
+    changed.push(rec);
+  }
+  if (changed.length) {
+    byKind = null;
+    await writeAll(changed);
+    emit();
+    soon();
+  }
+  return changed.length;
+}
+
+/** Send every record on this phone to the server again (after the server lost its data). */
+export async function resendAll() {
+  const changed = [];
+  for (const r of recs.values()) {
+    if (!r.dirty) {
+      r.dirty = 1;
+      changed.push(r);
+    }
+  }
+  if (changed.length) {
+    await writeAll(changed);
+    emit();
+    soon();
+  }
+  return recs.size;
+}

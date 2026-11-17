@@ -112,7 +112,7 @@ const PROD_NAV = [
   ["chems", "flask", "Chemicals"],
   ["account", "user", "Account"],
 ];
-const SUB = { day: "home", chat: "home", mpesa: "home", summary: "home", sales: "more", owed: "more", customers: "more", customer: "more", expenses: "more", reports: "more", products: "more", product: "more", places: "more", team: "more", account: "more", order: "orders", chem: "chems", password: "account" };
+const SUB = { forecast: "more", day: "home", chat: "home", mpesa: "home", summary: "home", sales: "more", owed: "more", customers: "more", customer: "more", expenses: "more", reports: "more", products: "more", product: "more", places: "more", team: "more", account: "more", order: "orders", chem: "chems", password: "account" };
 
 function syncPill() {
   const m = S.getMeta();
@@ -600,7 +600,7 @@ ${
     const owed = Object.values(L.balances()).reduce((a, b) => a + Math.max(0, b), 0);
     return [
       "More",
-      `<section class="card list">${link("sales", "receipt", "Sales")}${link("owed", "wallet", "Money owed", L.money(owed))}${link("customers", "users", "Customers")}${link("expenses", "out", "Expenses")}${link("reports", "chart", "Reports")}</section>
+      `<section class="card list">${link("sales", "receipt", "Sales")}${link("owed", "wallet", "Money owed", L.money(owed))}${link("customers", "users", "Customers")}${link("expenses", "out", "Expenses")}${link("reports", "chart", "Reports")}${link("forecast", "up", "Projections")}</section>
 <section class="card list">${isBoss() ? link("products", "bottle", "Products & prices") + link("places", "pin", "Route days") + link("team", "key", "Team logins") : ""}${link("account", "user", "My account & sync", esc(me()?.name))}</section>`,
     ];
   },
@@ -930,6 +930,10 @@ ${"Notification" in window ? `<section class="card"><h3>Reminders</h3><p class="
 ${installEvt ? `<button class="btn install" data-act="install">${ic("install")}Install the app on this phone</button>` : ""}
 <section class="card list"><a class="row link" href="#/password"><span>Change password</span><span>${CHEV}</span></a>
 <a class="row link" href="#" data-act="backup"><span>Save a backup file</span><span>${CHEV}</span></a></section>
+<section class="card"><h3>Backups</h3><p class="muted small">Every phone keeps a full copy of the records. ${isBoss() ? "The server also saves a copy every night outside the database." : ""} If records go missing, put them back here.</p>
+${isBoss() ? `<div class="two"><button class="btn sm ghost" data-act="backupnow">Back up now</button><a class="btn sm ghost" href="/api/backup" download>Download server copy</a></div>` : ""}
+<label class="btn ghost filebtn">${ic("download")}Restore from a backup file<input type="file" accept=".json,application/json" data-change="restore" hidden></label>
+<button class="btn ghost" data-act="resend">Send this phone's records to the server again</button></section>
 <button class="btn ghost red" data-act="logout">Log out</button>
 ${isBoss() ? `<section class="card warn"><h3>Start fresh</h3><p class="muted small">Clears all sales, orders, customers, money owed, expenses, cooking, stock and chemicals on every phone. Products, prices, route days and team logins stay. This can't be undone, so save a backup file first.</p><button class="btn danger" data-act="reset">Reset all records</button></section>` : ""}`,
     ];
@@ -937,6 +941,37 @@ ${isBoss() ? `<section class="card warn"><h3>Start fresh</h3><p class="muted sma
 
   password() {
     return ["Change password", passwordView(false), "#/account"];
+  },
+
+  forecast() {
+    const f = L.forecast();
+    const cls = (n) => (n < 0 ? "red" : "green");
+    const mname = (ym) => L.MONTHS[Number(ym.slice(5, 7)) - 1];
+    const t = L.today();
+    const growth = f.last.sales ? Math.round(((f.month.sales - f.last.sales) / f.last.sales) * 100) : null;
+    const bars = [...f.past.map((x) => ({ k: mname(x.ym).slice(0, 3), v: x.profit, s: x.sales })), { k: mname(t) .slice(0, 3) + "*", v: f.month.profit, s: f.month.sales, est: true }, { k: mname(f.next.ym).slice(0, 3) + "*", v: f.next.profit, s: f.next.sales, est: true }];
+    const max = Math.max(1, ...bars.map((b) => b.s));
+    return [
+      "Projections",
+      `${f.enough ? "" : `<p class="card warn small">Only ${f.span} day${f.span === 1 ? "" : "s"} of records so far, so these guesses are rough. They get better every week you record.</p>`}
+<section class="card"><h3>${esc(mname(t))}: expected by the end</h3>
+<div class="stats"><div><b>${L.money(f.month.sales)}</b><span>Sales</span></div><div><b>${L.money(f.month.costs)}</b><span>Costs</span></div><div><b class="${cls(f.month.profit)}">${L.money(f.month.profit)}</b><span>Profit</span></div></div>
+<p class="muted small">So far: sales ${L.money(f.now.sales)}, costs ${L.money(f.now.costs)}, profit ${L.money(f.now.profit)}. ${f.left} day${f.left === 1 ? "" : "s"} left, at about ${L.money(f.perDay.sales)} sales and ${L.money(f.perDay.costs)} costs a day (last ${f.span} days).${growth == null ? "" : ` That's <b class="${growth >= 0 ? "green" : "red"}">${growth >= 0 ? "+" : ""}${growth}%</b> sales vs ${esc(mname(f.last.ym))}.`}</p></section>
+<section class="card"><h3>Sales and profit by month</h3><div class="mbars">${bars
+        .map((b) => `<div class="mbar${b.est ? " est" : ""}"><em>${kshort(b.s)}</em><i style="height:${Math.max(2, Math.round((b.s / max) * 100))}%"></i><span>${esc(b.k)}</span><small class="${cls(b.v)}">${kshort(b.v)}</small></div>`)
+        .join("")}</div><p class="muted tiny">Bar: sales. Under it: profit. * expected.</p></section>
+<section class="card"><h3>${esc(mname(f.next.ym))} (next month)</h3><div class="stats"><div><b>${L.money(f.next.sales)}</b><span>Sales</span></div><div><b>${L.money(f.next.costs)}</b><span>Costs</span></div><div><b class="${cls(f.next.profit)}">${L.money(f.next.profit)}</b><span>Profit</span></div></div><p class="muted small">If the next weeks go like the last ${f.span} days.</p></section>
+<section class="card"><div class="row"><h3>Next 7 days</h3><b>${L.money(f.weekTotal)}</b></div>${
+        f.week.map((w) => `<div class="row small"><span>${esc(L.niceDate(w.date))}${w.places.length ? " · " + esc(w.places.join(", ")) : ""}</span><span>${w.orders ? "orders " + L.money(w.orders) : ""}${w.orders && w.walk ? " + " : ""}${w.walk ? "usual selling " + L.money(w.walk) : ""}</span></div>`).join("") || `<p class="muted">No orders or route days.</p>`
+      }</section>
+<section class="card"><h3>Money to come in</h3><div class="row"><span>Due back this week</span><b>${L.money(f.dueWeek)}</b></div><div class="row"><span>All money owed to you</span><b>${L.money(f.owedAll)}</b></div><a href="#/owed">Who owes${CHEV}</a></section>
+<section class="card"><h3>Chemicals to buy (next 30 days)</h3>${
+        f.chems.length
+          ? f.chems.map((x) => `<div class="row small"><span>${dot(x.p)}${esc(x.p.short || x.p.name)} · ${x.buy} batch${x.buy === 1 ? "" : "es"}</span><b>${x.priced ? "about " + L.money(x.cost) : "price not known"}</b></div>`).join("") + (f.chemCost ? `<div class="row"><b>Total</b><b>about ${L.money(f.chemCost)}</b></div>` : "")
+          : `<p class="muted">The chemicals you have cover the next 30 days of cooking.</p>`
+      }</section>`,
+      "#/more",
+    ];
   },
 };
 
@@ -1085,14 +1120,15 @@ function profitCard(t) {
   const m = L.profit(t.slice(0, 7));
   const d = L.profit(t);
   const all = L.profit("");
+  const fp = L.forecast().month.profit;
   const cls = (n) => (n < 0 ? "red" : "green");
   return `<a class="card link" href="#/reports"><div class="row"><h3>Profit this month</h3><span>${CHEV}</span></div>
 <div class="big ${cls(m.profit)}">${L.money(m.profit)}</div>
 <div class="muted small">Sales ${L.money(m.sales)} − expenses ${L.money(m.costs)}</div>
-<div class="row small"><span>Today <b class="${cls(d.profit)}">${L.money(d.profit)}</b></span><span>Since start <b class="${cls(all.profit)}">${L.money(all.profit)}</b></span></div></a>`;
+<div class="row small"><span>Today <b class="${cls(d.profit)}">${L.money(d.profit)}</b></span><span>Since start <b class="${cls(all.profit)}">${L.money(all.profit)}</b></span></div></a>
+<a class="card row link" href="#/forecast"><span class="rowlabel">${ic("up")}<span>End of month, expected</span></span><b class="${cls(fp)}">${L.money(fp)} profit${CHEV}</b></a>`;
 }
 
-/** Today's card: place, the day's total, and how it was paid as one split bar. */
 /** The big way in for recording a whole day at once, when she gets home. */
 function dayButton() {
   const d = hasDayDraft() ? dayState() : null;
@@ -1100,6 +1136,7 @@ function dayButton() {
   return `<a class="btn big dayrec" href="#/chat">${ic("chat")}${hasChat() ? "Continue recording my day" : "Record my day"}</a><a class="dayalt" href="#/day">Or answer the questions yourself${CHEV}</a>`;
 }
 
+/** Today's card: place, the day's total, and how it was paid as one split bar. */
 function heroCard(t, stops, raw, todayPlan) {
   // Pay-later money already paid back counts as cash / M-Pesa, so the orange part shrinks or goes.
   const pb = L.paidBack(t);
@@ -1287,7 +1324,7 @@ function orderRow(o) {
 // For when she comes home with everything in her head or on paper. Nothing is saved until the last step,
 // and the answers stay on the phone (in case the app closes) until then.
 const DAY_KEY = "jw-day-draft";
-const SPEND_CATS = ["Transport", "Food", "Containers", "Labels", "Tips", "Other"];
+const SPEND_CATS = ["Transport", "Food", "Containers", "Labels", "Rent", "Tips", "Other"];
 const kOf = (p, ml) => p + "|" + ml;
 const unK = (k) => {
   const i = k.lastIndexOf("|");
@@ -1296,7 +1333,7 @@ const unK = (k) => {
 const cnt = (v) => Math.max(0, Math.round(num(v)));
 
 function newDay(date = L.today()) {
-  return { step: 0, date, place: L.placeFor(date)[0]?.id || "", mode: "pack", pack: {}, back: {}, sold: {}, orders: {}, credit: [], paid: {}, spent: {}, cash: "", mpesa: "", newOrders: [] };
+  return { step: 0, date, place: L.placeFor(date)[0]?.id || "", mode: "pack", pack: {}, back: {}, sold: {}, orders: {}, credit: [], paid: {}, spent: {}, cash: "", mpesa: "", newOrders: [], cooked: {}, chem: {}, count: {} };
 }
 function dayState() {
   if (st.day) return st.day;
@@ -1395,6 +1432,7 @@ function dayMoney(d) {
 function daySteps(d) {
   const s = ["day", d.mode === "sold" ? "sold" : "pack"];
   if (d.mode !== "sold") s.push("back");
+  s.push("cook");
   if (dayOrders(d).length) s.push("orders");
   s.push("credit");
   if (dayOwing(d).length) s.push("paid");
@@ -1465,6 +1503,24 @@ function moneyCheck(d) {
   }`;
 }
 
+/** What the cooking plan will say once the new orders are in: batches to make and chemicals. */
+function dayExtraOrders(d) {
+  return (d.newOrders || [])
+    .map((o) => ({ date: o.date, place: o.place, items: mapItems(mapCnt(o.items), L.findCustomer(o.name)?.id), customer: "" }))
+    .filter((o) => o.items.length);
+}
+function cookPreview(d) {
+  const pl = L.plan(4, dayExtraOrders(d)).filter((x) => x.rows.some((r) => r.batches));
+  if (!pl.length) return "";
+  const left = L.chemLeft();
+  const need = {};
+  for (const x of pl) for (const r of x.rows) need[r.p.id] = (need[r.p.id] || 0) + r.batches;
+  const short = L.products().filter((p) => need[p.id] > Math.max(0, left[p.id] || 0) - cnt((d.cooked || {})[p.id]) + cnt((d.chem || {})[p.id]?.qty));
+  return `<section class="card"><h3>${ic("layers")} Cooking after this</h3>${pl
+    .map((x) => `<div class="row small"><span>Make ${esc(L.niceDate(L.addDays(x.date, -1)))} for ${esc(L.niceDate(x.date))}</span><b>${esc(x.rows.filter((r) => r.batches).map((r) => (r.p.short || r.p.name) + " " + r.batches).join(" · "))}</b></div>`)
+    .join("")}${short.length ? `<p class="sendnote">Chemicals not enough for: ${esc(short.map((p) => p.short || p.name).join(", "))}. Buy more.</p>` : `<p class="muted small">Chemicals are enough for these.</p>`}<p class="muted tiny">Rough, before saving. The Batches screen has the exact plan after you save.</p></section>`;
+}
+
 function dayView() {
   let d = dayState();
   if (!d) d = st.day = newDay();
@@ -1501,6 +1557,19 @@ ${already.count ? `<p class="sendnote">${ic("receipt")}${already.count} sale${al
     q = "How many bottles did you sell?";
     body = `<p class="muted small">All bottles sold, cash, M-Pesa and pay later together. Not booked orders.</p>${qtyGrid("sold", d.sold)}
 <button type="button" class="btn ghost" data-act="daymode" data-v="pack">I counted what I packed and what came back</button>`;
+  } else if (name === "cook") {
+    const done = S.list("batch").filter((b) => b.date === d.date);
+    q = "Did you cook, or buy chemicals?";
+    body = `${done.length ? `<p class="sendnote">${ic("layers")}Already recorded for this day: ${esc(done.map((b) => (S.get(b.p)?.short || L.productName(b.p)) + " ×" + b.n + (b.by ? " (" + b.by + ")" : "")).join(", "))}. Only add what isn't there.</p>` : ""}
+<p class="muted small">Leave empty what didn't happen.</p>${L.products()
+      .map((p) => {
+        const c = (d.chem || {})[p.id] || {};
+        return `<section class="card"><div class="pname">${dot(p)}${esc(p.short || p.name)} <span class="muted small">· stock ${L.litres(Math.max(0, L.stock()[p.id] || 0))} · chemicals for ${Math.max(0, L.chemLeft()[p.id] || 0)} batches</span></div>
+<div class="qgrid"><label class="qbox"><span>Batches cooked</span><input type="number" inputmode="numeric" min="0" placeholder="0" data-dq="${attr("cooked." + p.id)}" value="${attr((d.cooked || {})[p.id] ?? "")}"></label>
+<label class="qbox"><span>Chemicals bought <small class="muted">(batches)</small></span><input type="number" inputmode="numeric" min="0" placeholder="0" data-dq="${attr("chem." + p.id + ".qty")}" value="${attr(c.qty ?? "")}"></label>
+<label class="qbox"><span>Paid KSh</span><input type="number" inputmode="numeric" min="0" placeholder="0" data-dq="${attr("chem." + p.id + ".cost")}" value="${attr(c.cost ?? "")}"></label></div></section>`;
+      })
+      .join("")}`;
   } else if (name === "orders") {
     q = "Did these orders get delivered?";
     const how = [
@@ -1569,7 +1638,11 @@ ${ords.map((o) => line("Order delivered · " + esc(S.get(o.customer)?.name || "?
 ${pays.map(([cid, x]) => line("Paid back · " + esc(S.get(cid)?.name || "?") + " · " + PAY[x.pay === "mpesa" ? "mpesa" : "cash"], L.money(cnt(x.amount)))).join("")}
 ${spent.map(([c, v]) => line("Spent · " + esc(c), L.money(cnt(v)))).join("")}
 ${(d.newOrders || []).map((o, i) => `<div class="row"><span>New order · ${esc(o.name)} · ${esc(L.niceDate(o.date))}${o.place ? " · " + esc(L.placeName(o.place)) : ""}<br><span class="muted small">${esc(L.itemsText(mapItems(mapCnt(o.items))))}</span></span><span><b>${L.money(mapValue(mapCnt(o.items), L.findCustomer(o.name)?.id))}</b> <button type="button" class="x" data-act="daynewrm" data-i="${i}" aria-label="Remove">${ic("x")}</button></span></div>`).join("")}
+${Object.entries(d.cooked || {}).filter(([, v]) => cnt(v)).map(([p, v]) => line("Cooked · " + esc(L.productName(p)), cnt(v) + " batch" + (cnt(v) > 1 ? "es" : "") + " · " + L.litres(cnt(v) * (S.get(p)?.batchL || 25)))).join("")}
+${Object.entries(d.chem || {}).filter(([, c]) => cnt(c.qty)).map(([p, c]) => line("Chemicals bought · " + esc(L.productName(p)) + " · " + cnt(c.qty) + " batches", L.money(cnt(c.cost)))).join("")}
+${Object.entries(d.count || {}).filter(([, v]) => v !== "" && v != null).map(([p, v]) => line("Litres left (counted) · " + esc(L.productName(p)), L.litres(num(v)))).join("")}
 <p class="small">${moneyCheck(d)}</p></section>
+${cookPreview(d)}
 <button type="button" class="btn big" data-act="daysave">Save everything</button>
 ${d.fromChat ? `<a class="btn ghost" href="#/chat">${ic("chat")}Something wrong? Tell the chat</a>` : ""}`;
   }
@@ -1725,6 +1798,9 @@ const DAY_ACTS = {
       const amount = cnt(x.amount);
       if (amount && S.get(cid)) await S.save("payment", { date: d.date, customer: cid, amount, pay: x.pay === "mpesa" ? "mpesa" : "cash" });
     }
+    // Cooking and chemicals
+    for (const [p, v] of Object.entries(d.cooked || {})) if (cnt(v) && S.get(p)) await S.save("batch", { date: d.date, p, n: cnt(v), litres: cnt(v) * (S.get(p).batchL || 25), note: "Recorded with the day" });
+    for (const [p, c] of Object.entries(d.chem || {})) if (cnt(c.qty) && S.get(p)) await S.save("chemmove", { p, qty: cnt(c.qty), cost: cnt(c.cost), type: "buy", date: d.date });
     // Spending
     for (const [cat, v] of Object.entries(d.spent)) if (cnt(v)) await S.save("expense", { date: d.date, cat, amount: cnt(v), note: "Recorded with the day" });
     // New orders she told the chat about
@@ -1736,6 +1812,9 @@ const DAY_ACTS = {
       const items = mapItems(it, cust.id);
       await S.save("order", { status: "booked", date: o.date, customer: cust.id, place: o.place || cust.place || "", items, total: L.itemsTotal(items), note: "" });
     }
+    // Litres she counted at the end: set stock to that, after everything above is in.
+    const now = L.stock();
+    for (const [p, v] of Object.entries(d.count || {})) if (v !== "" && v != null && S.get(p) && num(v) >= 0) await S.save("stockadj", { p, litres: num(v) - (now[p] || 0), date: d.date, note: "Counted" });
     st.day = null;
     keepDay();
     if (d.fromChat) (st.chat = null), keepChat();
@@ -2043,6 +2122,23 @@ const ACTS = {
       toast(e.message, true);
     }
   },
+  async backupnow(el) {
+    el.disabled = true;
+    try {
+      const j = await api("/api/backup", {});
+      toast("Backed up · " + j.records + " records");
+    } catch (e) {
+      toast(navigator.onLine ? e.message : "Needs internet.", true);
+    }
+    if (el.isConnected) el.disabled = false;
+  },
+  async resend() {
+    if (!confirm("Send every record on this phone to the server again? Use this if the server lost records. Nothing is overwritten with older copies.")) return;
+    const n = await S.resendAll();
+    toast(n + " records being sent…");
+    await S.sync();
+    render();
+  },
   hidepw() {
     st.tempPw = "";
     render();
@@ -2098,6 +2194,24 @@ const ACTS = {
 };
 
 Object.assign(ACTS, DAY_ACTS);
+
+async function restoreFile(el) {
+  const file = el.files?.[0];
+  el.value = "";
+  if (!file) return;
+  let j;
+  try {
+    j = JSON.parse(await file.text());
+  } catch {
+    throw new Error("That isn't a JonWin backup file.");
+  }
+  if (j?.app !== "jonwin" || !Array.isArray(j.records)) throw new Error("That isn't a JonWin backup file.");
+  const when = j.exported ? new Date(j.exported).toLocaleString() : "?";
+  if (!confirm(`Put back records from this backup (${j.records.length} records, made ${when})? Only records newer than what's on this phone are used.`)) return;
+  const n = await S.importRecords(j.records);
+  toast(n ? n + " records put back. Sending to the server…" : "Nothing to put back: this phone already has everything in the file.");
+  render();
+}
 
 async function loadPeople() {
   st.peopleLoading = true;
@@ -2326,8 +2440,26 @@ function chatContext() {
     .slice(0, 30)
     .map((o) => ({ id: o.id, customer: S.get(o.customer)?.name || "?", place: o.place || "", date: o.date, items: L.itemsText(o.items), total: L.itemsTotal(o.items) }));
   const already = L.sumSales(L.salesOn(t));
+  const dd = st.chat?.draft ? chatToDay(st.chat.draft) : null;
+  const day = dd?.date || t;
+  const stock = L.stock();
+  const chem = L.chemLeft();
+  const f = L.forecast();
+  const pl = L.plan(4, dd ? dayExtraOrders(dd) : []).filter((x) => x.rows.some((r) => r.batches));
   return {
     today: t + " (" + L.DAYS[L.weekday(t)] + ")",
+    stockLitresNow: Object.fromEntries(L.products().map((p) => [p.short || p.name, L.num(Math.max(0, stock[p.id] || 0))])),
+    chemicalsEnoughForBatches: Object.fromEntries(L.products().map((p) => [p.short || p.name, Math.max(0, chem[p.id] || 0)])),
+    litresPerBatch: Object.fromEntries(L.products().map((p) => [p.short || p.name, p.batchL || 25])),
+    cookedRecordedOnDay: S.list("batch")
+      .filter((b) => b.date === day)
+      .map((b) => (S.get(b.p)?.short || "?") + " ×" + b.n + (b.by ? " by " + b.by : "")),
+    cookingPlanIncludingDraftOrders: pl.map((x) => "make " + L.addDays(x.date, -1) + " for " + x.date + ": " + x.rows.filter((r) => r.batches).map((r) => (r.p.short || r.p.name) + " " + r.batches + " batches").join(", ")),
+    money: {
+      thisMonthSoFar: { sales: Math.round(f.now.sales), costs: Math.round(f.now.costs), profit: Math.round(f.now.profit) },
+      thisMonthExpected: { sales: Math.round(f.month.sales), profit: Math.round(f.month.profit) },
+      owedToHer: Math.round(f.owedAll),
+    },
     products: L.products().map((p) => ({ id: p.id, name: p.name, sizes: (p.sizes || []).map((s) => L.size(s.ml) + "=" + s.ml + "ml KSh" + (s.price || 0)).join(", ") })),
     places: L.places().map((p) => ({ id: p.id, name: p.name, day: p.day ? L.DAYS[p.day] : "" })),
     owing,
@@ -2369,6 +2501,11 @@ function chatToDay(x) {
   }
   if (x.cash != null && x.cash !== "") d.cash = String(cnt(x.cash));
   if (x.mpesa != null && x.mpesa !== "") d.mpesa = String(cnt(x.mpesa));
+  const isP = (id) => S.get(id)?.kind === "product";
+  for (const c of Array.isArray(x.cooked) ? x.cooked : []) if (isP(c?.p) && cnt(c.n)) d.cooked[c.p] = String(cnt(d.cooked[c.p]) + cnt(c.n));
+  for (const c of Array.isArray(x.chemBought) ? x.chemBought : [])
+    if (isP(c?.p) && cnt(c.batches)) d.chem[c.p] = { qty: String(cnt(d.chem[c.p]?.qty) + cnt(c.batches)), cost: String(cnt(d.chem[c.p]?.cost) + cnt(c.cost)) };
+  for (const c of Array.isArray(x.stockCount) ? x.stockCount : []) if (isP(c?.p) && c.litres != null && c.litres !== "" && Number(c.litres) >= 0) d.count[c.p] = String(Number(c.litres));
   d.newOrders = (Array.isArray(x.newOrders) ? x.newOrders : [])
     .filter((o) => String(o?.name || "").trim())
     .map((o) => {
@@ -2384,7 +2521,7 @@ function chatView() {
   const d = c.draft ? chatToDay(c.draft) : null;
   const sold = d ? mapBottles(daySold(d)) : 0;
   const noted = d
-    ? [sold ? sold + " bottles sold" : "", d.credit.length ? d.credit.length + " on pay later" : "", Object.keys(d.paid).length ? Object.keys(d.paid).length + " paid back" : "", d.newOrders.length ? d.newOrders.length + " new order" + (d.newOrders.length > 1 ? "s" : "") : ""].filter(Boolean).join(" · ")
+    ? [sold ? sold + " bottles sold" : "", d.credit.length ? d.credit.length + " on pay later" : "", Object.keys(d.paid).length ? Object.keys(d.paid).length + " paid back" : "", d.newOrders.length ? d.newOrders.length + " new order" + (d.newOrders.length > 1 ? "s" : "") : "", Object.keys(d.cooked).length ? "cooking" : ""].filter(Boolean).join(" · ")
     : "";
   return [
     "Record my day",
@@ -2561,6 +2698,7 @@ app.addEventListener("change", (e) => {
   } else if (ch === "redraw") render();
   else if (ch === "daydate" && /^\d{4}-\d{2}-\d{2}$/.test(el.value) && el.value <= L.today()) ACTS.daydate({ dataset: { v: el.value } });
   else if (ch === "cookp") go("#/cook/" + el.value);
+  else if (ch === "restore") restoreFile(el).catch((err) => toast(err.message || "Couldn't read that file", true));
   else if (ch === "role") ACTS.setrole(el).catch((err) => toast(err.message || "Something went wrong", true));
 });
 

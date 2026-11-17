@@ -431,3 +431,12 @@ h2.ask { font-size: 23px; line-height: 1.25; margin: 6px 0 14px; }
 .chatbox textarea { margin: 0; font-size: 17px; resize: none; }
 .chatbox .btn { min-height: 52px; }
 .btn.big small { font-weight: 600; opacity: 0.85; font-size: 13px; }
+
+/* Projections */
+.mbars { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; align-items: end; height: 170px; margin-top: 8px; }
+.mbar { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 3px; font-size: 12px; font-weight: 700; }
+.mbar i { width: 70%; border-radius: 8px 8px 3px 3px; background: linear-gradient(180deg, var(--brand-2), var(--brand)); }
+.mbar.est i { background: repeating-linear-gradient(135deg, var(--brand-soft) 0 6px, var(--brand) 6px 8px); }
+.mbar em { font-style: normal; color: var(--muted); }
+.mbar small { font-size: 11px; }
+.filebtn { cursor: pointer; }

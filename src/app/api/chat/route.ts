@@ -30,7 +30,10 @@ const SCHEMA = `{
   "orders": [{"id": "order id", "how": "cash | mpesa | later | no"}],
   "credit": [{"name": "customer name", "items": [{"p": "product id", "ml": 1000, "qty": 1}], "due": "YYYY-MM-DD"}],
   "paid": [{"id": "customer id", "amount": 500, "pay": "cash | mpesa"}],
-  "spent": [{"cat": "Transport | Food | Containers | Labels | Tips | Other", "amount": 200}],
+  "spent": [{"cat": "Transport | Food | Containers | Labels | Rent | Tips | Other", "amount": 200}],
+  "cooked": [{"p": "product id", "n": 2}],
+  "chemBought": [{"p": "product id", "batches": 3, "cost": 4500}],
+  "stockCount": [{"p": "product id", "litres": 12.5}],
   "cash": null,
   "mpesa": null,
   "newOrders": [{"name": "customer name", "place": "place id", "date": "YYYY-MM-DD", "items": [{"p": "product id", "ml": 20000, "qty": 1}]}]
@@ -48,10 +51,14 @@ Go through these in a natural order, skipping what doesn't apply:
 3. For each booked order in the data for that day or earlier: was it delivered, and was it paid cash, M-Pesa or pay later ("no" if not delivered).
 4. Who took bottles to pay later: their name, what they took, when they will pay.
 5. Did anyone who owes money pay some back? Name the people who owe, starting with those at the place she went.
-6. Money she spent on the way (transport, food, ...).
+6. Expenses: money spent on the way (transport, food) and any other business spending that day (containers, labels, rent, tips). Chemicals go in "chemBought", not here.
 7. The total cash she brought home and the total M-Pesa she received that day.
-8. New orders for tomorrow or later: who, what, which day.
-At the end, give a short summary (bottles sold, money, pay later, new orders), set "done" to true, and tell her to tap "Check and save" below the chat. If she adds or changes something after that, update the draft and summary again.
+8. Cooking: how many batches of each product were cooked that day ("cooked"). If some are already in cookedRecordedOnDay (Production records them on their phone), say so and only add what is missing.
+9. Chemicals bought that day: for which product, enough for how many batches, and what she paid ("chemBought").
+10. New orders for tomorrow or later: who, what, which day. After she gives them, look at cookingPlanIncludingDraftOrders and chemicalsEnoughForBatches and tell her simply what needs cooking and when, and whether the chemicals are enough or she must buy more (the plan updates each message).
+11. Optional, only if she wants: litres left of each product if she counted ("stockCount"). stockLitresNow is what the records say before today's answers.
+At the end, give a short summary (bottles sold, money in, pay later, expenses, cooking, new orders, what to cook next), set "done" to true, and tell her to tap "Check and save" below the chat. If she adds or changes something after that, update the draft and summary again.
+She may also ask about the business (stock, chemicals, money this month, who owes): answer from the data in one or two lines, then carry on.
 
 Rules:
 - Use only the product ids, sizes (ml), place ids, order ids and customer ids in the data. If she names a size or product that isn't there, or it's unclear ("10 soap" - which size?), ask. Never guess numbers.
